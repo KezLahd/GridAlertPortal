@@ -1,27 +1,27 @@
+/// <reference path="../types/google-maps.d.ts" />
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { addDays, format } from "date-fns"
-import { DateRange } from "react-day-picker"
+import type { DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar05 } from "@/components/calendar05"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { AlertCircle, CalendarIcon, Info, PieChart, Table as TableIcon, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { AlertCircle, Info, PieChart, TableIcon, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { exportToCSV, exportToPDF } from "@/lib/export-utils"
 import OutageList, { aggregateOutages } from "@/components/outage-list"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import SearchBar from "@/components/search-bar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import NotificationBanner from "@/components/notification-banner"
 import OutageStats from "@/components/outage-stats"
 import MapsError from "@/components/maps-error"
 import { AppSidebar } from "@/components/sidebar"
+import { Badge } from "@/components/ui/badge"
 
 // Dynamically import the Map component to avoid SSR issues with Google Maps
 const Map = dynamic(() => import("@/components/map"), {
@@ -137,7 +137,10 @@ const formatSapowerSuburbs = (value: any): string => {
 }
 
 // Function to convert address to coordinates (geocoding)
-const geocodeAddresses = async <T extends UnplannedOutage | PlannedOutage>(outages: T[], outageType: OutageType): Promise<T[]> => {
+const geocodeAddresses = async <T extends UnplannedOutage | PlannedOutage>(
+  outages: T[],
+  outageType: OutageType,
+): Promise<T[]> => {
   // Filter outages that already have coordinates
   const outagesToGeocode = outages.filter((outage: T) => !outage.latitude || !outage.longitude)
   const outagesWithCoordinates = outages.filter((outage: T) => outage.latitude && outage.longitude)
@@ -172,7 +175,7 @@ const geocodeAddresses = async <T extends UnplannedOutage | PlannedOutage>(outag
       // For planned outages, try to geocode the specific street
       if (outageType === "planned" || outageType === "future") {
         // If we have streets_affected, use the first street mentioned
-        if ('streets_affected' in outage && outage.streets_affected) {
+        if ("streets_affected" in outage && outage.streets_affected) {
           const streets = outage.streets_affected.split(",")
           const firstStreet = streets[0].trim()
           // Combine street with suburb for better accuracy
@@ -198,10 +201,11 @@ const geocodeAddresses = async <T extends UnplannedOutage | PlannedOutage>(outag
         continue
       }
 
+      // </CHANGE> Using window.google consistently to avoid undeclared variable lint errors
       // Wait for geocoding result
-      const result = await new Promise<google.maps.GeocoderResult | null>((resolve) => {
+      const result = await new Promise<any>((resolve) => {
         if (window.google && window.google.maps) {
-          geocoder.geocode({ address: geocodeRequest }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
+          geocoder.geocode({ address: geocodeRequest }, (results: any, status: any) => {
             if (status === "OK" && results && results[0]) {
               resolve(results[0])
             } else {
@@ -285,6 +289,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const [futureRangeSet, setFutureRangeSet] = useState(false)
   const [showFutureRangeModal, setShowFutureRangeModal] = useState(false)
   const [futureModalRange, setFutureModalRange] = useState<DateRange | undefined>()
+  const [companyCenter, setCompanyCenter] = useState<{ lat: number; lng: number } | null>(null)
 
   // Check if Google Maps API is properly loaded
   useEffect(() => {
@@ -297,12 +302,29 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           setGoogleMapsLoaded(true)
           setMapsApiError(null)
         } else {
-          // Look for error messages in the DOM (Google Maps adds these when there's an API error)
-          const errorElements = document.querySelectorAll(".gm-err-message")
-          if (errorElements.length > 0) {
-            const errorMessage = errorElements[0].textContent || "Unknown Google Maps API error"
-            setMapsApiError(errorMessage)
-            console.error("Google Maps API error:", errorMessage)
+          // Check for gm-err-container which Google adds for API errors
+          const errorContainer = document.querySelector(".gm-err-container")
+          const errorMessage = document.querySelector(".gm-err-message")
+          const errorTitle = document.querySelector(".gm-err-title")
+
+          if (errorContainer || errorMessage || errorTitle) {
+            let errorText = "Google Maps API Error"
+
+            if (errorTitle) {
+              errorText = errorTitle.textContent || errorText
+            }
+            if (errorMessage) {
+              errorText += ": " + (errorMessage.textContent || "")
+            }
+
+            // Check if it's a billing error specifically
+            if (errorText.toLowerCase().includes("billing") || window.location.href.includes("billingnotenabled")) {
+              errorText =
+                "Billing Not Enabled - You must enable billing on your Google Cloud project to use Google Maps"
+            }
+
+            setMapsApiError(errorText)
+            console.error("Google Maps API error detected:", errorText)
           }
 
           // If no error elements but API still not loaded, try again later
@@ -312,12 +334,18 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         }
       } catch (err) {
         console.error("Error checking Google Maps API:", err)
+        setMapsApiError("Failed to load Google Maps API")
       }
     }
 
-    // Wait a bit for the API to load or error out
+    checkGoogleMapsApi()
     const timer = setTimeout(checkGoogleMapsApi, 2000)
-    return () => clearTimeout(timer)
+    const timer2 = setTimeout(checkGoogleMapsApi, 4000)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(timer2)
+    }
   }, [])
 
   // Test Supabase connection on mount
@@ -327,13 +355,13 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
 
       try {
         console.log("Testing Supabase connection...")
-        // Test connection with a simple query to the provider tables
-        const [{ data, error }, { error: endeavourError }, { error: energexError }, { error: ergonError }] = await Promise.all([
-          supabase.from("unplanned_outages").select("id").limit(1),
-          supabase.from("endeavour_current_unplanned_outages").select("id").limit(1),
-          supabase.from("energex_current_unplanned_outages").select("id").limit(1),
-          supabase.from("ergon_current_unplanned_outages").select("id").limit(1),
-        ])
+        const [{ data, error }, { error: endeavourError }, { error: energexError }, { error: ergonError }] =
+          await Promise.all([
+            supabase.from("ausgrid_unplanned_outages").select("id").limit(1),
+            supabase.from("endeavour_current_unplanned_outages").select("id").limit(1),
+            supabase.from("energex_current_unplanned_outages").select("id").limit(1),
+            supabase.from("ergon_current_unplanned_outages").select("id").limit(1),
+          ])
 
         const firstError = error || endeavourError || energexError || ergonError
         if (firstError) {
@@ -350,7 +378,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           details: err.details,
           hint: err.hint,
           code: err.code,
-          stack: err.stack
+          stack: err.stack,
         }
         console.error("Supabase connection test error:", errorDetails)
         setError(`Database connection error: ${errorDetails.message}`)
@@ -360,437 +388,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     testConnection()
   }, [connectionTested])
 
-  // Fetch unplanned outages
-  const fetchUnplannedOutages = async () => {
-    try {
-      console.log("Fetching unplanned outages...")
-      // Query Ausgrid, Endeavour and Energex unplanned outages
-      console.log("Querying Ausgrid unplanned outages...")
-      const { data, error } = await supabase.from("unplanned_outages").select("*")
-
-      if (error) throw error
-
-      console.log("Ausgrid query result:", data)
-
-      console.log("Querying Endeavour unplanned outages...")
-      const endeavourResult = await supabase.from("endeavour_current_unplanned_outages").select("*").throwOnError()
-
-      console.log("Endeavour query result:", endeavourResult)
-
-      console.log("Querying Energex unplanned outages...")
-      const energexResult = await supabase.from("energex_current_unplanned_outages").select("*").throwOnError()
-      console.log("Energex query result:", energexResult)
-
-      console.log("Querying Ergon unplanned outages...")
-      const ergonResult = await supabase.from("ergon_current_unplanned_outages").select("*").throwOnError()
-      console.log("Ergon query result:", ergonResult)
-
-      console.log("Querying SA Power unplanned outages...")
-      const sapowerResult = await supabase.from("sapower_current_unplanned_outages").select("*").throwOnError()
-      console.log("SA Power query result:", sapowerResult)
-
-      // Add provider field to each outage
-      const ausgridOutages = (data || []).map(outage => ({
-        ...outage,
-        provider: "Ausgrid" as EnergyProvider
-      }))
-
-      const endeavourOutages = (endeavourResult.data || []).map(outage => ({
-        // Normalise Endeavour fields to the UI shape
-        id: outage.id,
-        statusheading: outage.status,
-        area_suburb: outage.suburb,
-        cause: outage.reason,
-        customers_affected: outage.number_customers_affected,
-        estimated_finish_time: outage.end_date_time,
-        start_time: outage.start_date_time,
-        webid: outage.incident_id,
-        status: outage.status,
-        latitude: outage.latitude,
-        longitude: outage.longitude,
-        geocoded_address: outage.street_name,
-        provider: "Endeavour" as EnergyProvider
-      }))
-
-      const energexOutages = (energexResult.data || []).map(outage => ({
-        id: outage.id,
-        statusheading: outage.status || outage.outage_type,
-        area_suburb: outage.suburbs || outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        customers_affected: outage.customers_affected,
-        estimated_finish_time: outage.est_fix_time,
-        start_time: outage.start_time,
-        webid: outage.event_id,
-        status: outage.status,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Energex" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const ergonOutages = (ergonResult.data || []).map(outage => ({
-        id: outage.id,
-        statusheading: outage.status || outage.outage_type,
-        area_suburb: outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        customers_affected: outage.customers_affected,
-        estimated_finish_time: outage.est_fix_time,
-        start_time: outage.start_time,
-        webid: outage.event_id,
-        status: outage.status,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Ergon" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const sapowerOutages = (sapowerResult.data || []).map(outage => ({
-        id: outage.id,
-        statusheading: outage.status || outage.reason || "Unplanned outage",
-        area_suburb: formatSapowerSuburbs(outage.affected_suburbs),
-        cause: outage.reason || "Unspecified",
-        customers_affected: outage.affected_customers,
-        estimated_finish_time: outage.est_restoration || outage.end_time,
-        start_time: outage.start_time,
-        webid: outage.job_id,
-        status: outage.status,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: formatSapowerSuburbs(outage.affected_suburbs),
-        provider: "SA Power" as EnergyProvider,
-        state: outage.state || PROVIDER_STATE_DEFAULTS["SA Power"],
-      }))
-
-      console.log("Processed outages:", {
-        ausgrid: ausgridOutages.length,
-        endeavour: endeavourOutages.length,
-        energex: energexOutages.length,
-        ergon: ergonOutages.length,
-        sapower: sapowerOutages.length,
-      })
-
-      // Combine outages from all providers
-      let combinedOutages = [...ausgridOutages, ...endeavourOutages, ...energexOutages, ...ergonOutages, ...sapowerOutages]
-
-      // Filter by provider if needed
-      if (selectedProvider !== "all") {
-        combinedOutages = combinedOutages.filter(outage => outage.provider === selectedProvider)
-      }
-
-      console.log("Final combined outages:", combinedOutages.length)
-
-      // Geocode addresses if needed
-      const outagesWithCoordinates = await geocodeAddresses<UnplannedOutage>(combinedOutages, "unplanned")
-      setUnplannedOutages(outagesWithCoordinates as UnplannedOutage[])
-    } catch (error: any) {
-      const errorDetails = {
-        message: error.message || "Unknown error",
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        stack: error.stack
-      }
-      console.error("Error fetching unplanned outages:", errorDetails)
-      throw new Error(`Failed to fetch unplanned outages: ${errorDetails.message}`)
-    }
-  }
-
-  // Fetch planned outages
-  const fetchPlannedOutages = async () => {
-    try {
-      // Query Ausgrid planned outages
-      const { data: ausgridData, error: ausgridError } = await supabase.from("current_planned_outages").select("*")
-
-      if (ausgridError) throw ausgridError
-
-      // Query Endeavour planned outages
-      const { data: endeavourData, error: endeavourError } = await supabase
-        .from("endeavour_current_planned_outages")
-        .select("*")
-
-      if (endeavourError) throw endeavourError
-
-      // Query Energex planned outages
-      const { data: energexData, error: energexError } = await supabase.from("energex_current_planned_outages").select("*")
-
-      if (energexError) throw energexError
-
-      // Query Ergon planned outages
-      const { data: ergonData, error: ergonError } = await supabase.from("ergon_current_planned_outages").select("*")
-
-      if (ergonError) throw ergonError
-
-      // Query SA Power planned outages
-      const { data: sapowerData, error: sapowerError } = await supabase.from("sapower_current_planned_outages").select("*")
-
-      if (sapowerError) throw sapowerError
-
-      // Add provider field to each outage
-      const ausgridOutages = (ausgridData || []).map(outage => ({
-        ...outage,
-        provider: "Ausgrid" as EnergyProvider
-      }))
-
-      const endeavourOutages = (endeavourData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburb,
-        cause: outage.reason,
-        details: outage.reason || outage.outage_type || outage.details,
-        customers_affected: outage.number_customers_affected,
-        end_date_time: outage.end_date_time,
-        start_date_time: outage.start_date_time,
-        status: outage.status,
-        streets_affected: outage.street_name || outage.streets_affected,
-        webid: outage.incident_id || outage.webid,
-        paid: outage.paid,
-        latitude: outage.latitude,
-        longitude: outage.longitude,
-        geocoded_address: outage.street_name,
-        provider: "Endeavour" as EnergyProvider
-      }))
-
-      const energexOutages = (energexData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        details: outage.outage_type || outage.reason,
-        customers_affected: outage.customers_affected,
-        end_date_time: outage.est_fix_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: outage.streets,
-        webid: outage.event_id,
-        paid: outage.paid,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Energex" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const ergonOutages = (ergonData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        details: outage.outage_type || outage.reason,
-        customers_affected: outage.customers_affected,
-        end_date_time: outage.est_fix_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: outage.streets,
-        webid: outage.event_id,
-        paid: outage.paid,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Ergon" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const sapowerOutages = (sapowerData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: formatSapowerSuburbs(outage.affected_suburbs),
-        cause: outage.reason || "Planned maintenance",
-        details: outage.reason || outage.outage_type || outage.details,
-        customers_affected: outage.affected_customers,
-        end_date_time: outage.est_restoration || outage.end_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: formatSapowerSuburbs(outage.affected_suburbs),
-        webid: outage.job_id,
-        paid: outage.status,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: formatSapowerSuburbs(outage.affected_suburbs),
-        provider: "SA Power" as EnergyProvider,
-        state: outage.state || PROVIDER_STATE_DEFAULTS["SA Power"],
-      }))
-
-      // Combine outages from all providers
-      let combinedOutages = [...ausgridOutages, ...endeavourOutages, ...energexOutages, ...ergonOutages, ...sapowerOutages]
-
-      // Filter by provider if needed
-      if (selectedProvider !== "all") {
-        combinedOutages = combinedOutages.filter(outage => outage.provider === selectedProvider)
-      }
-
-      // Set list/report immediately, then geocode in background for map
-      setPlannedOutages(combinedOutages as PlannedOutage[])
-      geocodeAddresses<PlannedOutage>(combinedOutages, "planned")
-        .then((outagesWithCoordinates) => setPlannedOutages(outagesWithCoordinates as PlannedOutage[]))
-        .catch((err) => console.error("Error geocoding planned outages:", err))
-    } catch (error) {
-      console.error("Error fetching planned outages:", error)
-      setError("Failed to load planned outages")
-    }
-  }
-
-  // Fetch future outages
-  const fetchFutureOutages = async (rangeStart?: Date | null, rangeEnd?: Date | null) => {
-    try {
-      const start = rangeStart ?? futureStartDate
-      const end = rangeEnd ?? futureEndDate
-      if (!start || !end) return
-      const startStr = format(start, "yyyy-MM-dd")
-      const endStr = format(end, "yyyy-MM-dd")
-
-      // Query Ausgrid future outages
-      const { data: ausgridData, error: ausgridError } = await supabase
-        .from("future_planned_outages")
-        .select("*")
-        .gte("start_date_time", `${startStr}T00:00:00`)
-        .lte("start_date_time", `${endStr}T23:59:59`)
-
-      if (ausgridError) throw ausgridError
-
-      // Query Endeavour future outages
-      const { data: endeavourData, error: endeavourError } = await supabase
-        .from("endeavour_future_planned_outages")
-        .select("*")
-        .gte("start_date_time", `${startStr}T00:00:00`)
-        .lte("start_date_time", `${endStr}T23:59:59`)
-
-      if (endeavourError) throw endeavourError
-
-      // Query Energex future outages
-      const { data: energexData, error: energexError } = await supabase
-        .from("energex_future_planned_outages")
-        .select("*")
-        .gte("start_time", `${startStr}T00:00:00`)
-        .lte("start_time", `${endStr}T23:59:59`)
-
-      if (energexError) throw energexError
-
-      // Query Ergon future outages
-      const { data: ergonData, error: ergonError } = await supabase
-        .from("ergon_future_planned_outages")
-        .select("*")
-        .gte("start_time", `${startStr}T00:00:00`)
-        .lte("start_time", `${endStr}T23:59:59`)
-
-      if (ergonError) throw ergonError
-
-      // Query SA Power future outages
-      const { data: sapowerData, error: sapowerError } = await supabase
-        .from("sapower_future_planned_outages")
-        .select("*")
-        .gte("start_time", `${startStr}T00:00:00`)
-        .lte("start_time", `${endStr}T23:59:59`)
-
-      if (sapowerError) throw sapowerError
-
-      // Add provider field to each outage
-      const ausgridOutages = (ausgridData || []).map(outage => ({
-        ...outage,
-        provider: "Ausgrid" as EnergyProvider
-      }))
-
-      const endeavourOutages = (endeavourData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburb,
-        cause: outage.reason,
-        details: outage.reason || outage.outage_type || outage.details,
-        customers_affected: outage.number_customers_affected,
-        end_date_time: outage.end_date_time,
-        start_date_time: outage.start_date_time,
-        status: outage.status,
-        streets_affected: outage.street_name || outage.streets_affected,
-        webid: outage.incident_id || outage.webid,
-        paid: outage.paid,
-        latitude: outage.latitude,
-        longitude: outage.longitude,
-        geocoded_address: outage.street_name,
-        provider: "Endeavour" as EnergyProvider
-      }))
-
-      const energexOutages = (energexData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        details: outage.outage_type || outage.reason,
-        customers_affected: outage.customers_affected,
-        end_date_time: outage.est_fix_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: outage.streets,
-        webid: outage.event_id,
-        paid: outage.paid,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Energex" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const ergonOutages = (ergonData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: outage.suburbs,
-        cause: outage.reason || outage.outage_type,
-        details: outage.outage_type || outage.reason,
-        customers_affected: outage.customers_affected,
-        end_date_time: outage.est_fix_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: outage.streets,
-        webid: outage.event_id,
-        paid: outage.paid,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: outage.streets,
-        provider: "Ergon" as EnergyProvider,
-        state: outage.state,
-      }))
-
-      const sapowerOutages = (sapowerData || []).map(outage => ({
-        id: outage.id,
-        area_suburb: formatSapowerSuburbs(outage.affected_suburbs),
-        cause: outage.reason || "Planned maintenance",
-        details: outage.outage_type || outage.reason,
-        customers_affected: outage.affected_customers,
-        end_date_time: outage.est_restoration || outage.end_time,
-        start_date_time: outage.start_time,
-        status: outage.status,
-        streets_affected: formatSapowerSuburbs(outage.affected_suburbs),
-        webid: outage.job_id,
-        paid: outage.status,
-        latitude: outage.point_lat,
-        longitude: outage.point_lng,
-        geocoded_address: formatSapowerSuburbs(outage.affected_suburbs),
-        provider: "SA Power" as EnergyProvider,
-        state: outage.state || PROVIDER_STATE_DEFAULTS["SA Power"],
-      }))
-
-      // Combine outages from all providers
-      let combinedOutages = [...ausgridOutages, ...endeavourOutages, ...energexOutages, ...ergonOutages, ...sapowerOutages]
-
-      // Filter by provider if needed
-      if (selectedProvider !== "all") {
-        combinedOutages = combinedOutages.filter(outage => outage.provider === selectedProvider)
-      }
-
-    // Set list data immediately, then geocode in the background for map accuracy
-    setFuturePlannedOutages(combinedOutages as PlannedOutage[])
-
-    // Geocode addresses if needed (async, won't block list/report rendering)
-    geocodeAddresses<PlannedOutage>(combinedOutages, "future")
-      .then((outagesWithCoordinates) => setFuturePlannedOutages(outagesWithCoordinates as PlannedOutage[]))
-      .catch((err) => {
-        console.error("Error geocoding future outages:", err)
-      })
-    } catch (error) {
-      console.error("Error fetching future outages:", error)
-      setError("Failed to load future outages")
-    }
-  }
-
   // Fetch data based on the selected outage type
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-
     const fetchData = async () => {
+      setLoading(true)
+      setError(null)
+
       try {
         if (outageType === "unplanned") {
           await fetchUnplannedOutages()
@@ -804,6 +407,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           await fetchFutureOutages()
         }
 
+        // Update previous counts after fetching
         if (outageType === "unplanned") {
           setPreviousUnplannedCount(unplannedOutages.length)
         } else if (outageType === "planned") {
@@ -817,8 +421,16 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       }
     }
 
-    fetchData()
-  }, [outageType, date, selectedProvider, futureStartDate, futureEndDate])
+    // Only fetch data if connection is tested and maps API is loaded (if needed)
+    // For initial load, fetch regardless of connectionTested, as it's part of the loading process
+    if (googleMapsLoaded || !["map"].includes(viewMode)) {
+      // Fetch if map view or maps API is loaded
+      fetchData()
+    } else if (!mapsApiError) {
+      // If maps API error, don't fetch map data
+      setTimeout(fetchData, 1000) // Retry if maps API is still loading
+    }
+  }, [outageType, date, selectedProvider, futureStartDate, futureEndDate, googleMapsLoaded, mapsApiError])
 
   // Re-fetch with proper geocoding once Google Maps is available
   useEffect(() => {
@@ -831,6 +443,82 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       fetchFutureOutages()
     }
   }, [googleMapsLoaded])
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData?.user) return
+
+      const { data: profileData } = await supabase
+        .from("user_profiles")
+        .select(
+          `
+          user_id,
+          company:companies(id,name,location,latitude,longitude)
+        `,
+        )
+        .eq("user_id", authData.user.id)
+        .maybeSingle()
+
+      if (profileData?.company && profileData.company.latitude && profileData.company.longitude) {
+        setCompanyCenter({
+          lat: Number(profileData.company.latitude),
+          lng: Number(profileData.company.longitude),
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching user profile for map center:", error)
+    }
+  }
+
+  // Initial data fetch and connection test on mount
+  useEffect(() => {
+    const initialFetch = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        // Test Supabase connection
+        const { error: testError } = await supabase.from("ausgrid_unplanned_outages").select("id").limit(1)
+        if (testError) {
+          console.error("Supabase connection test error:", testError)
+          setError("Database connection error: " + testError.message)
+          setLoading(false)
+          return
+        }
+        setConnectionTested(true)
+
+        // Fetch initial data based on initialOutageType
+        if (initialOutageType === "unplanned") {
+          await fetchUnplannedOutages()
+          setPreviousUnplannedCount(unplannedOutages.length)
+        } else if (initialOutageType === "planned") {
+          await fetchPlannedOutages()
+          setPreviousPlannedCount(plannedOutages.length)
+        } else if (initialOutageType === "future") {
+          // Set default future date range if not already set
+          if (!futureStartDate || !futureEndDate) {
+            const today = new Date()
+            const defaultEndDate = addDays(today, 7)
+            setFutureStartDate(today)
+            setFutureEndDate(defaultEndDate)
+            setFutureRangeSet(true)
+            await fetchFutureOutages(today, defaultEndDate)
+          } else {
+            await fetchFutureOutages()
+          }
+        }
+        // Fetch user profile for map centering
+        await fetchUserProfile()
+      } catch (error: any) {
+        console.error("Initial data fetch error:", error)
+        setError("Failed to load initial data: " + error.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initialFetch()
+  }, []) // Empty dependency array ensures this runs only once on mount
 
   // Get current outages based on the selected type
   const getCurrentOutages = () => {
@@ -889,10 +577,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     const cause = outage.cause || outage.details || "N/A"
     const customers = Number.isFinite(Number(outage.customers_affected))
       ? Number(outage.customers_affected)
-      : outage.customers_affected ?? "N/A"
+      : (outage.customers_affected ?? "N/A")
 
     const start =
-      outageType === "planned" || outageType === "future" ? outage.start_date_time || outage.created_at : outage.start_time
+      outageType === "planned" || outageType === "future"
+        ? outage.start_date_time || outage.created_at
+        : outage.start_time
     const end =
       outageType === "planned" || outageType === "future"
         ? outage.end_date_time || outage.estimated_finish_time
@@ -931,6 +621,38 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     })
   }, [reportRows, reportSearch, selectedProvider])
 
+  const sortedReportRows = useMemo(() => {
+    return [...filteredReportRows].sort((a, b) => {
+      let valA: any = a[sortField]
+      let valB: any = b[sortField]
+
+      if (valA === undefined || valA === null) valA = ""
+      if (valB === undefined || valB === null) valB = ""
+
+      if (typeof valA === "number" && typeof valB === "number") {
+        return sortDirection === "asc" ? valA - valB : valB - valA
+      }
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        valA = valA.toLowerCase()
+        valB = valB.toLowerCase()
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1
+        return 0
+      }
+
+      return 0 // Default case for unhandled types
+    })
+  }, [filteredReportRows, sortField, sortDirection])
+
+  const pagedReportRows = useMemo(() => {
+    const startIndex = (reportPage - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    return sortedReportRows.slice(startIndex, endIndex)
+  }, [sortedReportRows, reportPage, pageSize])
+
+  const totalReportPages = Math.ceil(sortedReportRows.length / pageSize)
+
   useEffect(() => {
     setReportPage(1)
   }, [reportSearch, selectedProvider, sortField, sortDirection, outageType])
@@ -943,50 +665,6 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       setLoading(false)
     }
   }, [outageType, futureRangeSet])
-
-  const sortedReportRows = useMemo(() => {
-    const copy = [...filteredReportRows]
-    copy.sort((a, b) => {
-      switch (sortField) {
-        case "incident":
-          return String(a.incident).localeCompare(String(b.incident))
-        case "provider":
-          return String(a.provider).localeCompare(String(b.provider))
-        case "streets":
-          return String(a.streets).localeCompare(String(b.streets))
-        case "suburb":
-          return String(a.suburb).localeCompare(String(b.suburb))
-        case "cause":
-          return String(a.cause).localeCompare(String(b.cause))
-        case "customers":
-          return Number(a.customers ?? 0) - Number(b.customers ?? 0)
-        case "start":
-          const startA = Date.parse(a.start)
-          const startB = Date.parse(b.start)
-          if (Number.isNaN(startA) || Number.isNaN(startB)) {
-            return String(a.start).localeCompare(String(b.start))
-          }
-          return startA - startB
-        case "end":
-          const endA = Date.parse(a.end)
-          const endB = Date.parse(b.end)
-          if (Number.isNaN(endA) || Number.isNaN(endB)) {
-            return String(a.end).localeCompare(String(b.end))
-          }
-          return endA - endB
-        default:
-          return 0
-      }
-    })
-    if (sortDirection === "desc") copy.reverse()
-    return copy
-  }, [filteredReportRows, sortField, sortDirection])
-
-  const totalReportPages = Math.max(1, Math.ceil(sortedReportRows.length / pageSize))
-  const pagedReportRows = useMemo(() => {
-    const start = (reportPage - 1) * pageSize
-    return sortedReportRows.slice(start, start + pageSize)
-  }, [sortedReportRows, reportPage])
 
   const handleFutureRangeConfirm = () => {
     if (!futureModalRange?.from || !futureModalRange?.to) return
@@ -1026,7 +704,16 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     )
   }
 
-  const buildExportHeaders = () => ["Incident", "Streets", "Suburb", "Provider", "Cause", "Customers", "Start Time", "End Time"]
+  const buildExportHeaders = () => [
+    "Incident",
+    "Streets",
+    "Suburb",
+    "Provider",
+    "Cause",
+    "Customers",
+    "Start Time",
+    "End Time",
+  ]
 
   const buildExportRows = () =>
     sortedReportRows.map((row) => [
@@ -1048,7 +735,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         title: "Outage Report",
         subtitle: `Mode: ${outageType}`,
       },
-      `outage-report-${outageType}`
+      `outage-report-${outageType}`,
     )
   }
 
@@ -1060,7 +747,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         title: "Outage Report",
         subtitle: `Mode: ${outageType}`,
       },
-      `outage-report-${outageType}`
+      `outage-report-${outageType}`,
     )
   }
 
@@ -1092,6 +779,239 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     setSelectedProvider(provider)
   }
 
+  // Fetch functions declaration
+  const fetchUnplannedOutages = async () => {
+    try {
+      // Query all provider unplanned outage tables in parallel
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+        supabase.from("ausgrid_unplanned_outages").select("*"),
+        supabase.from("endeavour_current_unplanned_outages").select("*"),
+        supabase.from("energex_current_unplanned_outages").select("*"),
+        supabase.from("ergon_current_unplanned_outages").select("*"),
+        supabase.from("sapower_current_unplanned_outages").select("*"),
+      ])
+
+      // Check for errors
+      if (ausgridRes.error) console.error("Ausgrid unplanned error:", ausgridRes.error)
+      if (endeavourRes.error) console.error("Endeavour unplanned error:", endeavourRes.error)
+      if (energexRes.error) console.error("Energex unplanned error:", energexRes.error)
+      if (ergonRes.error) console.error("Ergon unplanned error:", ergonRes.error)
+      if (sapowerRes.error) console.error("SA Power unplanned error:", sapowerRes.error)
+
+      // Merge all results with provider labels
+      const merged = [
+        ...(ausgridRes.data || []).map((item: any) => ({ ...item, provider: "Ausgrid" as const })),
+        ...(endeavourRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Endeavour" as const,
+          area_suburb: item.suburb,
+          cause: item.reason,
+          customers_affected: item.number_customers_affected,
+          estimated_finish_time: item.end_date_time,
+          statusheading: item.status,
+        })),
+        ...(energexRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Energex" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          estimated_finish_time: item.est_fix_time,
+          statusheading: item.status,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(ergonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Ergon" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          estimated_finish_time: item.est_fix_time,
+          statusheading: item.status,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(sapowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "SA Power" as const,
+          area_suburb: formatSapowerSuburbs(item.affected_suburbs),
+          cause: item.reason,
+          customers_affected: item.affected_customers,
+          estimated_finish_time: item.est_restoration,
+          statusheading: item.status,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+      ]
+
+      setUnplannedOutages(merged as any)
+    } catch (err: any) {
+      console.error("Error fetching unplanned outages:", err)
+      setError("Failed to load unplanned outages: " + err.message)
+    }
+  }
+
+  const fetchPlannedOutages = async () => {
+    try {
+      // Query all provider planned outage tables in parallel
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+        supabase.from("ausgrid_current_planned_outages").select("*"),
+        supabase.from("endeavour_current_planned_outages").select("*"),
+        supabase.from("energex_current_planned_outages").select("*"),
+        supabase.from("ergon_current_planned_outages").select("*"),
+        supabase.from("sapower_current_planned_outages").select("*"),
+      ])
+
+      // Check for errors
+      if (ausgridRes.error) console.error("Ausgrid planned error:", ausgridRes.error)
+      if (endeavourRes.error) console.error("Endeavour planned error:", endeavourRes.error)
+      if (energexRes.error) console.error("Energex planned error:", energexRes.error)
+      if (ergonRes.error) console.error("Ergon planned error:", ergonRes.error)
+      if (sapowerRes.error) console.error("SA Power planned error:", sapowerRes.error)
+
+      // Merge all results with provider labels
+      const merged = [
+        ...(ausgridRes.data || []).map((item: any) => ({ ...item, provider: "Ausgrid" as const })),
+        ...(endeavourRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Endeavour" as const,
+          area_suburb: item.suburb,
+          cause: item.reason,
+          customers_affected: item.number_customers_affected,
+          end_date_time: item.end_date_time,
+          start_date_time: item.start_date_time,
+          status: item.status,
+          streets_affected: item.street_name,
+        })),
+        ...(energexRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Energex" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          end_date_time: item.est_fix_time,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.streets,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(ergonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Ergon" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          end_date_time: item.est_fix_time,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.streets,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(sapowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "SA Power" as const,
+          area_suburb: formatSapowerSuburbs(item.affected_suburbs),
+          cause: item.reason,
+          customers_affected: item.affected_customers,
+          end_date_time: item.est_restoration,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.affected_streets || "",
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+      ]
+
+      setPlannedOutages(merged as any)
+    } catch (err: any) {
+      console.error("Error fetching planned outages:", err)
+      setError("Failed to load planned outages: " + err.message)
+    }
+  }
+
+  const fetchFutureOutages = async (startDate?: Date, endDate?: Date) => {
+    try {
+      // Query all provider future planned outage tables in parallel
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+        supabase.from("ausgrid_future_planned_outages").select("*"),
+        supabase.from("endeavour_future_planned_outages").select("*"),
+        supabase.from("energex_future_planned_outages").select("*"),
+        supabase.from("ergon_future_planned_outages").select("*"),
+        supabase.from("sapower_future_planned_outages").select("*"),
+      ])
+
+      // Check for errors
+      if (ausgridRes.error) console.error("Ausgrid future error:", ausgridRes.error)
+      if (endeavourRes.error) console.error("Endeavour future error:", endeavourRes.error)
+      if (energexRes.error) console.error("Energex future error:", energexRes.error)
+      if (ergonRes.error) console.error("Ergon future error:", ergonRes.error)
+      if (sapowerRes.error) console.error("SA Power future error:", sapowerRes.error)
+
+      // Merge all results with provider labels
+      const merged = [
+        ...(ausgridRes.data || []).map((item: any) => ({ ...item, provider: "Ausgrid" as const })),
+        ...(endeavourRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Endeavour" as const,
+          area_suburb: item.suburb,
+          cause: item.reason,
+          customers_affected: item.number_customers_affected,
+          end_date_time: item.end_date_time,
+          start_date_time: item.start_date_time,
+          status: item.status,
+          streets_affected: item.street_name,
+        })),
+        ...(energexRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Energex" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          end_date_time: item.est_fix_time,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.streets,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(ergonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Ergon" as const,
+          area_suburb: item.suburbs,
+          cause: item.reason,
+          customers_affected: item.customers_affected,
+          end_date_time: item.est_fix_time,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.streets,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+        ...(sapowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "SA Power" as const,
+          area_suburb: formatSapowerSuburbs(item.affected_suburbs), // Apply formatSapowerSuburbs to SA Power affected_suburbs in future outages
+          cause: item.reason,
+          customers_affected: item.affected_customers,
+          end_date_time: item.est_restoration,
+          start_date_time: item.start_time,
+          status: item.status,
+          streets_affected: item.feeders?.[0] || "",
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+        })),
+      ]
+
+      setFuturePlannedOutages(merged as any)
+    } catch (err: any) {
+      console.error("Error fetching future outages:", err)
+      setError("Failed to load future outages: " + err.message)
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-[#f2f2f4] text-[#1f1f22]">
       <AppSidebar />
@@ -1116,7 +1036,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   <span className="text-muted-foreground">
                     {format(futureStartDate as Date, "PPP")} to {format(futureEndDate as Date, "PPP")}
                   </span>
-                  <Button variant="outline" size="sm" className="h-8 px-3" onClick={handleFutureRangeChange}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 bg-transparent"
+                    onClick={handleFutureRangeChange}
+                  >
                     Change range
                   </Button>
                 </div>
@@ -1197,7 +1122,10 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     />
                   </div>
                   <div className="flex justify-end pt-2">
-                    <Button onClick={handleFutureRangeConfirm} disabled={!futureModalRange?.from || !futureModalRange?.to}>
+                    <Button
+                      onClick={handleFutureRangeConfirm}
+                      disabled={!futureModalRange?.from || !futureModalRange?.to}
+                    >
                       Apply
                     </Button>
                   </div>
@@ -1240,7 +1168,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                         <div className="h-[70vh] bg-gray-200 animate-pulse" />
                       ) : (
                         <div className="h-[70vh]">
-                          <Map outages={getCurrentOutages()} outageType={outageType} searchLocation={searchLocation} />
+                          <Map
+                            outages={getCurrentOutages()}
+                            outageType={outageType}
+                            searchLocation={searchLocation}
+                            companyCenter={companyCenter}
+                          />
                         </div>
                       )}
                     </div>
@@ -1291,7 +1224,10 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                       onChange={(e) => setReportSearch(e.target.value)}
                       className="w-full md:w-80"
                     />
-                    <Select value={selectedProvider} onValueChange={(val) => setSelectedProvider(val as EnergyProvider | "all")}>
+                    <Select
+                      value={selectedProvider}
+                      onValueChange={(val) => setSelectedProvider(val as EnergyProvider | "all")}
+                    >
                       <SelectTrigger className="w-[160px]">
                         <SelectValue placeholder="Provider" />
                       </SelectTrigger>
@@ -1371,11 +1307,33 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   </TableHeader>
                   <TableBody>
                     {pagedReportRows.map((row, idx) => (
-                      <TableRow key={`${row.incident}-${row.suburb}-${row.provider}-${idx}`} className="hover:bg-secondary/60">
+                      <TableRow
+                        key={`${row.incident}-${row.suburb}-${row.provider}-${idx}`}
+                        className="hover:bg-secondary/60"
+                      >
                         <TableCell className="font-medium">{row.incident}</TableCell>
                         <TableCell className="max-w-[560px] whitespace-normal break-words">{row.streets}</TableCell>
                         <TableCell>{row.suburb}</TableCell>
-                        <TableCell>{row.provider}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              row.provider === "Ausgrid"
+                                ? "bg-blue-100 text-blue-800"
+                                : row.provider === "Endeavour"
+                                  ? "bg-green-100 text-green-800"
+                                  : row.provider === "Energex"
+                                    ? "bg-cyan-100 text-teal-800"
+                                    : row.provider === "Ergon"
+                                      ? "bg-red-100 text-red-800"
+                                      : row.provider === "SA Power"
+                                        ? "bg-orange-100 text-orange-800"
+                                        : "bg-gray-100 text-gray-800"
+                            }
+                            variant="outline"
+                          >
+                            {row.provider}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[260px] whitespace-normal break-words">
                           {row.cause}
                         </TableCell>
@@ -1388,8 +1346,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                 </Table>
                 <div className="flex items-center justify-between gap-3 py-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {(reportPage - 1) * pageSize + 1}-
-                    {Math.min(reportPage * pageSize, sortedReportRows.length)} of {sortedReportRows.length}
+                    Showing {(reportPage - 1) * pageSize + 1}-{Math.min(reportPage * pageSize, sortedReportRows.length)}{" "}
+                    of {sortedReportRows.length}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

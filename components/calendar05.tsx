@@ -58,4 +58,3 @@ export function Calendar05({ value, onChange, defaultMonth, numberOfMonths = 2 }
     />
   )
 }
-

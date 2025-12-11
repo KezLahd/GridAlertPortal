@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle, MarkerClusterer } from "@react-google-maps/api"
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api"
 import MapsError from "./maps-error"
 import MapLegend from "./map-legend"
 
@@ -62,6 +62,7 @@ interface MapProps {
   outages: any[]
   outageType: "unplanned" | "planned" | "future"
   searchLocation?: { lat: number; lng: number } | null
+  companyCenter?: { lat: number; lng: number } | null
 }
 
 // Function to check if Google Maps API is loaded
@@ -79,7 +80,7 @@ const ClientGoogleMap = ({ children, ...props }: any) => {
   return <GoogleMap {...props}>{children}</GoogleMap>
 }
 
-export default function Map({ outages, outageType, searchLocation }: MapProps) {
+export default function Map({ outages, outageType, searchLocation, companyCenter }: MapProps) {
   const [apiError, setApiError] = useState<string | null>(null)
   const [currentZoom, setCurrentZoom] = useState(12)
 
@@ -89,23 +90,23 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     libraries: libraries as any,
   })
 
-  const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [map, setMap] = useState<any | null>(null)
   const [selectedOutage, setSelectedOutage] = useState<any | null>(null)
   const [center, setCenter] = useState(defaultCenter)
   const [visibleOutages, setVisibleOutages] = useState<any[]>([])
-  const mapRef = useRef<google.maps.Map | null>(null)
+  const mapRef = useRef<any | null>(null)
 
-  const mapOptions = useMemo<google.maps.MapOptions>(() => {
-    const opts: google.maps.MapOptions = {
+  const mapOptions = useMemo<any>(() => {
+    const opts: any = {
       disableDefaultUI: false,
       zoomControl: true,
       streetViewControl: false,
       mapTypeControl: false,
       fullscreenControl: true,
     }
-    if (typeof window !== "undefined" && (window as any).google?.maps?.ControlPosition) {
+    if (typeof window !== "undefined" && window.google?.maps?.ControlPosition) {
       opts.fullscreenControlOptions = {
-        position: (window as any).google.maps.ControlPosition.RIGHT_BOTTOM,
+        position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
       }
     }
     return opts
@@ -138,20 +139,24 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     return () => clearTimeout(timer)
   }, [isLoaded])
 
-  // Calculate map center based only on explicit search; otherwise keep Sydney CBD default
   useEffect(() => {
     if (searchLocation) {
+      // Search location takes highest priority
       setCenter(searchLocation)
       if (mapRef.current) {
-        mapRef.current.setZoom(14) // Zoom in when searching for a location
+        mapRef.current.setZoom(14)
       }
+    } else if (companyCenter && !searchLocation) {
+      // Use company center if available and no search active
+      setCenter(companyCenter)
     } else {
+      // Default to Sydney CBD
       setCenter(defaultCenter)
     }
-  }, [searchLocation])
+  }, [searchLocation, companyCenter])
 
   const updateVisible = useCallback(
-    (mapInstance?: google.maps.Map | null) => {
+    (mapInstance?: any | null) => {
       const m = mapInstance ?? mapRef.current
       if (!m) return
       const bounds = m.getBounds()
@@ -172,20 +177,21 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
       })
       setVisibleOutages(within)
     },
-    [outages]
+    [outages],
   )
 
   const onLoad = useCallback(
-    (map: google.maps.Map) => {
+    (map: any) => {
       mapRef.current = map
       setMap(map)
-      map.setCenter(defaultCenter)
-      setCenter(defaultCenter)
+      const initialCenter = companyCenter || defaultCenter
+      map.setCenter(initialCenter)
+      setCenter(initialCenter)
       map.setZoom(12)
       setCurrentZoom(12)
       updateVisible(map)
     },
-    [updateVisible]
+    [updateVisible, companyCenter],
   )
 
   const onUnmount = useCallback(() => {
@@ -315,23 +321,11 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     )
   }
 
-  useEffect(() => {
-    updateVisible()
-  }, [outages, updateVisible])
-
-  if (!isLoaded) {
-    return (
-      <div className="flex h-[70vh] w-full items-center justify-center bg-gray-100">
-        <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-      </div>
-    )
-  }
-
   // Marker icon resolver
   const markerOptimizationEnabled = false
   const shouldOptimizeMarkers = false
 
-  const getMarkerIcon = (outage: any): google.maps.Icon | google.maps.Symbol | undefined => {
+  const getMarkerIcon = (outage: any): any | undefined => {
     if (typeof window !== "undefined" && window.google?.maps) {
       if (outage?.provider && providerIconsNew[outage.provider]) {
         return {
@@ -357,6 +351,17 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     }
 
     return undefined
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex h-[70vh] w-full items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading map...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -409,21 +414,6 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
                 options={{ optimized: shouldOptimizeMarkers }}
                 zIndex={z + 10}
               />
-
-              {outageType === "unplanned" && !outage.geocoded_address && (
-                // For unplanned outages, show a circle around the suburb
-                <Circle
-                  center={{ lat, lng }}
-                  radius={1000} // 1km radius
-                  options={{
-                    fillColor: "#ff0000",
-                    fillOpacity: 0.1,
-                    strokeColor: "#ff0000",
-                    strokeOpacity: 0.5,
-                    strokeWeight: 1,
-                  }}
-                />
-              )}
             </div>
           )
         })}

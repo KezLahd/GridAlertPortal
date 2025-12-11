@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -13,7 +13,7 @@ let browserClient: GridalertClient | null = null
 
 export const getSupabaseClient = (): GridalertClient => {
   if (!browserClient) {
-    browserClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    browserClient = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
       },
@@ -23,5 +23,13 @@ export const getSupabaseClient = (): GridalertClient => {
   return browserClient
 }
 
+export const createClient = (): GridalertClient => {
+  return createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,
+    },
+    db: { schema: "gridalert" },
+  })
+}
+
 export const supabase: GridalertClient = getSupabaseClient()
- 

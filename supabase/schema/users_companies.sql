@@ -5,7 +5,9 @@
 create table if not exists gridalert.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
-  logo_url text,
+  location text not null,
+  latitude double precision,
+  longitude double precision,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -135,6 +137,21 @@ create policy user_profiles_admin_update on gridalert.user_profiles
 
 -- Allow reading companies/locations; tighten if needed
 create policy companies_select_all on gridalert.companies for select using (true);
+
+-- Add INSERT policy for companies
+create policy companies_insert_authenticated on gridalert.companies 
+  for insert 
+  to authenticated 
+  with check (true);
+
+-- Add UPDATE policy for companies (admin only)
+create policy companies_update_admin on gridalert.companies
+  for update
+  to authenticated
+  using (
+    gridalert.is_company_admin(auth.uid(), id)
+  );
+
 create policy locations_select_all on gridalert.locations for select using (true);
 
 -- Allow inserting profile for self
@@ -151,4 +168,3 @@ create policy company_contacts_insert_self on gridalert.company_contacts
   for insert with check (auth.uid() = user_id);
 
 -- NOTE: For production, refine RLS to scope companies/locations to a user's company.
-

@@ -31,4 +31,3 @@ export function SummaryCard({ title, value, icon: Icon, subtitle, footerText }: 
     </div>
   )
 }
-

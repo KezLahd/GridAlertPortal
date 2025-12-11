@@ -1,3 +1,7 @@
+"use client"
+
+import type React from "react"
+
 import { format, parseISO } from "date-fns"
 import { AlertTriangle, Clock, MapPin, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -70,7 +74,13 @@ export function aggregateOutages(outages: any[]) {
   return Array.from(map.values())
 }
 
-export default function OutageList({ outages, outageType, aggregatedOutages, compact = false, noPadding = false }: OutageListProps) {
+export default function OutageList({
+  outages,
+  outageType,
+  aggregatedOutages,
+  compact = false,
+  noPadding = false,
+}: OutageListProps) {
   const aggregated = aggregatedOutages ?? aggregateOutages(outages)
   const [showTopFade, setShowTopFade] = useState(false)
   const [showBottomFade, setShowBottomFade] = useState(true)
@@ -129,27 +139,33 @@ export default function OutageList({ outages, outageType, aggregatedOutages, com
         <div className={cn("space-y-3 pr-4", noPadding ? "pt-0 pb-8" : "")}>
           {aggregated.map((outage, idx) => {
             const key =
-              (outage.incident_id ?? outage.webid ?? outage.id ?? outage.event_id ?? outage.start_time ?? outage.area_suburb ?? "outage") +
+              (outage.incident_id ??
+                outage.webid ??
+                outage.id ??
+                outage.event_id ??
+                outage.start_time ??
+                outage.area_suburb ??
+                "outage") +
               "-" +
               (outage.provider ?? "provider") +
               "-" +
               idx
             return (
-            <div
-              key={key}
-              className={cn(
-                "rounded-lg border border-[#e5e7eb] bg-white hover:bg-gray-50 transition-colors",
-                noPadding ? "p-2" : "p-3"
-              )}
-            >
-              {compact ? (
-                <CompactOutageItem outage={outage} outageType={outageType} />
-              ) : outageType === "unplanned" ? (
-                <UnplannedOutageItem outage={outage} />
-              ) : (
-                <PlannedOutageItem outage={outage} isFuture={outageType === "future"} />
-              )}
-            </div>
+              <div
+                key={key}
+                className={cn(
+                  "rounded-lg border border-[#e5e7eb] bg-white hover:bg-gray-50 transition-colors",
+                  noPadding ? "p-2" : "p-3",
+                )}
+              >
+                {compact ? (
+                  <CompactOutageItem outage={outage} outageType={outageType} />
+                ) : outageType === "unplanned" ? (
+                  <UnplannedOutageItem outage={outage} />
+                ) : (
+                  <PlannedOutageItem outage={outage} isFuture={outageType === "future"} />
+                )}
+              </div>
             )
           })}
         </div>
@@ -190,12 +206,9 @@ function UnplannedOutageItem({ outage }: { outage: any }) {
           <h3 className="font-medium">{outage.area_suburb}</h3>
           <p className="text-sm text-muted-foreground">{outage.statusheading}</p>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="destructive">Unplanned</Badge>
-          <Badge className={providerColor} variant="outline">
-            {outage.provider || "Unknown"}
-          </Badge>
-        </div>
+        <Badge className={providerColor} variant="outline">
+          {outage.provider || "Unknown"}
+        </Badge>
       </div>
 
       <div className="space-y-1 text-sm">
@@ -236,14 +249,9 @@ function PlannedOutageItem({ outage, isFuture }: { outage: any; isFuture: boolea
     <>
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-medium">{outage.area_suburb}</h3>
-        <div className="flex gap-2">
-          <Badge variant={isFuture ? "secondary" : "outline"} className={isFuture ? "" : "border-[#FF7134] text-[#FF7134]"}>
-            {isFuture ? "Future" : "Current"}
-          </Badge>
-          <Badge className={providerColor} variant="outline">
-            {outage.provider || "Unknown"}
-          </Badge>
-        </div>
+        <Badge className={providerColor} variant="outline">
+          {outage.provider || "Unknown"}
+        </Badge>
       </div>
 
       <div className="space-y-1 text-sm">
@@ -269,23 +277,17 @@ function PlannedOutageItem({ outage, isFuture }: { outage: any; isFuture: boolea
 
 function CompactOutageItem({ outage, outageType }: { outage: any; outageType: "unplanned" | "planned" | "future" }) {
   const providerColor = providerColors[outage.provider] ?? "bg-gray-100 text-gray-800"
-  const typeLabel = outageType === "unplanned" ? "Unplanned" : "Planned"
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between">
         <div className="flex flex-col">
           <h3 className="font-semibold text-[#1f1f22]">{outage.area_suburb}</h3>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="outline">{typeLabel}</Badge>
-          <Badge className={providerColor} variant="outline">
-            {outage.provider || "Unknown"}
-          </Badge>
-        </div>
+        <Badge className={providerColor} variant="outline">
+          {outage.provider || "Unknown"}
+        </Badge>
       </div>
-      <div className="text-sm text-muted-foreground">
-        Affected customers: {outage.customers_affected ?? "N/A"}
-      </div>
+      <div className="text-sm text-muted-foreground">Affected customers: {outage.customers_affected ?? "N/A"}</div>
     </div>
   )
 }

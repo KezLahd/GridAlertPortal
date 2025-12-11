@@ -188,4 +188,3 @@ export function exportToPDF(data: ExportData, filename: string) {
   win.document.write(html)
   win.document.close()
 }
-

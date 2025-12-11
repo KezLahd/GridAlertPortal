@@ -6,7 +6,17 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { House, CloudLightning, ClipboardList, CalendarClock, User, LogOut, Zap } from "lucide-react"
+import {
+  type Mouse as House,
+  CloudLightning,
+  ClipboardList,
+  CalendarClock,
+  User,
+  LogOut,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
 
 type NavItem = {
   href: string
@@ -25,6 +35,7 @@ export function AppSidebar() {
   const router = useRouter()
   const [userName, setUserName] = useState<string>("User")
   const [userEmail, setUserEmail] = useState<string>("user@company.com")
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
     const loadUser = async () => {
@@ -51,13 +62,41 @@ export function AppSidebar() {
   const onProfile = pathname.startsWith("/profile")
 
   return (
-    <aside className="relative sticky top-0 z-40 flex h-screen w-72 flex-none shrink-0 flex-col overflow-hidden bg-gradient-to-b from-orange-500 via-amber-400 to-orange-600 opacity-80 text-[#1f1f22] shadow-lg">
+    <aside
+      className={cn(
+        "relative sticky top-0 z-40 flex h-screen flex-none shrink-0 flex-col overflow-hidden bg-gradient-to-b from-orange-500 via-amber-400 to-orange-600 opacity-80 text-[#1f1f22] shadow-lg transition-all duration-300",
+        isCollapsed ? "w-20" : "w-72",
+      )}
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.22),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.16),transparent_35%)]" />
       <div className="relative flex flex-col h-full p-5 gap-7">
-        <div className="flex items-center justify-center gap-2">
-          <Zap className="h-6 w-6 text-black drop-shadow-[0_0_10px_rgba(0,0,0,0.3)]" />
-          <span className="text-2xl font-bold text-black drop-shadow">GridAlert</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className={cn("flex items-center gap-2", isCollapsed && "justify-center w-full")}>
+            <Zap className="h-6 w-6 text-black drop-shadow-[0_0_10px_rgba(0,0,0,0.3)] flex-shrink-0" />
+            {!isCollapsed && <span className="text-2xl font-bold text-black drop-shadow">GridAlert</span>}
+          </div>
+          {!isCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCollapsed(true)}
+              className="h-8 w-8 text-black hover:bg-white/30"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
         </div>
+
+        {isCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(false)}
+            className="h-8 w-8 text-black hover:bg-white/30 -mt-5 mx-auto"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        )}
 
         <div className="h-px w-full bg-black/80 shadow-[0_1px_0_rgba(0,0,0,0.35)]" aria-hidden="true" />
 
@@ -70,55 +109,100 @@ export function AppSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition-colors text-[#1f1f22]",
+                  "flex items-center rounded-lg px-3 py-3 text-base font-semibold transition-colors text-[#1f1f22]",
                   active ? "bg-black text-white shadow-md" : "hover:bg-white/30",
+                  isCollapsed ? "justify-center" : "gap-3",
                 )}
+                title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={cn("h-5 w-5", active ? "text-white" : "text-[#1f1f22]")} />
-                <span className={cn(active ? "text-white" : "text-[#1f1f22]")}>{item.label}</span>
+                <Icon className={cn("h-5 w-5 flex-shrink-0", active ? "text-white" : "text-[#1f1f22]")} />
+                {!isCollapsed && <span className={cn(active ? "text-white" : "text-[#1f1f22]")}>{item.label}</span>}
               </Link>
             )
           })}
         </nav>
 
         <div className="mt-auto space-y-3">
-          <div className="rounded-xl bg-white/90 p-3 shadow-md space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF8E32] text-[#1f1f22] font-semibold uppercase">
-                {userName?.charAt(0) || "U"}
+          <div className={cn("rounded-xl bg-white/90 p-3 shadow-md space-y-3", isCollapsed && "p-2")}>
+            {!isCollapsed ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF8E32] text-[#1f1f22] font-semibold uppercase flex-shrink-0">
+                    {userName?.charAt(0) || "U"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#1f1f22] truncate">{userName}</p>
+                    <p className="text-xs text-[#1f1f22] truncate">{userEmail}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full border-orange-300 text-[#1f1f22] bg-white/80 hover:bg-white",
+                      onProfile && "border-transparent bg-[#1f1f22] text-white hover:bg-[#1f1f22]",
+                    )}
+                    asChild
+                  >
+                    <Link href="/profile">
+                      <User className={cn("h-4 w-4 mr-2", onProfile && "text-white")} />
+                      <span className={cn(onProfile && "text-white")}>Profile</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-[#1f1f22] hover:bg-orange-100/80"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-10 w-10 text-[#1f1f22] hover:bg-orange-100/80",
+                    onProfile && "bg-[#1f1f22] text-white hover:bg-[#1f1f22]",
+                  )}
+                  asChild
+                  title="Profile"
+                >
+                  <Link href="/profile">
+                    <User className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-[#1f1f22] hover:bg-orange-100/80"
+                  onClick={handleLogout}
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#1f1f22] truncate">{userName}</p>
-                <p className="text-xs text-[#1f1f22] truncate">{userEmail}</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full border-orange-300 text-[#1f1f22] bg-white/80 hover:bg-white",
-                  onProfile && "border-transparent bg-[#1f1f22] text-white hover:bg-[#1f1f22]",
-                )}
-                asChild
-              >
-                <Link href="/profile">
-                  <User className={cn("h-4 w-4 mr-2", onProfile && "text-white")} />
-                  <span className={cn(onProfile && "text-white")}>Profile</span>
-                </Link>
-              </Button>
-              <Button variant="ghost" className="w-full text-[#1f1f22] hover:bg-orange-100/80" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 px-1 py-1 text-xs text-[#1f1f22]">
-            <div className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(190,242,100,0.9)]" />
-            Live grid status
-          </div>
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 px-1 py-1 text-xs text-[#1f1f22]">
+              <div className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(190,242,100,0.9)]" />
+              Live grid status
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="flex items-center justify-center">
+              <div
+                className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(190,242,100,0.9)]"
+                title="Live grid status"
+              />
+            </div>
+          )}
         </div>
       </div>
     </aside>
   )
 }
-
