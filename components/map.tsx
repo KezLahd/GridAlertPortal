@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback, useRef, useEffect } from "react"
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle } from "@react-google-maps/api"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Circle, MarkerClusterer } from "@react-google-maps/api"
 import MapsError from "./maps-error"
 import MapLegend from "./map-legend"
 
@@ -13,16 +13,8 @@ const containerStyle = {
 
 // Default center (can be adjusted based on your location)
 const defaultCenter = {
-  lat: -33.865143, // Default to Sydney, Australia
-  lng: 151.2099,
-}
-
-// Map options
-const mapOptions = {
-  disableDefaultUI: false,
-  zoomControl: true,
-  streetViewControl: false,
-  mapTypeControl: true,
+  lat: -33.8688, // Sydney CBD
+  lng: 151.2093,
 }
 
 // Libraries to load - make sure to include 'places'
@@ -33,6 +25,37 @@ const markerColors = {
   unplanned: "red",
   planned: "orange",
   future: "blue",
+}
+
+const buildOutageKey = (outage: any, index: number) => {
+  // Build a deterministic composite key to avoid duplicate keys from shared ids
+  const parts = [
+    outage?.provider ?? "provider",
+    outage?.incident_id,
+    outage?.webid,
+    outage?.job_id,
+    outage?.event_id,
+    outage?.id,
+    outage?.start_time,
+    outage?.start_date_time,
+    outage?.area_suburb,
+    outage?.status,
+    outage?.latitude,
+    outage?.longitude,
+  ]
+    .filter((v) => v !== undefined && v !== null && v !== "")
+    .map((v) => String(v))
+
+  const composite = parts.join("|")
+  return composite || `outage-${index}`
+}
+
+const providerIconsNew: Record<string, string> = {
+  Ausgrid: "/providers/Ausgrid-new.svg",
+  Endeavour: "/providers/Endeavour-new.svg",
+  Energex: "/providers/Energex-new.svg",
+  Ergon: "/providers/Ergon-new.svg",
+  "SA Power": "/providers/SAPower-new.svg",
 }
 
 interface MapProps {
@@ -51,9 +74,14 @@ const isGoogleMapsLoaded = () => {
   )
 }
 
+// Create a client component wrapper for the GoogleMap
+const ClientGoogleMap = ({ children, ...props }: any) => {
+  return <GoogleMap {...props}>{children}</GoogleMap>
+}
+
 export default function Map({ outages, outageType, searchLocation }: MapProps) {
   const [apiError, setApiError] = useState<string | null>(null)
-  const [currentZoom, setCurrentZoom] = useState(10)
+  const [currentZoom, setCurrentZoom] = useState(12)
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
@@ -64,7 +92,24 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [selectedOutage, setSelectedOutage] = useState<any | null>(null)
   const [center, setCenter] = useState(defaultCenter)
+  const [visibleOutages, setVisibleOutages] = useState<any[]>([])
   const mapRef = useRef<google.maps.Map | null>(null)
+
+  const mapOptions = useMemo<google.maps.MapOptions>(() => {
+    const opts: google.maps.MapOptions = {
+      disableDefaultUI: false,
+      zoomControl: true,
+      streetViewControl: false,
+      mapTypeControl: false,
+      fullscreenControl: true,
+    }
+    if (typeof window !== "undefined" && (window as any).google?.maps?.ControlPosition) {
+      opts.fullscreenControlOptions = {
+        position: (window as any).google.maps.ControlPosition.RIGHT_BOTTOM,
+      }
+    }
+    return opts
+  }, [isLoaded])
 
   // Check for API errors
   useEffect(() => {
@@ -93,36 +138,55 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     return () => clearTimeout(timer)
   }, [isLoaded])
 
-  // Calculate map center based on outages or search location
+  // Calculate map center based only on explicit search; otherwise keep Sydney CBD default
   useEffect(() => {
     if (searchLocation) {
       setCenter(searchLocation)
       if (mapRef.current) {
         mapRef.current.setZoom(14) // Zoom in when searching for a location
       }
-    } else if (outages.length > 0) {
-      // Calculate the average lat/lng to center the map
-      const validOutages = outages.filter((outage) => outage.latitude && outage.longitude)
-
-      if (validOutages.length > 0) {
-        const avgLat =
-          validOutages.reduce((sum, outage) => sum + Number.parseFloat(outage.latitude), 0) / validOutages.length
-        const avgLng =
-          validOutages.reduce((sum, outage) => sum + Number.parseFloat(outage.longitude), 0) / validOutages.length
-        setCenter({ lat: avgLat, lng: avgLng })
-      } else {
-        setCenter(defaultCenter)
-      }
     } else {
       setCenter(defaultCenter)
     }
-  }, [outages, searchLocation])
+  }, [searchLocation])
 
-  const onLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map
-    setMap(map)
-    setCurrentZoom(map.getZoom() || 10)
-  }, [])
+  const updateVisible = useCallback(
+    (mapInstance?: google.maps.Map | null) => {
+      const m = mapInstance ?? mapRef.current
+      if (!m) return
+      const bounds = m.getBounds()
+      if (!bounds) return
+      const b = bounds.toJSON()
+      const latPad = (b.north - b.south) * 0.15
+      const lngPad = (b.east - b.west) * 0.15
+      const north = b.north + latPad
+      const south = b.south - latPad
+      const east = b.east + lngPad
+      const west = b.west - lngPad
+
+      const within = outages.filter((o) => {
+        const lat = Number(o.latitude)
+        const lng = Number(o.longitude)
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return false
+        return lat <= north && lat >= south && lng <= east && lng >= west
+      })
+      setVisibleOutages(within)
+    },
+    [outages]
+  )
+
+  const onLoad = useCallback(
+    (map: google.maps.Map) => {
+      mapRef.current = map
+      setMap(map)
+      map.setCenter(defaultCenter)
+      setCenter(defaultCenter)
+      map.setZoom(12)
+      setCurrentZoom(12)
+      updateVisible(map)
+    },
+    [updateVisible]
+  )
 
   const onUnmount = useCallback(() => {
     mapRef.current = null
@@ -131,9 +195,14 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
 
   const onZoomChanged = useCallback(() => {
     if (mapRef.current) {
-      setCurrentZoom(mapRef.current.getZoom() || 10)
+      setCurrentZoom(mapRef.current.getZoom() || 12)
+      updateVisible()
     }
-  }, [])
+  }, [updateVisible])
+
+  const onIdle = useCallback(() => {
+    updateVisible()
+  }, [updateVisible])
 
   // Get marker title based on outage type
   const getMarkerTitle = (outage: any) => {
@@ -246,6 +315,10 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     )
   }
 
+  useEffect(() => {
+    updateVisible()
+  }, [outages, updateVisible])
+
   if (!isLoaded) {
     return (
       <div className="flex h-[70vh] w-full items-center justify-center bg-gray-100">
@@ -254,14 +327,47 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
     )
   }
 
+  // Marker icon resolver
+  const markerOptimizationEnabled = false
+  const shouldOptimizeMarkers = false
+
+  const getMarkerIcon = (outage: any): google.maps.Icon | google.maps.Symbol | undefined => {
+    if (typeof window !== "undefined" && window.google?.maps) {
+      if (outage?.provider && providerIconsNew[outage.provider]) {
+        return {
+          url: providerIconsNew[outage.provider],
+          size: new window.google.maps.Size(32, 32),
+          scaledSize: new window.google.maps.Size(32, 32),
+          origin: new window.google.maps.Point(0, 0),
+          anchor: new window.google.maps.Point(16, 32), // bottom-center on point
+          labelOrigin: new window.google.maps.Point(16, 10),
+        }
+      }
+
+      // Fallback colored dot by outage type
+      return {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor: markerColors[outageType],
+        fillOpacity: 0.8,
+        strokeWeight: 1.5,
+        strokeColor: "#ffffff",
+        scale: 10,
+        anchor: new window.google.maps.Point(0, 10),
+      }
+    }
+
+    return undefined
+  }
+
   return (
     <div className="relative">
-      <GoogleMap
+      <ClientGoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={10}
+        zoom={12}
         onLoad={onLoad}
         onUnmount={onUnmount}
+        onIdle={onIdle}
         onZoomChanged={onZoomChanged}
         options={mapOptions}
       >
@@ -280,7 +386,7 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
           />
         )}
 
-        {outages.map((outage) => {
+        {visibleOutages.map((outage, idx) => {
           if (!outage.latitude || !outage.longitude) return null
 
           // Convert latitude and longitude to numbers if they're strings
@@ -290,24 +396,21 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
           // Skip if invalid coordinates
           if (isNaN(lat) || isNaN(lng)) return null
 
+          const z = Number.isFinite(lat) ? Math.round(lat * 1000) : 0
+
           return (
-            <div key={outage.id}>
-              {/* Show markers for all outage types at all zoom levels */}
+            <div key={buildOutageKey(outage, idx)}>
+              {/* Foreground marker */}
               <Marker
                 position={{ lat, lng }}
                 title={getMarkerTitle(outage)}
                 onClick={() => setSelectedOutage(outage)}
-                icon={{
-                  path: window.google && window.google.maps ? window.google.maps.SymbolPath.CIRCLE : "",
-                  fillColor: markerColors[outageType],
-                  fillOpacity: 0.7,
-                  strokeWeight: 1,
-                  strokeColor: "#ffffff",
-                  scale: 10,
-                }}
+                icon={getMarkerIcon(outage)}
+                options={{ optimized: shouldOptimizeMarkers }}
+                zIndex={z + 10}
               />
 
-              {outageType === "unplanned" && (
+              {outageType === "unplanned" && !outage.geocoded_address && (
                 // For unplanned outages, show a circle around the suburb
                 <Circle
                   center={{ lat, lng }}
@@ -342,7 +445,7 @@ export default function Map({ outages, outageType, searchLocation }: MapProps) {
             <div>{getInfoWindowContent(selectedOutage)}</div>
           </InfoWindow>
         )}
-      </GoogleMap>
+      </ClientGoogleMap>
 
       {/* Map Legend */}
       <MapLegend outageType={outageType} zoomLevel={currentZoom} />

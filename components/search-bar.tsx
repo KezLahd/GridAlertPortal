@@ -48,37 +48,36 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
     if (!placesApiLoaded || !inputRef.current || typeof window === "undefined") return
 
     try {
-      // Use the traditional Autocomplete API which is more stable
       const options = {
         types: ["address", "geocode"],
         fields: ["address_components", "geometry", "formatted_address"],
       }
 
+      // Initialize the Autocomplete service
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options)
 
+      // Add listener for place selection
       autocompleteRef.current.addListener("place_changed", () => {
         const place = autocompleteRef.current?.getPlace()
-
         if (place && place.geometry && place.geometry.location) {
           const location = {
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
             address: place.formatted_address || query,
           }
-
           onLocationSelect(location)
           setQuery(place.formatted_address || query)
         }
       })
+
+      return () => {
+        // Clean up
+        if (autocompleteRef.current) {
+          window.google.maps.event.clearInstanceListeners(autocompleteRef.current)
+        }
+      }
     } catch (error) {
       console.error("Error initializing Google Places Autocomplete:", error)
-    }
-
-    return () => {
-      // Clean up event listeners
-      if (autocompleteRef.current && window.google && window.google.maps) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current)
-      }
     }
   }, [placesApiLoaded, onLocationSelect, query])
 

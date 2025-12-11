@@ -1,6 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertTriangle, Clock, Users, Zap } from "lucide-react"
+import { AlertTriangle, Clock, Users, Zap, ZapOff, MapPinned } from "lucide-react"
 import { parseISO } from "date-fns"
+import { SummaryCard } from "@/components/summary-card"
+import { aggregateOutages } from "@/components/outage-list"
 
 interface OutageStatsProps {
   outages: any[]
@@ -8,39 +9,69 @@ interface OutageStatsProps {
 }
 
 export default function OutageStats({ outages, outageType }: OutageStatsProps) {
+  const aggregatedOutages = aggregateOutages(outages)
+
+  const sumUniqueCustomers = (items: any[]) => {
+    const seen = new Set<string>()
+    return items.reduce((sum, outage) => {
+      const key = outage.incident_id ?? outage.webid ?? outage.id
+      if (!key || seen.has(key)) return sum
+      seen.add(key)
+      const count = Number.parseInt(outage.customers_affected as string)
+      return sum + (isNaN(count) ? 0 : count)
+    }, 0)
+  }
+
+  const formatHours = (hours: number) => {
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24)
+      const remaining = hours - days * 24
+      const roundedHours = Math.round(remaining)
+      return `${days}d ${roundedHours}h`
+    }
+    const wholeHours = Math.floor(hours)
+    const minutes = Math.round((hours - wholeHours) * 60)
+    return `${wholeHours}h ${minutes}m`
+  }
+
   // Calculate statistics based on outage type
   const calculateStats = () => {
     if (outageType === "unplanned") {
-      // Convert string customers_affected to numbers where possible
-      const totalAffected = outages.reduce((sum, outage) => {
-        const count = Number.parseInt(outage.customers_affected as string)
-        return sum + (isNaN(count) ? 0 : count)
-      }, 0)
+      const uniqueIncidents = new Set(outages.map((o) => o.incident_id ?? o.webid ?? o.id)).size
+      const totalAffectedUnplanned = sumUniqueCustomers(outages)
 
-      // Calculate average restoration time in hours
+      // Calculate average restoration time in hours, filtering bad data (<=0 or >30 days)
+      const restorationDurations: number[] = []
+      outages.forEach((outage) => {
+        try {
+          const estTime = parseISO(outage.estimated_finish_time).getTime()
+          const startTime = parseISO(outage.start_time).getTime()
+          const durationHours = (estTime - startTime) / (1000 * 60 * 60)
+          if (Number.isFinite(durationHours) && durationHours > 0 && durationHours <= 24 * 30) {
+            restorationDurations.push(durationHours)
+          }
+        } catch (e) {
+          // skip bad dates
+        }
+      })
+
       const avgRestorationTime =
-        outages.length > 0
-          ? outages.reduce((sum, outage) => {
-              try {
-                const estTime = parseISO(outage.estimated_finish_time).getTime()
-                const startTime = parseISO(outage.start_time).getTime()
-                return sum + (estTime - startTime) / (1000 * 60 * 60) // Convert to hours
-              } catch (e) {
-                return sum
-              }
-            }, 0) / outages.length
+        restorationDurations.length > 0
+          ? restorationDurations.reduce((sum, d) => sum + d, 0) / restorationDurations.length
           : 0
 
       return {
-        totalOutages: outages.length,
-        totalAffected,
-        avgRestorationTime: avgRestorationTime.toFixed(1),
+        totalOutages: aggregatedOutages.length || uniqueIncidents || outages.length,
+        totalAffected: totalAffectedUnplanned,
+        avgRestorationTime,
         activeAreas: new Set(outages.map((o) => o.area_suburb)).size,
       }
     } else {
+      const uniqueIncidents = new Set(outages.map((o) => o.incident_id ?? o.webid ?? o.id)).size
       // For planned outages
       const uniqueStreets = new Set()
-      let totalDuration = 0
+      const durations: number[] = []
+      const totalAffectedPlanned = sumUniqueCustomers(outages)
 
       outages.forEach((outage) => {
         // Add each street to the set if streets_affected exists
@@ -53,7 +84,11 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
         try {
           const startTime = parseISO(outage.start_date_time).getTime()
           const endTime = parseISO(outage.end_date_time).getTime()
-          totalDuration += (endTime - startTime) / (1000 * 60 * 60)
+          const durationHours = (endTime - startTime) / (1000 * 60 * 60)
+          // Guard against bad data: skip negative or absurdly long durations (> 30 days)
+          if (Number.isFinite(durationHours) && durationHours > 0 && durationHours <= 24 * 30) {
+            durations.push(durationHours)
+          }
         } catch (e) {
           // Skip if dates can't be parsed
         }
@@ -65,12 +100,15 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
         return sum + (isNaN(count) ? 0 : count)
       }, 0)
 
+      const totalDuration = durations.reduce((sum, val) => sum + val, 0)
+      const avgDurationHours = durations.length > 0 ? totalDuration / durations.length : 0
+
       return {
-        totalOutages: outages.length,
+        totalOutages: aggregatedOutages.length || uniqueIncidents || outages.length,
         affectedStreets: uniqueStreets.size,
-        avgDuration: outages.length > 0 ? (totalDuration / outages.length).toFixed(1) : 0,
+        avgDuration: avgDurationHours,
         totalDuration: totalDuration.toFixed(1),
-        totalAffected,
+        totalAffected: totalAffectedPlanned,
       }
     }
   }
@@ -78,89 +116,55 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
   const stats = calculateStats()
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Outages</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalOutages}</div>
-          <p className="text-xs text-muted-foreground">
-            {outageType === "unplanned" ? "Unplanned incidents" : "Planned maintenance"}
-          </p>
-        </CardContent>
-      </Card>
+    <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <SummaryCard
+        title="Total Outages"
+        value={stats.totalOutages ?? 0}
+        icon={AlertTriangle}
+        subtitle={outageType === "unplanned" ? "Unplanned incidents" : "Planned maintenance"}
+      />
 
       {outageType === "unplanned" ? (
         <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Affected Customers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAffected.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Customers without power</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Restoration</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.avgRestorationTime}h</div>
-              <p className="text-xs text-muted-foreground">Average time to restore</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Affected Areas</CardTitle>
-              <Zap className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeAreas}</div>
-              <p className="text-xs text-muted-foreground">Suburbs/areas affected</p>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            title="Affected Customers"
+            value={stats.totalAffected.toLocaleString()}
+            icon={Users}
+            subtitle="Customers without power"
+          />
+          <SummaryCard
+            title="Avg. Restoration"
+            value={formatHours(stats.avgRestorationTime ?? 0)}
+            icon={Clock}
+            subtitle="Average time to restore"
+          />
+          <SummaryCard
+            title="Affected Areas"
+            value={stats.activeAreas ?? 0}
+            icon={MapPinned}
+            subtitle="Suburbs/areas affected"
+          />
         </>
       ) : (
         <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Affected Streets</CardTitle>
-              <Zap className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.affectedStreets}</div>
-              <p className="text-xs text-muted-foreground">Streets with maintenance</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Affected Customers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAffected.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Customers affected</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Duration</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.avgDuration}h</div>
-              <p className="text-xs text-muted-foreground">Average outage duration</p>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            title="Affected Streets"
+            value={stats.affectedStreets ?? 0}
+            icon={ZapOff}
+            subtitle="Streets with maintenance"
+          />
+          <SummaryCard
+            title="Affected Customers"
+            value={stats.totalAffected.toLocaleString()}
+            icon={Users}
+            subtitle="Customers affected"
+          />
+          <SummaryCard
+            title="Avg. Duration"
+            value={formatHours(stats.avgDuration ?? 0)}
+            icon={Clock}
+            subtitle="Average outage duration"
+          />
         </>
       )}
     </div>
