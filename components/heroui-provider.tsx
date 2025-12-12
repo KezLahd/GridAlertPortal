@@ -10,4 +10,3 @@ type Props = {
 export function HeroUIProviders({ children }: Props) {
   return <HeroUIProvider>{children}</HeroUIProvider>
 }
-

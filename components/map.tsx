@@ -168,6 +168,21 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
     }
   }, [searchLocation, companyCenter])
 
+  useEffect(() => {
+    // Hide the default Google Maps InfoWindow close button
+    const style = document.createElement("style")
+    style.innerHTML = `
+      .gm-ui-hover-effect {
+        display: none !important;
+      }
+    `
+    document.head.appendChild(style)
+
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
   const updateVisible = useCallback(
     (mapInstance?: any | null) => {
       const m = mapInstance ?? mapRef.current
@@ -239,19 +254,28 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
 
     if (outageType === "unplanned") {
       return (
-        <div className="relative max-w-xs w-[320px] overflow-hidden rounded-lg shadow-md bg-white p-0 pt-[110px]">
+        <div className="relative w-[320px] bg-white -mt-4 mx-0">
+          <button
+            onClick={close}
+            className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/30 hover:bg-white/40 shadow-md transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           {headerSrc ? (
             <img
-              src={headerSrc}
+              src={headerSrc || "/placeholder.svg"}
               alt={`${outage.provider} header`}
-              className="absolute inset-0 h-[110px] w-full object-cover pointer-events-none"
+              className="w-full aspect-[3/1] object-cover"
             />
           ) : (
-            <div className="absolute inset-0 h-[110px] w-full bg-white px-3 py-2 border-b flex items-end">
+            <div className="w-full aspect-[3/1] bg-white px-3 py-2 border-b flex items-end">
               <span className="font-semibold text-sm text-gray-800 block">{outage.provider || "Unplanned Outage"}</span>
             </div>
           )}
-          <div className="relative px-3 pb-3 pt-3 space-y-1 bg-white">
+          <div className="px-6 pb-6 pt-3 space-y-1 bg-white">
             <h3 className="font-bold text-red-600">Unplanned Outage</h3>
             <p>
               <strong>Area:</strong> {outage.area_suburb}
@@ -282,19 +306,28 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
     } else {
       const isCurrentPlanned = outageType === "planned"
       return (
-        <div className="relative max-w-xs w-[320px] overflow-hidden rounded-lg shadow-md bg-white p-0 pt-[110px]">
+        <div className="relative w-[320px] bg-white -mt-4 mx-0">
+          <button
+            onClick={close}
+            className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/30 hover:bg-white/40 shadow-md transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           {headerSrc ? (
             <img
-              src={headerSrc}
+              src={headerSrc || "/placeholder.svg"}
               alt={`${outage.provider} header`}
-              className="absolute inset-0 h-[110px] w-full object-cover pointer-events-none"
+              className="w-full aspect-[3/1] object-cover"
             />
           ) : (
-            <div className="absolute inset-0 h-[110px] w-full bg-white px-3 py-2 border-b flex items-end">
+            <div className="w-full aspect-[3/1] bg-white px-3 py-2 border-b flex items-end">
               <span className="font-semibold text-sm text-gray-800 block">{outage.provider || "Planned Outage"}</span>
             </div>
           )}
-          <div className="relative px-3 pb-3 pt-3 space-y-1 bg-white">
+          <div className="px-6 pb-6 pt-3 space-y-1 bg-white">
             <h3 className={`font-bold ${isCurrentPlanned ? "text-orange-600" : "text-blue-600"}`}>
               {isCurrentPlanned ? "Current Planned Outage" : "Future Planned Outage"}
             </h3>
@@ -473,7 +506,7 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
                   : selectedOutage.longitude,
             }}
             onCloseClick={() => setSelectedOutage(null)}
-            options={{ disableAutoPan: false }}
+            options={{ disableAutoPan: false, pixelOffset: new window.google.maps.Size(0, -10) }}
           >
             <div>{getInfoWindowContent(selectedOutage)}</div>
           </InfoWindow>

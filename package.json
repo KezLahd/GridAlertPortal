@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@heroui/react": "^2.8.5",
+    "@heroui/theme": "2.4.23",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
@@ -46,6 +47,7 @@
     "cmdk": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
+    "framer-motion": "latest",
     "google-maps": "4.3.3",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
