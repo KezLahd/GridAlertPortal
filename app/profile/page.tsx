@@ -1,4 +1,6 @@
 "use client"
+import type { MemberRecord } from "@/components/company-members-table"
+import { googleMapsApiKey } from "@/lib/config"
 import { getSupabaseClient } from "@/lib/supabase"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -159,14 +161,14 @@ const normalizeProfile = (raw: any): ProfileRecord => ({
 export default function ProfilePage() {
   const { isLoaded: mapsLoaded } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey,
     libraries,
   })
 
   const router = useRouter()
   const supabase = getSupabaseClient()
   const [profile, setProfile] = useState<ProfileRecord | null>(null)
-  const [members, setMembers] = useState<ProfileRecord[]>([])
+  const [members, setMembers] = useState<MemberRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -187,7 +189,7 @@ export default function ProfilePage() {
     notify_channels: ["email"] as ChannelChoice[],
     region_access: ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"] as string[],
   })
-  const [editMember, setEditMember] = useState<ProfileRecord | null>(null)
+  const [editMember, setEditMember] = useState<MemberRecord | null>(null)
 
   const isAdmin = useMemo(() => profile?.role === "admin", [profile])
   const companyId = useMemo(() => profile?.company_id || profile?.company?.id || null, [profile])
@@ -286,7 +288,20 @@ export default function ProfilePage() {
       return
     }
 
-    setMembers((data || []).map((row: any) => normalizeProfile(row)))
+    const normalizeMember = (row: any): MemberRecord => ({
+      user_id: row?.user_id ?? "",
+      first_name: row?.first_name ?? "",
+      last_name: row?.last_name ?? "",
+      email: row?.email ?? "",
+      mobile: (row?.mobile ?? "").trim(),
+      role: (row?.role as RoleChoice) ?? "member",
+      notify_outage_types: (row?.notify_outage_types as NotificationChoice[]) ?? ["unplanned", "planned", "future"],
+      notify_providers: (row?.notify_providers as ProviderChoice[]) ?? ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power"],
+      notify_channels: (row?.notify_channels as string[]) ?? ["email"],
+      region_access: (row?.region_access as string[]) ?? [],
+    })
+
+    setMembers((data || []).map((row: any) => normalizeMember(row)))
   }
 
   const validateProfile = (current: ProfileRecord) => {
@@ -368,7 +383,7 @@ export default function ProfilePage() {
     setSaving(false)
   }
 
-  const saveMember = async (member: ProfileRecord) => {
+  const saveMember = async (member: MemberRecord) => {
     setSaving(true)
     setError(null)
     const { error: updateError } = await supabase
@@ -620,8 +635,23 @@ export default function ProfilePage() {
   if (isProfileIncomplete && profile) {
     return (
       <OnboardingWizard
-        profile={profile}
-        onUpdate={(updates) => setProfile({ ...profile, ...updates })}
+        profile={{
+          ...profile,
+          notify_outage_types: profile.notify_outage_types ?? [],
+          notify_providers: profile.notify_providers ?? [],
+          notify_channels: profile.notify_channels ?? [],
+          region_access: profile.region_access ?? [],
+        }}
+        onUpdate={(updates) =>
+          setProfile({
+            ...profile,
+            ...updates,
+            notify_outage_types: (updates.notify_outage_types ?? profile.notify_outage_types ?? []) as NotificationChoice[],
+            notify_providers: (updates.notify_providers ?? profile.notify_providers ?? []) as ProviderChoice[],
+            notify_channels: (updates.notify_channels ?? profile.notify_channels ?? []) as ChannelChoice[],
+            region_access: updates.region_access ?? profile.region_access ?? [],
+          })
+        }
         onComplete={completeOnboarding}
       />
     )
@@ -866,9 +896,9 @@ export default function ProfilePage() {
             )}
 
             {/* Admin Table View */}
-            {isAdmin && members.length > 0 && (
-              <CompanyMembersTable members={members} onUpdateMember={saveMember} saving={saving} />
-            )}
+              {isAdmin && members.length > 0 && (
+                <CompanyMembersTable members={members} onUpdateMember={(member) => { void saveMember(member); }} saving={saving} />
+              )}
           </div>
         </div>
       </div>

@@ -111,6 +111,17 @@
     background: #ff8e32;
     color: #0e0e10;
   }
+
+  /* Make Google Maps InfoWindow padding transparent so header image can extend through */
+  .gm-style .gm-style-iw-c {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .gm-style .gm-style-iw-d {
+    overflow: visible !important;
+  }
+
 }
 
 @layer utilities {

@@ -28,7 +28,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "This invitation has expired" }, { status: 400 })
     }
 
-    return NextResponse.json({ invitation })
+    return NextResponse.json({
+      invitation,
+      profile: {
+        first_name: invitation.first_name ?? "",
+        last_name: invitation.last_name ?? "",
+        email: invitation.email ?? "",
+        notify_outage_types: invitation.notify_outage_types ?? [],
+        notify_providers: invitation.notify_providers ?? [],
+        notify_channels: invitation.notify_channels ?? ["email"],
+      },
+    })
   } catch (error: any) {
     console.error("[v0] Get invitation error:", error)
     return NextResponse.json({ error: error.message || "Failed to get invitation" }, { status: 500 })

@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@heroui/react": "^2.8.5",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
@@ -48,10 +49,10 @@
     "google-maps": "4.3.3",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
-    "next": "15.2.6",
+    "next": "^15.5.7",
     "next-themes": "latest",
     "react": "^19",
-    "react-day-picker": "latest",
+    "react-day-picker": "^9.12.0",
     "react-dom": "^19",
     "react-hook-form": "latest",
     "react-phone-number-input": "^3.4.14",

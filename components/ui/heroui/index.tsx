@@ -1,0 +1,35 @@
+"use client"
+
+// Centralized client-safe exports for HeroUI so we can import from one place.
+export {
+  Accordion,
+  AccordionItem,
+  Button,
+  Card,
+  Checkbox,
+  Input,
+  Link,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Select,
+  SelectItem,
+  SelectSection,
+  Spinner,
+  Switch,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Tabs,
+  Textarea,
+} from "@heroui/react"
+

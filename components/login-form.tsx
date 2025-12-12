@@ -3,9 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button, Input } from "@/components/ui/heroui"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 
@@ -73,7 +71,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="rounded-xl border bg-white/95 p-6 shadow-lg backdrop-blur">
+    <div className="rounded-xl border bg-white p-6 shadow-lg backdrop-blur">
       <div className="mb-6 space-y-2 text-center">
         <p className="text-3xl font-semibold tracking-tight text-black">GridAlert</p>
         <h1 className="text-2xl font-semibold text-neutral-900">Sign in</h1>
@@ -87,31 +85,49 @@ export function LoginForm() {
       )}
 
       <form className="space-y-4" onSubmit={handleLogin}>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email (username)</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
-            autoComplete="email"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
-          />
-        </div>
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Input
+          label="Email"
+          placeholder=" "
+          id="email"
+          type="email"
+          isRequired
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          variant="underlined"
+          labelPlacement="inside"
+          autoComplete="username"
+          className="w-full"
+          classNames={{
+            base: "bg-transparent",
+            mainWrapper: "bg-transparent",
+            inputWrapper:
+              "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
+            input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
+            label: "text-slate-700",
+          }}
+        />
+        <Input
+          label="Password"
+          placeholder=" "
+          id="password"
+          type="password"
+          isRequired
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          variant="underlined"
+          labelPlacement="inside"
+          autoComplete="current-password"
+          className="w-full"
+          classNames={{
+            base: "bg-transparent",
+            mainWrapper: "bg-transparent",
+            inputWrapper:
+              "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
+            input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
+            label: "text-slate-700",
+          }}
+        />
+        <Button type="submit" className="w-full" isDisabled={loading} color="primary" variant="solid">
           {loading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Signing in...

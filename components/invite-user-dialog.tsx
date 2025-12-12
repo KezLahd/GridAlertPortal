@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -154,6 +154,7 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 border-0">
+        <DialogTitle className="sr-only">Invite User</DialogTitle>
         <div className="relative bg-white rounded-lg max-h-[90vh] overflow-y-auto">
           <div className="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between">
             <div>

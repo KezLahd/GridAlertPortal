@@ -48,7 +48,7 @@ type SortField = "incident" | "provider" | "streets" | "suburb" | "cause" | "cus
 type SortDirection = "asc" | "desc"
 
 // Energy providers
-type EnergyProvider = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power"
+type EnergyProvider = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power" | "Horizon Power" | "WPower"
 
 const PROVIDER_STATE_DEFAULTS: Record<EnergyProvider, string> = {
   Ausgrid: "NSW",
@@ -56,6 +56,8 @@ const PROVIDER_STATE_DEFAULTS: Record<EnergyProvider, string> = {
   Energex: "QLD",
   Ergon: "QLD",
   "SA Power": "SA",
+  "Horizon Power": "WA",
+  WPower: "WA",
 }
 
 // Outage data interfaces based on actual database structure
@@ -116,6 +118,28 @@ const geocodeCache = new globalThis.Map<string, { lat: number; lng: number; form
 // SA PowerNet outages return suburbs as JSON; normalise to a readable string
 const formatSapowerSuburbs = (value: any): string => {
   if (!value) return "N/A"
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (!item) return ""
+        if (typeof item === "string") return item
+        if (typeof item === "object") return Object.values(item).join(" ")
+        return String(item)
+      })
+      .filter(Boolean)
+      .join(", ")
+  }
+  if (typeof value === "object") {
+    return Object.values(value)
+      .map((v) => (typeof v === "string" ? v : String(v)))
+      .filter(Boolean)
+      .join(", ")
+  }
+  return String(value)
+}
+
+const formatAreasList = (value: any): string => {
+  if (!value) return ""
   if (Array.isArray(value)) {
     return value
       .map((item) => {
@@ -355,15 +379,26 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
 
       try {
         console.log("Testing Supabase connection...")
-        const [{ data, error }, { error: endeavourError }, { error: energexError }, { error: ergonError }] =
-          await Promise.all([
-            supabase.from("ausgrid_unplanned_outages").select("id").limit(1),
-            supabase.from("endeavour_current_unplanned_outages").select("id").limit(1),
-            supabase.from("energex_current_unplanned_outages").select("id").limit(1),
-            supabase.from("ergon_current_unplanned_outages").select("id").limit(1),
-          ])
+        const [
+          { data, error },
+          { error: endeavourError },
+          { error: energexError },
+          { error: ergonError },
+          { error: sapowerError },
+          { error: horizonError },
+          { error: wpowerError },
+        ] = await Promise.all([
+          supabase.from("ausgrid_unplanned_outages").select("id").limit(1),
+          supabase.from("endeavour_current_unplanned_outages").select("id").limit(1),
+          supabase.from("energex_current_unplanned_outages").select("id").limit(1),
+          supabase.from("ergon_current_unplanned_outages").select("id").limit(1),
+          supabase.from("sapower_current_unplanned_outages").select("id").limit(1),
+          supabase.from("horizon_current_unplanned_outages").select("id").limit(1),
+          supabase.from("wpower_current_unplanned_outages").select("id").limit(1),
+        ])
 
-        const firstError = error || endeavourError || energexError || ergonError
+        const firstError =
+          error || endeavourError || energexError || ergonError || sapowerError || horizonError || wpowerError
         if (firstError) {
           console.error("Supabase connection test error:", firstError)
           setError("Database connection error: " + firstError.message)
@@ -460,10 +495,13 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         .eq("user_id", authData.user.id)
         .maybeSingle()
 
-      if (profileData?.company && profileData.company.latitude && profileData.company.longitude) {
+      // Profile's company may actually be an array due to join; handle accordingly
+      const company = Array.isArray(profileData?.company) ? profileData.company[0] : profileData?.company
+
+      if (company && company.latitude && company.longitude) {
         setCompanyCenter({
-          lat: Number(profileData.company.latitude),
-          lng: Number(profileData.company.longitude),
+          lat: Number(company.latitude),
+          lng: Number(company.longitude),
         })
       }
     } catch (error) {
@@ -477,11 +515,36 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       setLoading(true)
       setError(null)
       try {
-        // Test Supabase connection
-        const { error: testError } = await supabase.from("ausgrid_unplanned_outages").select("id").limit(1)
-        if (testError) {
-          console.error("Supabase connection test error:", testError)
-          setError("Database connection error: " + testError.message)
+        // Test Supabase connection across providers
+        const [
+          { error: ausgridError },
+          { error: endeavourError },
+          { error: energexError },
+          { error: ergonError },
+          { error: sapowerError },
+          { error: horizonError },
+          { error: wpowerError },
+        ] = await Promise.all([
+          supabase.from("ausgrid_unplanned_outages").select("id").limit(1),
+          supabase.from("endeavour_current_unplanned_outages").select("id").limit(1),
+          supabase.from("energex_current_unplanned_outages").select("id").limit(1),
+          supabase.from("ergon_current_unplanned_outages").select("id").limit(1),
+          supabase.from("sapower_current_unplanned_outages").select("id").limit(1),
+          supabase.from("horizon_current_unplanned_outages").select("id").limit(1),
+          supabase.from("wpower_current_unplanned_outages").select("id").limit(1),
+        ])
+
+        const firstError =
+          ausgridError ||
+          endeavourError ||
+          energexError ||
+          ergonError ||
+          sapowerError ||
+          horizonError ||
+          wpowerError
+        if (firstError) {
+          console.error("Supabase connection test error:", firstError)
+          setError("Database connection error: " + firstError.message)
           setLoading(false)
           return
         }
@@ -783,12 +846,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const fetchUnplannedOutages = async () => {
     try {
       // Query all provider unplanned outage tables in parallel
-      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes, horizonRes, wpowerRes] = await Promise.all([
         supabase.from("ausgrid_unplanned_outages").select("*"),
         supabase.from("endeavour_current_unplanned_outages").select("*"),
         supabase.from("energex_current_unplanned_outages").select("*"),
         supabase.from("ergon_current_unplanned_outages").select("*"),
         supabase.from("sapower_current_unplanned_outages").select("*"),
+        supabase.from("horizon_current_unplanned_outages").select("*"),
+        supabase.from("wpower_current_unplanned_outages").select("*"),
       ])
 
       // Check for errors
@@ -797,6 +862,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       if (energexRes.error) console.error("Energex unplanned error:", energexRes.error)
       if (ergonRes.error) console.error("Ergon unplanned error:", ergonRes.error)
       if (sapowerRes.error) console.error("SA Power unplanned error:", sapowerRes.error)
+      if (horizonRes.error) console.error("Horizon Power unplanned error:", horizonRes.error)
+      if (wpowerRes.error) console.error("WPower unplanned error:", wpowerRes.error)
 
       // Merge all results with provider labels
       const merged = [
@@ -843,6 +910,34 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           latitude: item.point_lat,
           longitude: item.point_lng,
         })),
+        ...(horizonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Horizon Power" as const,
+          incident_id: item.outage_id,
+          area_suburb: item.service_area || item.region || formatAreasList(item.service_areas) || "Unknown area",
+          cause: item.outage_type || item.status || "Unplanned outage",
+          customers_affected: item.affected_customers,
+          estimated_finish_time: item.estimated_restore_time,
+          statusheading: item.status,
+          start_time: item.start_time,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
+        })),
+        ...(wpowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "WPower" as const,
+          incident_id: item.outage_id,
+          area_suburb: formatAreasList(item.areas) || "Unknown area",
+          cause: item.outage_type || "Unplanned outage",
+          customers_affected: item.affected_customers,
+          estimated_finish_time: item.restoration_time,
+          statusheading: item.outage_updated_time || item.outage_type || "In progress",
+          start_time: item.start_time,
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
+        })),
       ]
 
       setUnplannedOutages(merged as any)
@@ -855,12 +950,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const fetchPlannedOutages = async () => {
     try {
       // Query all provider planned outage tables in parallel
-      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes, horizonRes, wpowerRes] = await Promise.all([
         supabase.from("ausgrid_current_planned_outages").select("*"),
         supabase.from("endeavour_current_planned_outages").select("*"),
         supabase.from("energex_current_planned_outages").select("*"),
         supabase.from("ergon_current_planned_outages").select("*"),
         supabase.from("sapower_current_planned_outages").select("*"),
+        supabase.from("horizon_current_planned_outages").select("*"),
+        supabase.from("wpower_current_planned_outages").select("*"),
       ])
 
       // Check for errors
@@ -869,6 +966,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       if (energexRes.error) console.error("Energex planned error:", energexRes.error)
       if (ergonRes.error) console.error("Ergon planned error:", ergonRes.error)
       if (sapowerRes.error) console.error("SA Power planned error:", sapowerRes.error)
+      if (horizonRes.error) console.error("Horizon Power planned error:", horizonRes.error)
+      if (wpowerRes.error) console.error("WPower planned error:", wpowerRes.error)
 
       // Merge all results with provider labels
       const merged = [
@@ -923,6 +1022,36 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           latitude: item.point_lat,
           longitude: item.point_lng,
         })),
+        ...(horizonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Horizon Power" as const,
+          incident_id: item.outage_id,
+          area_suburb: item.service_area || item.region || formatAreasList(item.service_areas) || "Unknown area",
+          cause: item.outage_type || "Planned maintenance",
+          customers_affected: item.affected_customers,
+          end_date_time: item.estimated_restore_time,
+          start_date_time: item.start_time,
+          status: item.status || "Planned",
+          streets_affected: formatAreasList(item.service_areas) || item.service_area || "",
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
+        })),
+        ...(wpowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "WPower" as const,
+          incident_id: item.outage_id,
+          area_suburb: formatAreasList(item.areas) || "Unknown area",
+          cause: item.outage_type || "Planned maintenance",
+          customers_affected: item.affected_customers,
+          end_date_time: item.restoration_time,
+          start_date_time: item.start_time,
+          status: item.outage_type || "Planned",
+          streets_affected: formatAreasList(item.areas),
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
+        })),
       ]
 
       setPlannedOutages(merged as any)
@@ -935,12 +1064,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const fetchFutureOutages = async (startDate?: Date, endDate?: Date) => {
     try {
       // Query all provider future planned outage tables in parallel
-      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes] = await Promise.all([
+      const [ausgridRes, endeavourRes, energexRes, ergonRes, sapowerRes, horizonRes, wpowerRes] = await Promise.all([
         supabase.from("ausgrid_future_planned_outages").select("*"),
         supabase.from("endeavour_future_planned_outages").select("*"),
         supabase.from("energex_future_planned_outages").select("*"),
         supabase.from("ergon_future_planned_outages").select("*"),
         supabase.from("sapower_future_planned_outages").select("*"),
+        supabase.from("horizon_future_planned_outages").select("*"),
+        supabase.from("wpower_future_planned_outages").select("*"),
       ])
 
       // Check for errors
@@ -949,6 +1080,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
       if (energexRes.error) console.error("Energex future error:", energexRes.error)
       if (ergonRes.error) console.error("Ergon future error:", ergonRes.error)
       if (sapowerRes.error) console.error("SA Power future error:", sapowerRes.error)
+      if (horizonRes.error) console.error("Horizon Power future error:", horizonRes.error)
+      if (wpowerRes.error) console.error("WPower future error:", wpowerRes.error)
 
       // Merge all results with provider labels
       const merged = [
@@ -1002,6 +1135,36 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           streets_affected: item.feeders?.[0] || "",
           latitude: item.point_lat,
           longitude: item.point_lng,
+        })),
+        ...(horizonRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "Horizon Power" as const,
+          incident_id: item.outage_id,
+          area_suburb: item.service_area || item.region || formatAreasList(item.service_areas) || "Unknown area",
+          cause: item.outage_type || "Future maintenance",
+          customers_affected: item.affected_customers,
+          end_date_time: item.estimated_restore_time,
+          start_date_time: item.start_time,
+          status: item.status || "Planned",
+          streets_affected: formatAreasList(item.service_areas) || item.service_area || "",
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
+        })),
+        ...(wpowerRes.data || []).map((item: any) => ({
+          ...item,
+          provider: "WPower" as const,
+          incident_id: item.outage_id,
+          area_suburb: formatAreasList(item.areas) || "Unknown area",
+          cause: item.outage_type || "Future maintenance",
+          customers_affected: item.affected_customers,
+          end_date_time: item.restoration_time,
+          start_date_time: item.start_time,
+          status: item.outage_type || "Planned",
+          streets_affected: formatAreasList(item.areas),
+          latitude: item.point_lat,
+          longitude: item.point_lng,
+          state: item.state || "WA",
         })),
       ]
 
@@ -1159,6 +1322,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                             <SelectItem value="Energex">Energex</SelectItem>
                             <SelectItem value="Ergon">Ergon</SelectItem>
                             <SelectItem value="SA Power">SA Power</SelectItem>
+                            <SelectItem value="Horizon Power">Horizon Power</SelectItem>
+                            <SelectItem value="WPower">WPower</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1238,6 +1403,8 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                         <SelectItem value="Energex">Energex</SelectItem>
                         <SelectItem value="Ergon">Ergon</SelectItem>
                         <SelectItem value="SA Power">SA Power</SelectItem>
+                        <SelectItem value="Horizon Power">Horizon Power</SelectItem>
+                        <SelectItem value="WPower">WPower</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button variant="outline" size="sm" onClick={exportAsPDF}>
@@ -1327,7 +1494,11 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                                       ? "bg-red-100 text-red-800"
                                       : row.provider === "SA Power"
                                         ? "bg-orange-100 text-orange-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : row.provider === "Horizon Power"
+                                          ? "bg-rose-100 text-orange-900"
+                                          : row.provider === "WPower"
+                                            ? "bg-amber-200 text-black"
+                                            : "bg-gray-100 text-gray-800"
                             }
                             variant="outline"
                           >

@@ -26,6 +26,10 @@ const providerColors: Record<string, string> = {
   Ergon: "bg-red-100 text-red-800",
   // Orange for SA Power Networks
   "SA Power": "bg-orange-100 text-orange-800",
+  // Soft red-orange for Horizon Power
+  "Horizon Power": "bg-rose-100 text-orange-900",
+  // Dark orange and black for WPower
+  WPower: "bg-amber-200 text-black",
 }
 
 // Aggregate outages by incident (and suburb) to avoid duplicate rows.

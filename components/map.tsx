@@ -1,5 +1,6 @@
 "use client"
 
+import { googleMapsApiKey } from "@/lib/config"
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api"
 import MapsError from "./maps-error"
@@ -56,6 +57,18 @@ const providerIconsNew: Record<string, string> = {
   Energex: "/providers/Energex-new.svg",
   Ergon: "/providers/Ergon-new.svg",
   "SA Power": "/providers/SAPower-new.svg",
+  "Horizon Power": "/providers/HorizonPower-new.svg",
+  WPower: "/providers/WPower-new.svg",
+}
+
+const providerHeaderIcons: Record<string, string> = {
+  Ausgrid: "/providers/Ausgrid-header.svg",
+  Endeavour: "/providers/Endeavour-header.svg",
+  Energex: "/providers/energex-header.svg",
+  Ergon: "/providers/ergon-header.svg",
+  "SA Power": "/providers/SAPower-header.svg",
+  "Horizon Power": "/providers/HorizonPower-header.svg",
+  WPower: "/providers/WPower-header.svg",
 }
 
 interface MapProps {
@@ -86,7 +99,7 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey,
     libraries: libraries as any,
   })
 
@@ -221,65 +234,94 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
 
   // Get info window content based on outage type
   const getInfoWindowContent = (outage: any) => {
+    const headerSrc = outage?.provider ? providerHeaderIcons[outage.provider] : undefined
+    const close = () => setSelectedOutage(null)
+
     if (outageType === "unplanned") {
       return (
-        <div className="p-2 max-w-xs">
-          <h3 className="font-bold text-red-600">Unplanned Outage</h3>
-          <p>
-            <strong>Area:</strong> {outage.area_suburb}
-          </p>
-          <p>
-            <strong>Status:</strong> {outage.statusheading}
-          </p>
-          <p>
-            <strong>Cause:</strong> {outage.cause}
-          </p>
-          <p>
-            <strong>Est. Restoration:</strong> {new Date(outage.estimated_finish_time).toLocaleString()}
-          </p>
-          <p>
-            <strong>Affected Customers:</strong> {outage.customers_affected}
-          </p>
-          <p>
-            <strong>Provider:</strong> {outage.provider || "Not specified"}
-          </p>
-          {outage.geocoded_address && (
-            <p className="mt-2 text-xs text-gray-500">
-              <strong>Location:</strong> {outage.geocoded_address}
-            </p>
+        <div className="relative max-w-xs w-[320px] overflow-hidden rounded-lg shadow-md bg-white p-0 pt-[110px]">
+          {headerSrc ? (
+            <img
+              src={headerSrc}
+              alt={`${outage.provider} header`}
+              className="absolute inset-0 h-[110px] w-full object-cover pointer-events-none"
+            />
+          ) : (
+            <div className="absolute inset-0 h-[110px] w-full bg-white px-3 py-2 border-b flex items-end">
+              <span className="font-semibold text-sm text-gray-800 block">{outage.provider || "Unplanned Outage"}</span>
+            </div>
           )}
+          <div className="relative px-3 pb-3 pt-3 space-y-1 bg-white">
+            <h3 className="font-bold text-red-600">Unplanned Outage</h3>
+            <p>
+              <strong>Area:</strong> {outage.area_suburb}
+            </p>
+            <p>
+              <strong>Status:</strong> {outage.statusheading}
+            </p>
+            <p>
+              <strong>Cause:</strong> {outage.cause}
+            </p>
+            <p>
+              <strong>Est. Restoration:</strong> {new Date(outage.estimated_finish_time).toLocaleString()}
+            </p>
+            <p>
+              <strong>Affected Customers:</strong> {outage.customers_affected}
+            </p>
+            <p>
+              <strong>Provider:</strong> {outage.provider || "Not specified"}
+            </p>
+            {outage.geocoded_address && (
+              <p className="mt-1 text-xs text-gray-500">
+                <strong>Location:</strong> {outage.geocoded_address}
+              </p>
+            )}
+          </div>
         </div>
       )
     } else {
       const isCurrentPlanned = outageType === "planned"
       return (
-        <div className="p-2 max-w-xs">
-          <h3 className={`font-bold ${isCurrentPlanned ? "text-orange-600" : "text-blue-600"}`}>
-            {isCurrentPlanned ? "Current Planned Outage" : "Future Planned Outage"}
-          </h3>
-          <p>
-            <strong>Area:</strong> {outage.area_suburb}
-          </p>
-          <p>
-            <strong>Streets:</strong> {outage.streets_affected || "Not specified"}
-          </p>
-          <p>
-            <strong>Start:</strong> {new Date(outage.start_date_time).toLocaleString()}
-          </p>
-          <p>
-            <strong>End:</strong> {new Date(outage.end_date_time).toLocaleString()}
-          </p>
-          <p>
-            <strong>Details:</strong> {outage.details || "Not specified"}
-          </p>
-          <p>
-            <strong>Provider:</strong> {outage.provider || "Not specified"}
-          </p>
-          {outage.geocoded_address && (
-            <p className="mt-2 text-xs text-gray-500">
-              <strong>Location:</strong> {outage.geocoded_address}
-            </p>
+        <div className="relative max-w-xs w-[320px] overflow-hidden rounded-lg shadow-md bg-white p-0 pt-[110px]">
+          {headerSrc ? (
+            <img
+              src={headerSrc}
+              alt={`${outage.provider} header`}
+              className="absolute inset-0 h-[110px] w-full object-cover pointer-events-none"
+            />
+          ) : (
+            <div className="absolute inset-0 h-[110px] w-full bg-white px-3 py-2 border-b flex items-end">
+              <span className="font-semibold text-sm text-gray-800 block">{outage.provider || "Planned Outage"}</span>
+            </div>
           )}
+          <div className="relative px-3 pb-3 pt-3 space-y-1 bg-white">
+            <h3 className={`font-bold ${isCurrentPlanned ? "text-orange-600" : "text-blue-600"}`}>
+              {isCurrentPlanned ? "Current Planned Outage" : "Future Planned Outage"}
+            </h3>
+            <p>
+              <strong>Area:</strong> {outage.area_suburb}
+            </p>
+            <p>
+              <strong>Streets:</strong> {outage.streets_affected || "Not specified"}
+            </p>
+            <p>
+              <strong>Start:</strong> {new Date(outage.start_date_time).toLocaleString()}
+            </p>
+            <p>
+              <strong>End:</strong> {new Date(outage.end_date_time).toLocaleString()}
+            </p>
+            <p>
+              <strong>Details:</strong> {outage.details || "Not specified"}
+            </p>
+            <p>
+              <strong>Provider:</strong> {outage.provider || "Not specified"}
+            </p>
+            {outage.geocoded_address && (
+              <p className="mt-1 text-xs text-gray-500">
+                <strong>Location:</strong> {outage.geocoded_address}
+              </p>
+            )}
+          </div>
         </div>
       )
     }
@@ -431,6 +473,7 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
                   : selectedOutage.longitude,
             }}
             onCloseClick={() => setSelectedOutage(null)}
+            options={{ disableAutoPan: false }}
           >
             <div>{getInfoWindowContent(selectedOutage)}</div>
           </InfoWindow>

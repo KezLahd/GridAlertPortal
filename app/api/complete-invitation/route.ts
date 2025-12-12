@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase"
+import { createClient, createServiceClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
+    const supabaseAdmin = createServiceClient()
 
     const { token, password, mobile, notify_channels } = await request.json()
 
@@ -23,19 +24,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "This invitation has expired" }, { status: 400 })
     }
 
-    // Create the auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Create the auth user via admin API to avoid email confirmation
+    const { data: adminUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: invitation.email,
-      password: password,
+      password,
+      email_confirm: true,
     })
 
-    if (authError || !authData.user) {
+    if (authError || !adminUser?.user) {
       console.error("[v0] Error creating auth user:", authError)
       return NextResponse.json({ error: authError?.message || "Failed to create account" }, { status: 400 })
     }
 
-    const { error: profileError } = await supabase.from("user_profiles").insert({
-      user_id: authData.user.id,
+    const { error: profileError } = await supabaseAdmin.from("user_profiles").insert({
+      user_id: adminUser.user.id,
       first_name: invitation.first_name,
       last_name: invitation.last_name,
       email: invitation.email,
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("user_invitations")
       .update({
         status: "accepted",
@@ -62,16 +64,6 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error("[v0] Error updating invitation:", updateError)
-    }
-
-    // Auto sign-in the user
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: invitation.email,
-      password: password,
-    })
-
-    if (signInError) {
-      console.error("[v0] Error signing in:", signInError)
     }
 
     return NextResponse.json({ success: true })

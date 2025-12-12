@@ -33,26 +33,56 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [userName, setUserName] = useState<string>("User")
+  const [firstName, setFirstName] = useState<string>("")
+  const [lastName, setLastName] = useState<string>("")
   const [userEmail, setUserEmail] = useState<string>("user@company.com")
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
     const loadUser = async () => {
       const { data } = await supabase.auth.getUser()
-      if (data?.user) {
-        const email = data.user.email ?? userEmail
-        const name =
-          (data.user.user_metadata?.full_name as string | undefined) ||
-          (data.user.user_metadata?.name as string | undefined) ||
-          email?.split("@")?.[0] ||
-          "User"
-        setUserName(name)
-        setUserEmail(email)
-      }
+      if (!data?.user) return
+
+      const email = data.user.email ?? userEmail
+      setUserEmail(email)
+
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("first_name,last_name,email")
+        .eq("user_id", data.user.id)
+        .maybeSingle()
+
+      const metaFirst = (data.user.user_metadata?.first_name as string | undefined)?.trim()
+      const metaLast = (data.user.user_metadata?.last_name as string | undefined)?.trim()
+      const fullName = (data.user.user_metadata?.full_name as string | undefined)?.trim()
+
+      const profileFirst = profile?.first_name?.trim()
+      const profileLast = profile?.last_name?.trim()
+
+      const [fullFirst, fullLast] =
+        fullName?.split(" ")?.length && fullName.split(" ").length >= 2
+          ? [fullName.split(" ")[0], fullName.split(" ").slice(1).join(" ")]
+          : [undefined, undefined]
+
+      setFirstName(profileFirst || metaFirst || fullFirst || "")
+      setLastName(profileLast || metaLast || fullLast || "")
     }
     loadUser()
   }, [])
+
+  const displayName = (() => {
+    const combined = `${firstName ?? ""} ${lastName ?? ""}`.trim()
+    if (combined) return combined
+    if (userEmail) return userEmail.split("@")[0]
+    return "User"
+  })()
+
+  const displayInitials = (() => {
+    const first = firstName?.trim()?.[0]
+    const last = lastName?.trim()?.[0]
+    if (first || last) return `${first ?? ""}${last ?? ""}`.toUpperCase()
+    return (userEmail?.slice(0, 2) || "U").toUpperCase()
+  })()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -128,10 +158,10 @@ export function AppSidebar() {
               <>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF8E32] text-[#1f1f22] font-semibold uppercase flex-shrink-0">
-                    {userName?.charAt(0) || "U"}
+                    {displayInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#1f1f22] truncate">{userName}</p>
+                    <p className="text-sm font-semibold text-[#1f1f22] truncate">{displayName}</p>
                     <p className="text-xs text-[#1f1f22] truncate">{userEmail}</p>
                   </div>
                 </div>

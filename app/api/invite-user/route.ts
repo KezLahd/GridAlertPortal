@@ -89,7 +89,13 @@ export async function POST(request: Request) {
       .eq("user_id", invited_by)
       .single()
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/setup-account?token=${invitationToken}`
+    const envAppUrl = process.env.NEXT_PUBLIC_APP_URL
+    const normalizedAppUrl = (() => {
+      if (envAppUrl && envAppUrl.startsWith("http")) return envAppUrl
+      if (envAppUrl) return `http://${envAppUrl}`
+      return "http://localhost:3000"
+    })()
+    const inviteUrl = `${normalizedAppUrl.replace(/\/$/, "")}/setup-account?token=${invitationToken}`
 
     // Send invitation email using Resend
     const emailResponse = await fetch("https://api.resend.com/emails", {
