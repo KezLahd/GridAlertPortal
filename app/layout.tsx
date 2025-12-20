@@ -10,7 +10,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "GridAlert - Power Outage Monitoring",
   description: "Monitor planned and unplanned power outages in your area",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  icons: {
+    icon: '/gridalert-favicon.svg',
+  },
 }
 
 export default function RootLayout({

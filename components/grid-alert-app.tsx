@@ -10,7 +10,7 @@ import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DateRangePicker, Popover, PopoverContent, PopoverTrigger, Button } from "@/components/ui/heroui"
 import { Input } from "@/components/ui/input"
-import { AlertCircle, Info, PieChart, TableIcon, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Search, X } from "lucide-react"
+import { AlertCircle, Info, PieChart, TableIcon, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Search, X, Rss } from "lucide-react"
 import { exportToCSV, exportToPDF } from "@/lib/export-utils"
 import { cn } from "@/lib/utils"
 import OutageList, { aggregateOutages } from "@/components/outage-list"
@@ -1514,12 +1514,13 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         <Popover placement="top-end">
           <PopoverTrigger>
             <Button
-              variant="bordered"
+              variant="solid"
               size="sm"
               isIconOnly
-              className="rounded-full w-10 h-10 p-0 shadow-lg bg-white/90 backdrop-blur-sm border-gray-300 hover:bg-white"
+              className="rounded-full w-10 h-10 p-0 shadow-lg hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#FF8E32', color: '#ffffff' }}
             >
-              <Info className="h-4 w-4" />
+              <Rss className="h-4 w-4" style={{ color: '#ffffff', transform: 'scaleX(-1)' }} />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 max-h-96 overflow-y-auto">
@@ -1614,12 +1615,15 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     variant={viewMode === "map" ? "solid" : "light"}
                     size="sm"
                     className={cn(
-                      "flex items-center gap-2 rounded-md",
+                      "flex items-center gap-2 rounded-md transition-colors",
                       viewMode === "map" 
-                        ? "bg-orange-600 hover:bg-orange-700" 
+                        ? "hover:opacity-90" 
                         : "hover:bg-gray-700"
                     )}
-                    style={{ color: '#ffffff' }}
+                    style={{ 
+                      color: '#ffffff',
+                      ...(viewMode === "map" ? { backgroundColor: '#FF8E32' } : {}),
+                    }}
                     onPress={() => setViewMode("map")}
                   >
                     <PieChart className="h-4 w-4" style={{ color: '#ffffff' }} />
@@ -1629,12 +1633,15 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     variant={viewMode === "report" ? "solid" : "light"}
                     size="sm"
                     className={cn(
-                      "flex items-center gap-2 rounded-md",
+                      "flex items-center gap-2 rounded-md transition-colors",
                       viewMode === "report" 
-                        ? "bg-orange-600 hover:bg-orange-700" 
+                        ? "hover:opacity-90" 
                         : "hover:bg-gray-700"
                     )}
-                    style={{ color: '#ffffff' }}
+                    style={{ 
+                      color: '#ffffff',
+                      ...(viewMode === "report" ? { backgroundColor: '#FF8E32' } : {}),
+                    }}
                     onPress={() => setViewMode("report")}
                   >
                     <TableIcon className="h-4 w-4" style={{ color: '#ffffff' }} />

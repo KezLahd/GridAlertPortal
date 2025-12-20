@@ -163,6 +163,17 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
       mapTypeControl: false,
       fullscreenControl: true,
       minZoom: 4, // Minimum zoom level to keep map focused on Australia
+      maxZoom: 19, // Increased by 3 more (from 16 to 19)
+      // Restrict map viewport to Australia (expanded boundaries)
+      restriction: {
+        latLngBounds: {
+          north: -6.0,   // Northern boundary of Australia (expanded north by 2)
+          south: -48.0,  // Southern boundary of Australia (expanded south by 4)
+          east: 160.0,   // Eastern boundary of Australia
+          west: 107.0,   // Western boundary of Australia (expanded west by 4)
+        },
+        strictBounds: true, // Prevent panning outside bounds
+      },
     }
     if (typeof window !== "undefined" && window.google?.maps?.ControlPosition) {
       opts.fullscreenControlOptions = {

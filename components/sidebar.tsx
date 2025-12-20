@@ -185,17 +185,23 @@ export function AppSidebar() {
           {navItems.map((item) => {
             const Icon = item.icon
             const active = pathname === item.href || (pathname.startsWith(item.href + "/") && pathname !== "/")
+            const isNavigating = pendingPath === item.href
             return (
               <Button
                 key={item.href}
                 variant={active ? "solid" : "light"}
+                isDisabled={isNavigating}
                 className={cn(
                   "w-full flex items-center rounded-lg px-3 py-3 text-base font-semibold text-[#1f1f22]",
                   active ? "bg-black text-white shadow-md" : "hover:bg-white/30",
                   isCollapsed ? "justify-center min-w-0" : "justify-start gap-3",
+                  isNavigating && "opacity-50 cursor-not-allowed",
                 )}
                 onPress={() => {
-                  router.push(item.href)
+                  if (!isNavigating) {
+                    setPendingPath(item.href)
+                    router.push(item.href)
+                  }
                 }}
                 title={isCollapsed ? item.label : undefined}
               >
