@@ -31,6 +31,14 @@ const providerOptions = [
   { value: "Energex", label: "Energex", color: "bg-cyan-500" },
   { value: "Ergon", label: "Ergon", color: "bg-red-500" },
   { value: "SA Power", label: "SA Power", color: "bg-orange-500" },
+  { value: "Horizon Power", label: "Horizon Power", color: "bg-rose-500" },
+  { value: "WPower", label: "WPower", color: "bg-amber-500" },
+  { value: "AusNet", label: "AusNet", color: "bg-emerald-500" },
+  { value: "CitiPowerCor", label: "CitiPowerCor", color: "bg-blue-500" },
+  { value: "Essential Energy", label: "Essential Energy", color: "bg-orange-500" },
+  { value: "Jemena", label: "Jemena", color: "bg-cyan-500" },
+  { value: "UnitedEnergy", label: "UnitedEnergy", color: "bg-purple-500" },
+  { value: "TasNetworks", label: "TasNetworks", color: "bg-purple-500" },
 ]
 
 const regionOptions = ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"]

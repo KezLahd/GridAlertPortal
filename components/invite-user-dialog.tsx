@@ -3,13 +3,18 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button, Input } from "@/components/ui/heroui"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const REGIONS = ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"]
@@ -19,7 +24,77 @@ const PROVIDERS = [
   { value: "Energex", label: "Energex", color: "bg-cyan-500" },
   { value: "Ergon", label: "Ergon", color: "bg-red-500" },
   { value: "SA Power", label: "SA Power", color: "bg-orange-500" },
+  { value: "Horizon Power", label: "Horizon Power", color: "bg-rose-500" },
+  { value: "WPower", label: "WPower", color: "bg-amber-500" },
+  { value: "AusNet", label: "AusNet", color: "bg-emerald-500" },
+  { value: "CitiPowerCor", label: "CitiPowerCor", color: "bg-blue-500" },
+  { value: "Essential Energy", label: "Essential Energy", color: "bg-orange-500" },
+  { value: "Jemena", label: "Jemena", color: "bg-cyan-500" },
+  { value: "UnitedEnergy", label: "UnitedEnergy", color: "bg-purple-500" },
+  { value: "TasNetworks", label: "TasNetworks", color: "bg-purple-500" },
 ]
+
+function SingleSelect({
+  value,
+  options,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (val: string) => void
+  placeholder: string
+}) {
+  const [open, setOpen] = useState(false)
+  const selectedOption = options.find((opt) => opt.value === value)
+
+  const display = selectedOption ? selectedOption.label : placeholder
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="bordered"
+          className="w-full justify-between rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        >
+          <span className="truncate">{display}</span>
+          <ChevronsUpDown className="h-4 w-4 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[320px]">
+        <Command>
+          <CommandEmpty>No results.</CommandEmpty>
+          <CommandList>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.value}
+                  onSelect={() => {
+                    onChange(opt.value)
+                    setOpen(false)
+                  }}
+                  className="flex items-center gap-2 bg-white text-foreground hover:!bg-muted/70 data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-foreground data-[selected]:bg-white data-[selected]:text-foreground"
+                >
+                  <div
+                    className={cn(
+                      "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+                      value === opt.value
+                        ? "border-orange-500 bg-orange-500 text-white"
+                        : "border-muted-foreground/30 text-transparent",
+                    )}
+                  >
+                    <Check className="h-3 w-3" strokeWidth={3} />
+                  </div>
+                  {opt.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 function MultiSelect({
   value,
@@ -55,7 +130,7 @@ function MultiSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="bordered"
           className="w-full justify-between rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <span className="truncate flex items-center gap-2">{display}</span>
@@ -153,141 +228,161 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 border-0">
-        <DialogTitle className="sr-only">Invite User</DialogTitle>
-        <div className="relative bg-white rounded-lg max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Invite User</h2>
-              <p className="text-sm text-muted-foreground mt-1">Add a new team member to your company</p>
+      <DialogContent className="sm:max-w-[500px] bg-white">
+        <DialogHeader>
+          <DialogTitle>Invite User</DialogTitle>
+          <DialogDescription>Add a new team member to your company</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-6 py-4 bg-white">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+              {error}
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => onOpenChange(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          )}
 
-          <div className="px-8 py-6 space-y-6">
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
-            )}
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="first_name" className="text-sm font-medium text-slate-900">
-                  First Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  placeholder="John"
-                  className="rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="last_name" className="text-sm font-medium text-slate-900">
-                  Last Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  placeholder="Smith"
-                  className="rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-            </div>
-
+          {/* Name Fields */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-900">
-                Email Address <span className="text-red-500">*</span>
-              </Label>
               <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john.smith@example.com"
-                className="rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                label="First Name"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                placeholder=""
+                variant="underlined"
+                labelPlacement="inside"
+                isRequired
+                className="w-full"
+                classNames={{
+                  base: "bg-transparent",
+                  mainWrapper: "bg-transparent",
+                  inputWrapper:
+                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                  input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
+                  label: "text-slate-700 data-[inside=true]:text-slate-500",
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Input
+                label="Last Name"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                placeholder=""
+                variant="underlined"
+                labelPlacement="inside"
+                isRequired
+                className="w-full"
+                classNames={{
+                  base: "bg-transparent",
+                  mainWrapper: "bg-transparent",
+                  inputWrapper:
+                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                  input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
+                  label: "text-slate-700 data-[inside=true]:text-slate-500",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <Input
+              label="Email Address"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder=""
+              variant="underlined"
+              labelPlacement="inside"
+              isRequired
+              className="w-full"
+              classNames={{
+                base: "bg-transparent",
+                mainWrapper: "bg-transparent",
+                inputWrapper:
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
+                label: "text-slate-700 data-[inside=true]:text-slate-500",
+              }}
+            />
+          </div>
+
+          {/* Role */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Role</label>
+            <SingleSelect
+              value={formData.role}
+              options={[
+                { value: "admin", label: "Admin" },
+                { value: "manager", label: "Manager" },
+                { value: "member", label: "Member" },
+              ]}
+              onChange={(val) => setFormData({ ...formData, role: val })}
+              placeholder="Select role"
+            />
+          </div>
+
+          {/* Region Access and Providers */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Region Access</label>
+              <MultiSelect
+                value={formData.region_access}
+                options={REGIONS.map((r) => ({ value: r, label: r }))}
+                onChange={(vals) => setFormData({ ...formData, region_access: vals })}
+                placeholder="Select regions"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-900">Role</Label>
+              <label className="text-sm font-semibold text-slate-700">Energy Providers</label>
               <MultiSelect
-                value={[formData.role]}
-                options={[
-                  { value: "admin", label: "Admin" },
-                  { value: "manager", label: "Manager" },
-                  { value: "member", label: "Member" },
-                ]}
-                onChange={(vals) => setFormData({ ...formData, role: vals[0] || "member" })}
-                placeholder="Select role"
+                value={formData.notify_providers}
+                options={PROVIDERS}
+                onChange={(vals) => setFormData({ ...formData, notify_providers: vals })}
+                placeholder="Select providers"
+                renderDisplay={(value, options) => {
+                  if (value.length === 0) return "Select providers"
+                  if (value.length === options.length) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span>All</span>
+                        <div className="flex gap-1">
+                          {PROVIDERS.map((provider) => (
+                            <div
+                              key={provider.value}
+                              className={`h-5 w-5 rounded-full ${provider.color} flex items-center justify-center text-white text-[10px] font-bold`}
+                              title={provider.label}
+                            >
+                              {provider.value[0]}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+                  return options
+                    .filter((o) => value.includes(o.value))
+                    .map((o) => o.label)
+                    .join(", ")
+                }}
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-900">Region Access</Label>
-                <MultiSelect
-                  value={formData.region_access}
-                  options={REGIONS.map((r) => ({ value: r, label: r }))}
-                  onChange={(vals) => setFormData({ ...formData, region_access: vals })}
-                  placeholder="Select regions"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-900">Energy Providers</Label>
-                <MultiSelect
-                  value={formData.notify_providers}
-                  options={PROVIDERS}
-                  onChange={(vals) => setFormData({ ...formData, notify_providers: vals })}
-                  placeholder="Select providers"
-                  renderDisplay={(value, options) => {
-                    if (value.length === 0) return "Select providers"
-                    if (value.length === options.length) {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span>All</span>
-                          <div className="flex gap-1">
-                            {PROVIDERS.map((provider) => (
-                              <div
-                                key={provider.value}
-                                className={`h-5 w-5 rounded-full ${provider.color} flex items-center justify-center text-white text-[10px] font-bold`}
-                                title={provider.label}
-                              >
-                                {provider.value[0]}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    }
-                    return options
-                      .filter((o) => value.includes(o.value))
-                      .map((o) => o.label)
-                      .join(", ")
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="sticky bottom-0 bg-white border-t px-8 py-4 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !formData.email || !formData.first_name || !formData.last_name}
-              className="bg-orange-500 hover:bg-orange-600"
-            >
-              {loading ? "Sending..." : "Send Invitation"}
-            </Button>
           </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !formData.email || !formData.first_name || !formData.last_name}
+          >
+            {loading ? "Sending..." : "Send Invitation"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

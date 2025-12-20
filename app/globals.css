@@ -129,3 +129,43 @@
     text-wrap: balance;
   }
 }
+
+/* Custom scrollbar styles for table containers - outside layer for better specificity */
+.table-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent !important;
+  scrollbar-gutter: stable !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  -webkit-appearance: none !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border-radius: 4px !important;
+  -webkit-appearance: none !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Disabled/unavailable days - slightly darker grey */
+[data-disabled] {
+  color: rgb(107, 114, 128) !important; /* text-gray-500 - darker grey */
+  opacity: 0.6 !important;
+}

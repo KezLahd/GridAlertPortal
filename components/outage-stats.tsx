@@ -121,7 +121,6 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
         title="Total Outages"
         value={stats.totalOutages ?? 0}
         icon={AlertTriangle}
-        subtitle={outageType === "unplanned" ? "Unplanned incidents" : "Planned maintenance"}
       />
 
       {outageType === "unplanned" ? (
@@ -130,19 +129,16 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
             title="Affected Customers"
             value={stats.totalAffected.toLocaleString()}
             icon={Users}
-            subtitle="Customers without power"
           />
           <SummaryCard
             title="Avg. Restoration"
             value={formatHours(stats.avgRestorationTime ?? 0)}
             icon={Clock}
-            subtitle="Average time to restore"
           />
           <SummaryCard
             title="Affected Areas"
             value={stats.activeAreas ?? 0}
             icon={MapPinned}
-            subtitle="Suburbs/areas affected"
           />
         </>
       ) : (
@@ -151,19 +147,16 @@ export default function OutageStats({ outages, outageType }: OutageStatsProps) {
             title="Affected Streets"
             value={stats.affectedStreets ?? 0}
             icon={ZapOff}
-            subtitle="Streets with maintenance"
           />
           <SummaryCard
             title="Affected Customers"
             value={stats.totalAffected.toLocaleString()}
             icon={Users}
-            subtitle="Customers affected"
           />
           <SummaryCard
             title="Avg. Duration"
             value={formatHours(stats.avgDuration ?? 0)}
             icon={Clock}
-            subtitle="Average outage duration"
           />
         </>
       )}

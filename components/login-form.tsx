@@ -87,7 +87,7 @@ export function LoginForm() {
       <form className="space-y-4" onSubmit={handleLogin}>
         <Input
           label="Email"
-          placeholder=" "
+          placeholder=""
           id="email"
           type="email"
           isRequired
@@ -103,12 +103,12 @@ export function LoginForm() {
             inputWrapper:
               "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
             input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-            label: "text-slate-700",
+            label: "text-slate-700 data-[inside=true]:text-slate-500",
           }}
         />
         <Input
           label="Password"
-          placeholder=" "
+          placeholder=""
           id="password"
           type="password"
           isRequired
@@ -124,7 +124,7 @@ export function LoginForm() {
             inputWrapper:
               "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
             input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-            label: "text-slate-700",
+            label: "text-slate-700 data-[inside=true]:text-slate-500",
           }}
         />
         <Button type="submit" className="w-full" isDisabled={loading} color="primary" variant="solid">

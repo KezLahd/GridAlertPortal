@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, use } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/heroui"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,14 @@ const PROVIDERS = [
   { name: "Energex", color: "bg-cyan-500" },
   { name: "Ergon", color: "bg-red-500" },
   { name: "SA Power", color: "bg-orange-500" },
+  { name: "Horizon Power", color: "bg-rose-500" },
+  { name: "WPower", color: "bg-amber-500" },
+  { name: "AusNet", color: "bg-emerald-500" },
+  { name: "CitiPowerCor", color: "bg-blue-500" },
+  { name: "Essential Energy", color: "bg-orange-500" },
+  { name: "Jemena", color: "bg-cyan-500" },
+  { name: "UnitedEnergy", color: "bg-purple-500" },
+  { name: "TasNetworks", color: "bg-purple-500" },
 ]
 
 const OUTAGE_TYPES = [
@@ -107,7 +115,7 @@ function MultiSelect({
 
 function SetupAccountContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const searchParams = use(useSearchParams())
   const token = searchParams.get("token")
 
   const [profile, setProfile] = useState<any>(null)
@@ -429,6 +437,8 @@ function SetupAccountContent() {
     </div>
   )
 }
+
+export const dynamic = 'force-dynamic'
 
 export default function SetupAccountPage() {
   return (

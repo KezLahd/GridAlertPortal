@@ -2,7 +2,7 @@
 
 import { googleMapsApiKey } from "@/lib/config"
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api"
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from "@react-google-maps/api"
 import MapsError from "./maps-error"
 import MapLegend from "./map-legend"
 
@@ -20,6 +20,18 @@ const defaultCenter = {
 
 // Libraries to load - make sure to include 'places'
 const libraries = ["places"]
+
+// Helper function to calculate distance between two points using Haversine formula
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371 // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
 
 // Marker colors based on outage type
 const markerColors = {
@@ -59,6 +71,12 @@ const providerIconsNew: Record<string, string> = {
   "SA Power": "/providers/SAPower-new.svg",
   "Horizon Power": "/providers/HorizonPower-new.svg",
   WPower: "/providers/WPower-new.svg",
+  AusNet: "/providers/AusNet-new.svg",
+  CitiPowerCor: "/providers/CitiPowerCor-new.svg",
+  "Essential Energy": "/providers/EssentialEnergy-new.svg",
+  Jemena: "/providers/Jemena-new.svg",
+  UnitedEnergy: "/providers/UnitedEnergy-new.svg",
+  TasNetworks: "/providers/TasNetworks-new.svg",
 }
 
 const providerHeaderIcons: Record<string, string> = {
@@ -69,13 +87,39 @@ const providerHeaderIcons: Record<string, string> = {
   "SA Power": "/providers/SAPower-header.svg",
   "Horizon Power": "/providers/HorizonPower-header.svg",
   WPower: "/providers/WPower-header.svg",
+  AusNet: "/providers/AusNet-header.svg",
+  CitiPowerCor: "/providers/CitiPowerCor-header.svg",
+  "Essential Energy": "/providers/EssentialEnergy-header.svg",
+  Jemena: "/providers/Jemena-header.svg",
+  UnitedEnergy: "/providers/UnitedEnergy-header.svg",
+  TasNetworks: "/providers/TasNetworks-header.svg",
+}
+
+interface PoiLocation {
+  id: string
+  poi_name: string
+  institution_code?: string
+  institution_email?: string
+  institution_phone?: string
+  latitude: number | string
+  longitude: number | string
+  street_address?: string
+  city?: string
+  state?: string
+  postcode?: string
 }
 
 interface MapProps {
   outages: any[]
   outageType: "unplanned" | "planned" | "future"
-  searchLocation?: { lat: number; lng: number } | null
+  searchQuery?: string
+  selectedOutageId?: string | number | null
+  selectedPoiId?: string | null
   companyCenter?: { lat: number; lng: number } | null
+  companyLocation?: { lat: number; lng: number; name?: string; userCount?: number } | null
+  poiLocations?: PoiLocation[]
+  showPoiMarkers?: boolean
+  showPolygons?: boolean
 }
 
 // Function to check if Google Maps API is loaded
@@ -93,7 +137,7 @@ const ClientGoogleMap = ({ children, ...props }: any) => {
   return <GoogleMap {...props}>{children}</GoogleMap>
 }
 
-export default function Map({ outages, outageType, searchLocation, companyCenter }: MapProps) {
+export default function Map({ outages, outageType, searchQuery = "", selectedOutageId, selectedPoiId, companyCenter, companyLocation, poiLocations = [], showPoiMarkers = false, showPolygons = false }: MapProps) {
   const [apiError, setApiError] = useState<string | null>(null)
   const [currentZoom, setCurrentZoom] = useState(12)
 
@@ -105,6 +149,8 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
 
   const [map, setMap] = useState<any | null>(null)
   const [selectedOutage, setSelectedOutage] = useState<any | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<any | null>(null)
+  const [selectedPoi, setSelectedPoi] = useState<PoiLocation | null>(null)
   const [center, setCenter] = useState(defaultCenter)
   const [visibleOutages, setVisibleOutages] = useState<any[]>([])
   const mapRef = useRef<any | null>(null)
@@ -116,6 +162,7 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
       streetViewControl: false,
       mapTypeControl: false,
       fullscreenControl: true,
+      minZoom: 4, // Minimum zoom level to keep map focused on Australia
     }
     if (typeof window !== "undefined" && window.google?.maps?.ControlPosition) {
       opts.fullscreenControlOptions = {
@@ -153,20 +200,61 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
   }, [isLoaded])
 
   useEffect(() => {
-    if (searchLocation) {
-      // Search location takes highest priority
-      setCenter(searchLocation)
-      if (mapRef.current) {
-        mapRef.current.setZoom(14)
-      }
-    } else if (companyCenter && !searchLocation) {
-      // Use company center if available and no search active
+    if (companyCenter) {
+      // Use company center if available
       setCenter(companyCenter)
     } else {
       // Default to Sydney CBD
       setCenter(defaultCenter)
     }
-  }, [searchLocation, companyCenter])
+  }, [companyCenter])
+
+  // Handle selected outage from parent (e.g., when clicking from list)
+  useEffect(() => {
+    if (selectedOutageId && outages.length > 0) {
+      const outage = outages.find((o) => {
+        const id = o.incident_id || o.webid || o.id || o.event_id || o.outage_id
+        return String(id) === String(selectedOutageId)
+      })
+      
+      if (outage && outage.latitude && outage.longitude) {
+        const lat = typeof outage.latitude === "string" ? Number.parseFloat(outage.latitude) : outage.latitude
+        const lng = typeof outage.longitude === "string" ? Number.parseFloat(outage.longitude) : outage.longitude
+        
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          setCenter({ lat, lng })
+          setSelectedOutage(outage)
+          if (mapRef.current) {
+            mapRef.current.setZoom(8)
+            mapRef.current.panTo({ lat, lng })
+          }
+        }
+      }
+    }
+  }, [selectedOutageId, outages])
+
+  // Handle selected POI from parent (e.g., when clicking from search dropdown)
+  useEffect(() => {
+    if (selectedPoiId && poiLocations.length > 0) {
+      const poi = poiLocations.find((p) => p.id === selectedPoiId)
+      
+      if (poi && poi.latitude && poi.longitude) {
+        const lat = typeof poi.latitude === "string" ? Number.parseFloat(poi.latitude) : poi.latitude
+        const lng = typeof poi.longitude === "string" ? Number.parseFloat(poi.longitude) : poi.longitude
+        
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          setCenter({ lat, lng })
+          setSelectedPoi(poi)
+          setSelectedOutage(null) // Clear outage selection
+          setSelectedCompany(null) // Clear company selection
+          if (mapRef.current) {
+            mapRef.current.setZoom(16)
+            mapRef.current.panTo({ lat, lng })
+          }
+        }
+      }
+    }
+  }, [selectedPoiId, poiLocations])
 
   useEffect(() => {
     // Hide the default Google Maps InfoWindow close button
@@ -197,15 +285,35 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
       const east = b.east + lngPad
       const west = b.west - lngPad
 
-      const within = outages.filter((o) => {
+      let filtered = outages.filter((o) => {
         const lat = Number(o.latitude)
         const lng = Number(o.longitude)
         if (Number.isNaN(lat) || Number.isNaN(lng)) return false
-        return lat <= north && lat >= south && lng <= east && lng >= west
+
+        // First check if within map bounds
+        const inBounds = lat <= north && lat >= south && lng <= east && lng >= west
+
+        // If search query is set, also check text content
+        if (searchQuery && inBounds) {
+          const query = searchQuery.toLowerCase()
+          const searchableText = [
+            o.area_suburb,
+            o.streets_affected,
+            o.cause,
+            o.status,
+            o.provider,
+            o.state
+          ].filter(Boolean).join(' ').toLowerCase()
+
+          return searchableText.includes(query)
+        }
+
+        return inBounds
       })
-      setVisibleOutages(within)
+
+      setVisibleOutages(filtered)
     },
-    [outages],
+    [outages, searchQuery],
   )
 
   const onLoad = useCallback(
@@ -247,10 +355,101 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
     }
   }
 
+  // Parse polygon_geojson data to Google Maps path format
+  const parsePolygonGeoJson = (geojson: any): Array<{ lat: number; lng: number }> | null => {
+    if (!geojson) return null
+    
+    try {
+      // Handle if it's already a parsed JSON object
+      const data = typeof geojson === 'string' ? JSON.parse(geojson) : geojson
+      
+      // Helper function to detect coordinate format and convert to [lat, lng]
+      const convertCoord = (coord: number[]): { lat: number; lng: number } => {
+        if (!Array.isArray(coord) || coord.length < 2) {
+          throw new Error('Invalid coordinate format')
+        }
+        
+        const [first, second] = coord
+        
+        // Detect format: if first value is <= 90 (latitude range) and second is > 90 (longitude range),
+        // then it's [lat, lng] format, otherwise assume [lng, lat] format (GeoJSON standard)
+        const absFirst = Math.abs(first)
+        const absSecond = Math.abs(second)
+        
+        // Check if it looks like [lat, lng] format (first value in lat range, second in lng range)
+        if (absFirst <= 90 && absSecond > 90 && absSecond <= 180) {
+          // It's [lat, lng] format, swap them
+          return { lat: first, lng: second }
+        } else {
+          // Assume GeoJSON standard [lng, lat] format
+          return { lat: second, lng: first }
+        }
+      }
+      
+      // Handle GeoJSON format
+      if (data.type === 'Polygon' && data.coordinates && Array.isArray(data.coordinates[0])) {
+        return data.coordinates[0].map((coord: number[]) => convertCoord(coord))
+      }
+      
+      // Handle if it's already an array of coordinates
+      if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data[0]) && data[0].length === 2) {
+          return data.map((coord: number[]) => convertCoord(coord))
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error parsing polygon_geojson:', error)
+      return null
+    }
+  }
+
   // Get info window content based on outage type
+  const getCompanyInfoWindowContent = (company: any) => {
+    return (
+      <div className="p-3 pr-6 max-w-xs" style={{ marginRight: '20px' }}>
+        <h3 className="font-semibold text-lg mb-2">{company.name || "Company Location"}</h3>
+        <div className="space-y-1 text-sm">
+          <div><strong>Users:</strong> {company.userCount || 0}</div>
+        </div>
+      </div>
+    )
+  }
+
+  const getPoiInfoWindowContent = (poi: PoiLocation) => {
+    const addressParts = [
+      poi.street_address,
+      poi.city,
+      poi.state,
+      poi.postcode
+    ].filter(Boolean)
+
+    const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "No address available"
+    const centreNumber = poi.institution_code ? `C${poi.institution_code}` : `C${poi.id.split('-')[0]}`
+
+    return (
+      <div className="p-3 pr-6 max-w-xs" style={{ marginRight: '20px' }}>
+        <h3 className="font-semibold text-lg mb-2">{centreNumber}</h3>
+        <div className="space-y-1 text-sm">
+          <div><strong>Institution:</strong> {poi.poi_name || "Unknown"}</div>
+          <div><strong>Address:</strong> {fullAddress}</div>
+          {poi.institution_email && (
+            <div><strong>Email:</strong> {poi.institution_email}</div>
+          )}
+          {poi.institution_phone && (
+            <div><strong>Phone:</strong> {poi.institution_phone}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const getInfoWindowContent = (outage: any) => {
     const headerSrc = outage?.provider ? providerHeaderIcons[outage.provider] : undefined
-    const close = () => setSelectedOutage(null)
+    const close = () => {
+      setSelectedOutage(null)
+    }
 
     if (outageType === "unplanned") {
       return (
@@ -278,22 +477,23 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
           <div className="px-6 pb-6 pt-3 space-y-1 bg-white">
             <h3 className="font-bold text-red-600">Unplanned Outage</h3>
             <p>
-              <strong>Area:</strong> {outage.area_suburb}
+              <strong>Suburb:</strong> {outage.area_suburb && outage.area_suburb.toLowerCase() !== "unknown area" ? outage.area_suburb : "Not specified"}
             </p>
+            {(outage.street_name || outage.streets_affected) && (
+              <p>
+                <strong>Streets:</strong> {outage.street_name || outage.streets_affected}
+              </p>
+            )}
+            {outage.reason && (
+              <p>
+                <strong>Reason:</strong> {outage.reason}
+              </p>
+            )}
             <p>
-              <strong>Status:</strong> {outage.statusheading}
-            </p>
-            <p>
-              <strong>Cause:</strong> {outage.cause}
-            </p>
-            <p>
-              <strong>Est. Restoration:</strong> {new Date(outage.estimated_finish_time).toLocaleString()}
+              <strong>Est. Restoration:</strong> {outage.estimated_finish_time ? new Date(outage.estimated_finish_time).toLocaleString() : "Not specified"}
             </p>
             <p>
               <strong>Affected Customers:</strong> {outage.customers_affected}
-            </p>
-            <p>
-              <strong>Provider:</strong> {outage.provider || "Not specified"}
             </p>
             {outage.geocoded_address && (
               <p className="mt-1 text-xs text-gray-500">
@@ -332,23 +532,22 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
               {isCurrentPlanned ? "Current Planned Outage" : "Future Planned Outage"}
             </h3>
             <p>
-              <strong>Area:</strong> {outage.area_suburb}
+              <strong>Area:</strong> {outage.area_suburb && outage.area_suburb.toLowerCase() !== "unknown area" ? outage.area_suburb : "Not specified"}
             </p>
             <p>
               <strong>Streets:</strong> {outage.streets_affected || "Not specified"}
             </p>
             <p>
-              <strong>Start:</strong> {new Date(outage.start_date_time).toLocaleString()}
+              <strong>Start:</strong> {outage.start_date_time ? new Date(outage.start_date_time).toLocaleString() : "Not specified"}
             </p>
             <p>
-              <strong>End:</strong> {new Date(outage.end_date_time).toLocaleString()}
+              <strong>End:</strong> {outage.end_date_time ? new Date(outage.end_date_time).toLocaleString() : "Not specified"}
             </p>
-            <p>
-              <strong>Details:</strong> {outage.details || "Not specified"}
-            </p>
-            <p>
-              <strong>Provider:</strong> {outage.provider || "Not specified"}
-            </p>
+            {outage.reason && (
+              <p>
+                <strong>Reason:</strong> {outage.reason}
+              </p>
+            )}
             {outage.geocoded_address && (
               <p className="mt-1 text-xs text-gray-500">
                 <strong>Location:</strong> {outage.geocoded_address}
@@ -399,6 +598,35 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
   // Marker icon resolver
   const markerOptimizationEnabled = false
   const shouldOptimizeMarkers = false
+
+  // Get company location marker icon
+  const getCompanyLocationIcon = (): any | undefined => {
+    if (typeof window !== "undefined" && window.google?.maps) {
+      return {
+        url: "/company_location.svg",
+        size: new window.google.maps.Size(24, 24),
+        scaledSize: new window.google.maps.Size(24, 24),
+        origin: new window.google.maps.Point(0, 0),
+        anchor: new window.google.maps.Point(12, 24), // bottom-center on point
+      }
+    }
+    return undefined
+  }
+
+  // Get POI location marker icon - simple red dot
+  const getPoiLocationIcon = (): any | undefined => {
+    if (typeof window !== "undefined" && window.google?.maps) {
+      return {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor: "#EF4444",
+        fillOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: "#ffffff",
+        scale: 8,
+      }
+    }
+    return undefined
+  }
 
   const getMarkerIcon = (outage: any): any | undefined => {
     if (typeof window !== "undefined" && window.google?.maps) {
@@ -451,20 +679,68 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
         onZoomChanged={onZoomChanged}
         options={mapOptions}
       >
-        {/* Search location marker */}
-        {searchLocation && (
+        {/* Company location marker */}
+        {companyLocation && companyLocation.lat && companyLocation.lng && (
           <Marker
-            position={searchLocation}
-            icon={{
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "#4285F4",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "#ffffff",
-              scale: 8,
+            position={{
+              lat: typeof companyLocation.lat === "string" ? Number.parseFloat(companyLocation.lat) : companyLocation.lat,
+              lng: typeof companyLocation.lng === "string" ? Number.parseFloat(companyLocation.lng) : companyLocation.lng,
+            }}
+            title={companyLocation.name || "Company Location"}
+            icon={getCompanyLocationIcon()}
+            options={{ optimized: false }}
+            zIndex={1000}
+            onClick={() => {
+              setSelectedCompany(companyLocation)
+              setSelectedPoi(null) // Clear POI selection
+              setSelectedOutage(null) // Clear outage selection
             }}
           />
         )}
+
+        {/* POI location markers - only show if toggle is enabled */}
+        {showPoiMarkers && poiLocations
+          .filter((poi) => {
+            if (!searchQuery) return true
+
+            const query = searchQuery.toLowerCase()
+            const searchableText = [
+              poi.poi_name,
+              poi.institution_code,
+              poi.street_address,
+              poi.city,
+              poi.state,
+              poi.postcode
+            ].filter(Boolean).join(' ').toLowerCase()
+
+            return searchableText.includes(query)
+          })
+          .map((poi) => {
+            if (!poi.latitude || !poi.longitude) return null
+
+            const lat = typeof poi.latitude === "string" ? Number.parseFloat(poi.latitude) : poi.latitude
+            const lng = typeof poi.longitude === "string" ? Number.parseFloat(poi.longitude) : poi.longitude
+
+            // Skip if invalid coordinates
+            if (isNaN(lat) || isNaN(lng)) return null
+
+            return (
+              <Marker
+                key={poi.id}
+                position={{ lat, lng }}
+                title={poi.poi_name || "POI Location"}
+                icon={getPoiLocationIcon()}
+                options={{ optimized: false }}
+                zIndex={999}
+                onClick={() => {
+                  setSelectedPoi(poi)
+                  setSelectedCompany(null) // Clear company selection
+                  setSelectedOutage(null) // Clear outage selection
+                }}
+              />
+            )
+          })}
+
 
         {visibleOutages.map((outage, idx) => {
           if (!outage.latitude || !outage.longitude) return null
@@ -479,17 +755,17 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
           const z = Number.isFinite(lat) ? Math.round(lat * 1000) : 0
 
           return (
-            <div key={buildOutageKey(outage, idx)}>
-              {/* Foreground marker */}
-              <Marker
-                position={{ lat, lng }}
-                title={getMarkerTitle(outage)}
-                onClick={() => setSelectedOutage(outage)}
-                icon={getMarkerIcon(outage)}
-                options={{ optimized: shouldOptimizeMarkers }}
-                zIndex={z + 10}
-              />
-            </div>
+            <Marker
+              key={buildOutageKey(outage, idx)}
+              position={{ lat, lng }}
+              title={getMarkerTitle(outage)}
+              onClick={() => {
+                setSelectedOutage(outage)
+              }}
+              icon={getMarkerIcon(outage)}
+              options={{ optimized: shouldOptimizeMarkers }}
+              zIndex={z + 10}
+            />
           )
         })}
 
@@ -505,16 +781,100 @@ export default function Map({ outages, outageType, searchLocation, companyCenter
                   ? Number.parseFloat(selectedOutage.longitude)
                   : selectedOutage.longitude,
             }}
-            onCloseClick={() => setSelectedOutage(null)}
+            onCloseClick={() => {
+              setSelectedOutage(null)
+            }}
             options={{ disableAutoPan: false, pixelOffset: new window.google.maps.Size(0, -10) }}
           >
             <div>{getInfoWindowContent(selectedOutage)}</div>
           </InfoWindow>
         )}
+
+        {selectedCompany && selectedCompany.lat && selectedCompany.lng && (
+          <InfoWindow
+            position={{
+              lat: typeof selectedCompany.lat === "string" ? Number.parseFloat(selectedCompany.lat) : selectedCompany.lat,
+              lng: typeof selectedCompany.lng === "string" ? Number.parseFloat(selectedCompany.lng) : selectedCompany.lng,
+            }}
+            onCloseClick={() => {
+              setSelectedCompany(null)
+            }}
+            options={{
+              disableAutoPan: false,
+              pixelOffset: new window.google.maps.Size(0, -30)
+            }}
+          >
+            <div className="relative">
+              <button
+                onClick={() => setSelectedCompany(null)}
+                className="absolute top-1 right-2 text-black text-2xl font-normal z-10 bg-transparent border-none cursor-pointer"
+                style={{ lineHeight: 1 }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              {getCompanyInfoWindowContent(selectedCompany)}
+            </div>
+          </InfoWindow>
+        )}
+
+        {selectedPoi && selectedPoi.latitude && selectedPoi.longitude && (
+          <InfoWindow
+            position={{
+              lat: typeof selectedPoi.latitude === "string" ? Number.parseFloat(selectedPoi.latitude) : selectedPoi.latitude,
+              lng: typeof selectedPoi.longitude === "string" ? Number.parseFloat(selectedPoi.longitude) : selectedPoi.longitude,
+            }}
+            onCloseClick={() => {
+              setSelectedPoi(null)
+            }}
+            options={{
+              disableAutoPan: false,
+              pixelOffset: new window.google.maps.Size(0, -30)
+            }}
+          >
+            <div className="relative">
+              <button
+                onClick={() => setSelectedPoi(null)}
+                className="absolute top-1 right-2 text-black text-2xl font-normal z-10 bg-transparent border-none cursor-pointer"
+                style={{ lineHeight: 1 }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              {getPoiInfoWindowContent(selectedPoi)}
+            </div>
+          </InfoWindow>
+        )}
+
+        {/* Render polygons for all outages when global toggle is enabled */}
+        {showPolygons && visibleOutages
+          .filter((outage) => outage.polygon_geojson)
+          .map((outage) => {
+            const polygonPath = parsePolygonGeoJson(outage.polygon_geojson)
+            if (!polygonPath || polygonPath.length === 0) return null
+            
+            const outageId = outage.id || outage.incident_id || outage.webid || outage.outage_id || Math.random()
+            const provider = outage.provider || 'unknown'
+            return (
+              <Polygon
+                key={`polygon-${outageId}-${provider}`}
+                paths={polygonPath}
+                options={{
+                  fillColor: outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6",
+                  fillOpacity: 0.25,
+                  strokeColor: outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6",
+                  strokeOpacity: 0.7,
+                  strokeWeight: 2,
+                  clickable: false,
+                  zIndex: 1,
+                }}
+              />
+            )
+          })}
       </ClientGoogleMap>
 
       {/* Map Legend */}
-      <MapLegend outageType={outageType} zoomLevel={currentZoom} />
+      <MapLegend outageType={outageType} zoomLevel={currentZoom} showPoiMarkers={showPoiMarkers} showPolygons={showPolygons} />
     </div>
   )
 }

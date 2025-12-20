@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useJsApiLoader } from "@react-google-maps/api"
 import { AppSidebar } from "@/components/sidebar"
-import { Loader2, Bell, Zap, Building2, Pencil } from "lucide-react"
+import { Bell, Zap, Building2, Pencil } from "lucide-react"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { CompanyMembersTable } from "@/components/company-members-table"
 import { CreateCompanyDialog } from "@/components/create-company-dialog"
@@ -18,9 +18,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EditCompanyIconDialog } from "@/components/edit-company-icon-dialog"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
+import { EditUserIconDialog } from "@/components/edit-user-icon-dialog"
+import { EditCompanyDetailsDialog } from "@/components/edit-company-details-dialog"
+import { EditUserDetailsDialog } from "@/components/edit-user-details-dialog"
+import { AddPoiDialog } from "@/components/add-poi-dialog"
+import { PoiLocationsTable, type PoiLocation } from "@/components/poi-locations-table"
+import { ImportCsvDialog } from "@/components/import-csv-dialog"
+import { ProfilePageSkeleton } from "@/components/skeleton-components"
 
 type NotificationChoice = "unplanned" | "planned" | "future"
-type ProviderChoice = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power"
+type ProviderChoice = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power" | "Horizon Power" | "WPower" | "AusNet" | "CitiPowerCor" | "Essential Energy" | "Jemena" | "UnitedEnergy" | "TasNetworks"
 type ChannelChoice = "email" | "sms"
 type RoleChoice = "admin" | "manager" | "member"
 type MultiSelectOption = { value: string; label: string }
@@ -49,6 +56,9 @@ interface ProfileRecord {
   company: CompanyInfo | null
   company_id?: string | null
   region_access?: string[]
+  icon_letters?: string | null
+  icon_bg_color?: string | null
+  icon_text_color?: string | null
 }
 
 const outageOptions: { value: NotificationChoice; label: string }[] = [
@@ -63,6 +73,14 @@ const providerOptions: { value: ProviderChoice; label: string; color: string }[]
   { value: "Energex", label: "Energex", color: "bg-cyan-500" },
   { value: "Ergon", label: "Ergon", color: "bg-red-500" },
   { value: "SA Power", label: "SA Power", color: "bg-orange-500" },
+  { value: "Horizon Power", label: "Horizon Power", color: "bg-rose-500" },
+  { value: "WPower", label: "WPower", color: "bg-amber-500" },
+  { value: "AusNet", label: "AusNet", color: "bg-emerald-500" },
+  { value: "CitiPowerCor", label: "CitiPowerCor", color: "bg-blue-500" },
+  { value: "Essential Energy", label: "Essential Energy", color: "bg-orange-500" },
+  { value: "Jemena", label: "Jemena", color: "bg-cyan-500" },
+  { value: "UnitedEnergy", label: "UnitedEnergy", color: "bg-purple-500" },
+  { value: "TasNetworks", label: "TasNetworks", color: "bg-purple-500" },
 ]
 
 const channelOptions: { value: ChannelChoice; label: string }[] = [
@@ -78,6 +96,14 @@ const PROVIDER_COLORS = {
   Energex: "bg-cyan-500",
   Ergon: "bg-red-500",
   "SA Power": "bg-orange-500",
+  "Horizon Power": "bg-rose-500",
+  WPower: "bg-amber-500",
+  AusNet: "bg-emerald-500",
+  CitiPowerCor: "bg-blue-500",
+  "Essential Energy": "bg-orange-500",
+  Jemena: "bg-cyan-500",
+  UnitedEnergy: "bg-purple-500",
+  TasNetworks: "bg-purple-500",
 }
 
 const libraries: ("places" | "geometry" | "drawing")[] = ["places"]
@@ -119,11 +145,14 @@ const emptyProfile: ProfileRecord = {
   mobile: "",
   role: "member",
   notify_outage_types: ["unplanned", "planned", "future"],
-  notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power"],
+  notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"],
   notify_channels: ["email"],
   company: null,
   company_id: null,
   region_access: [],
+  icon_letters: null,
+  icon_bg_color: null,
+  icon_text_color: null,
 }
 
 const normalizeProfile = (raw: any): ProfileRecord => ({
@@ -140,6 +169,8 @@ const normalizeProfile = (raw: any): ProfileRecord => ({
     "Energex",
     "Ergon",
     "SA Power",
+    "UnitedEnergy",
+    "TasNetworks",
   ],
   notify_channels: (raw?.notify_channels as ChannelChoice[]) ?? ["email"],
   company: raw?.company
@@ -156,7 +187,12 @@ const normalizeProfile = (raw: any): ProfileRecord => ({
     : null,
   company_id: raw?.company_id ?? raw?.company?.id ?? null,
   region_access: (raw?.region_access as string[]) ?? [],
+  icon_letters: raw?.icon_letters ?? null,
+  icon_bg_color: raw?.icon_bg_color ?? null,
+  icon_text_color: raw?.icon_text_color ?? null,
 })
+
+export const dynamic = 'force-dynamic'
 
 export default function ProfilePage() {
   const { isLoaded: mapsLoaded } = useJsApiLoader({
@@ -169,6 +205,8 @@ export default function ProfilePage() {
   const supabase = getSupabaseClient()
   const [profile, setProfile] = useState<ProfileRecord | null>(null)
   const [members, setMembers] = useState<MemberRecord[]>([])
+  const [poiCount, setPoiCount] = useState<number>(0)
+  const [poiLocations, setPoiLocations] = useState<PoiLocation[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -177,6 +215,12 @@ export default function ProfilePage() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
   const [editIconOpen, setEditIconOpen] = useState(false)
+  const [editUserIconOpen, setEditUserIconOpen] = useState(false)
+  const [editCompanyDetailsOpen, setEditCompanyDetailsOpen] = useState(false)
+  const [editUserDetailsOpen, setEditUserDetailsOpen] = useState(false)
+  const [addPoiOpen, setAddPoiOpen] = useState(false)
+  const [importCsvOpen, setImportCsvOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [inviteState, setInviteState] = useState({
     first_name: "",
     last_name: "",
@@ -185,7 +229,7 @@ export default function ProfilePage() {
     password: "",
     role: "member" as RoleChoice,
     notify_outage_types: ["unplanned", "planned", "future"] as NotificationChoice[],
-    notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon"] as ProviderChoice[],
+    notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"] as ProviderChoice[],
     notify_channels: ["email"] as ChannelChoice[],
     region_access: ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"] as string[],
   })
@@ -193,6 +237,39 @@ export default function ProfilePage() {
 
   const isAdmin = useMemo(() => profile?.role === "admin", [profile])
   const companyId = useMemo(() => profile?.company_id || profile?.company?.id || null, [profile])
+
+  // Show toast message
+  const showToast = (message: string) => {
+    setToastMessage(message)
+    setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  // Handle invite user with admin check
+  const handleInviteUserClick = () => {
+    if (!isAdmin) {
+      showToast("You must be an administrator to invite users")
+      return
+    }
+    setInviteOpen(true)
+  }
+
+  // Handle opening POI add dialog with admin check
+  const handleOpenAddPoi = () => {
+    if (!isAdmin) {
+      showToast("You must be an administrator to add POIs")
+      return
+    }
+    setAddPoiOpen(true)
+  }
+
+  // Handle opening CSV import dialog with admin check
+  const handleOpenImportCsv = () => {
+    if (!isAdmin) {
+      showToast("You must be an administrator to import POIs")
+      return
+    }
+    setImportCsvOpen(true)
+  }
 
   const isProfileIncomplete = useMemo(() => {
     if (!profile) return false
@@ -207,11 +284,20 @@ export default function ProfilePage() {
   }, [profile])
 
   const profileInitials = useMemo(() => {
+    if (profile?.icon_letters) return profile.icon_letters
     const first = profile?.first_name?.trim()?.[0]
     const last = profile?.last_name?.trim()?.[0]
     if (first || last) return `${first ?? ""}${last ?? ""}`.toUpperCase()
     const emailFirst = profile?.email?.[0]
     return (emailFirst ?? "U").toUpperCase()
+  }, [profile])
+
+  const profileIconBgColor = useMemo(() => {
+    return profile?.icon_bg_color || "#f97316"
+  }, [profile])
+
+  const profileIconTextColor = useMemo(() => {
+    return profile?.icon_text_color || "#ffffff"
   }, [profile])
 
   useEffect(() => {
@@ -242,6 +328,9 @@ export default function ProfilePage() {
         notify_providers,
         notify_channels,
         region_access,
+        icon_letters,
+        icon_bg_color,
+        icon_text_color,
         company:companies(id,name,location,latitude,longitude,logo_letters,logo_bg_color,logo_text_color)
       `,
       )
@@ -257,8 +346,10 @@ export default function ProfilePage() {
     setProfile(profileRecord)
 
     const companyId = profileRecord.company_id || profileRecord.company?.id
-    if (companyId && profileRecord.role === "admin") {
+    if (companyId) {
       await fetchCompanyMembers(companyId)
+      await fetchPoiCount(companyId)
+      await fetchPoiLocations(companyId)
     }
   }
 
@@ -277,11 +368,15 @@ export default function ProfilePage() {
         notify_providers,
         notify_channels,
         region_access,
-        company_id
+        icon_letters,
+        icon_bg_color,
+        icon_text_color,
+        company_id,
+        created_at
       `,
       )
       .eq("company_id", companyId)
-      .order("first_name", { nullsFirst: true })
+      .order("created_at", { ascending: true })
 
     if (memberError) {
       setError(memberError.message)
@@ -296,12 +391,135 @@ export default function ProfilePage() {
       mobile: (row?.mobile ?? "").trim(),
       role: (row?.role as RoleChoice) ?? "member",
       notify_outage_types: (row?.notify_outage_types as NotificationChoice[]) ?? ["unplanned", "planned", "future"],
-      notify_providers: (row?.notify_providers as ProviderChoice[]) ?? ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power"],
+      notify_providers: ((row?.notify_providers ?? ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"]) as ProviderChoice[]),
       notify_channels: (row?.notify_channels as string[]) ?? ["email"],
       region_access: (row?.region_access as string[]) ?? [],
+      icon_letters: row?.icon_letters ?? null,
+      icon_bg_color: row?.icon_bg_color ?? null,
+      icon_text_color: row?.icon_text_color ?? null,
     })
 
     setMembers((data || []).map((row: any) => normalizeMember(row)))
+  }
+
+  const fetchPoiCount = async (companyId: string) => {
+    const { count, error: poiError } = await supabase
+      .from("locations")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("institutionstatus", "ACTIVE")
+
+    if (poiError) {
+      console.error("Failed to fetch POI count:", poiError)
+      return
+    }
+
+    setPoiCount(count || 0)
+  }
+
+  const fetchPoiLocations = async (companyId: string) => {
+    const { data, error: locationsError } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("institutionstatus", "ACTIVE")
+
+    if (locationsError) {
+      console.error("Failed to fetch POI locations:", locationsError)
+      // Only set error if there's an actual error message
+      if (locationsError.message) {
+        setError(locationsError.message)
+      }
+      return
+    }
+
+    const normalizedLocations: PoiLocation[] = (data || []).map((row: any) => ({
+      id: row.id,
+      institution_code: row.institutioncode,
+      poi_name: row.institutionname,
+      street_address: row.addressline1,
+      city: row.addresssuburb,
+      state: row.addressstate,
+      postcode: row.addresspostcode,
+      country: "Australia",
+      contact_name: null,
+      contact_email: row.institutionemail,
+      contact_phone: row.institutionphoneno,
+      latitude: row.addresslatitude,
+      longitude: row.addresslongitude,
+      created_at: row.created_at,
+    }))
+
+    // Sort numerically by institution code
+    normalizedLocations.sort((a, b) => {
+      const getNumericCode = (code: string | null): number => {
+        if (!code) return Infinity // Put nulls at the end
+        // Extract numeric part (remove any non-numeric characters)
+        const numeric = parseInt(code.replace(/\D/g, ''), 10)
+        return isNaN(numeric) ? Infinity : numeric
+      }
+      
+      const numA = getNumericCode(a.institution_code)
+      const numB = getNumericCode(b.institution_code)
+      return numA - numB
+    })
+
+    setPoiLocations(normalizedLocations)
+  }
+
+  const handleAddPoi = async (
+    poiName: string,
+    location: string,
+    latitude: number,
+    longitude: number,
+    contactName?: string,
+    contactEmail?: string,
+    contactPhone?: string
+  ) => {
+    if (!profile?.company?.id) return
+
+    setSaving(true)
+    setError(null)
+
+    // Map to new schema: poi_name -> institutionname, street_address -> addressline1, etc.
+    const { error: insertError } = await supabase
+      .from("locations")
+      .insert({
+        company_id: profile.company.id,
+        institutionname: poiName,
+        addressline1: location,
+        addresslatitude: latitude,
+        addresslongitude: longitude,
+        institutionemail: contactEmail || null,
+        institutionphoneno: contactPhone || null,
+      })
+
+    if (insertError) {
+      setError(insertError.message)
+      setSaving(false)
+      throw insertError
+    }
+
+    // Refresh the POI locations and count
+    await fetchPoiLocations(profile.company.id)
+    await fetchPoiCount(profile.company.id)
+    setSaving(false)
+  }
+
+  const handleImportCsv = () => {
+    if (!isAdmin) {
+      showToast("You must be an administrator to import POIs")
+      return
+    }
+    setImportCsvOpen(true)
+  }
+
+  const handleImportCsvSuccess = async () => {
+    if (profile?.company?.id) {
+      await fetchPoiLocations(profile.company.id)
+      await fetchPoiCount(profile.company.id)
+    }
+    setImportCsvOpen(false)
   }
 
   const validateProfile = (current: ProfileRecord) => {
@@ -383,18 +601,57 @@ export default function ProfilePage() {
     setSaving(false)
   }
 
+  const deleteMember = async (userId: string) => {
+    if (!profile?.company?.id) return
+
+    setSaving(true)
+    setError(null)
+
+    // Delete the user profile
+    const { error: deleteError } = await supabase
+      .from("user_profiles")
+      .delete()
+      .eq("user_id", userId)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      setSaving(false)
+      throw deleteError
+    }
+
+    // Also delete the auth user (requires admin privileges)
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+    if (authError) {
+      console.error("Failed to delete auth user:", authError)
+      // Continue anyway as the profile is deleted
+    }
+
+    // Refresh the members list
+    if (profile.company.id) {
+      await fetchCompanyMembers(profile.company.id)
+    }
+    setSaving(false)
+  }
+
   const saveMember = async (member: MemberRecord) => {
     setSaving(true)
     setError(null)
+    
+    // Members can't change their own role, only admins can change roles
+    const updateData: any = {
+      notify_providers: member.notify_providers,
+      notify_channels: member.notify_channels,
+      region_access: member.region_access ?? [],
+    }
+    
+    // Only allow role update if current user is admin and editing someone else
+    if (isAdmin && member.user_id !== profile?.user_id) {
+      updateData.role = member.role
+    }
+    
     const { error: updateError } = await supabase
       .from("user_profiles")
-      .update({
-        role: member.role,
-        notify_outage_types: member.notify_outage_types,
-        notify_providers: member.notify_providers,
-        notify_channels: member.notify_channels,
-        region_access: member.region_access ?? [],
-      })
+      .update(updateData)
       .eq("user_id", member.user_id)
 
     if (updateError) {
@@ -453,7 +710,7 @@ export default function ProfilePage() {
       password: "",
       role: "member",
       notify_outage_types: ["unplanned", "planned", "future"],
-      notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon"],
+      notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"],
       notify_channels: ["email"],
       region_access: ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"],
     })
@@ -570,6 +827,171 @@ export default function ProfilePage() {
     )
   }
 
+  const handleUpdateUserDetails = async (firstName: string, lastName: string, mobile: string) => {
+    if (!profile?.user_id) return
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        mobile: mobile,
+      })
+      .eq("user_id", profile.user_id)
+
+    if (error) {
+      console.error("Failed to update user details:", error)
+      setError("Failed to update user details")
+      throw error
+    }
+
+    // Update local state
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            first_name: firstName,
+            last_name: lastName,
+            mobile: mobile,
+          }
+        : null,
+    )
+
+    // Refresh company members to update their display
+    if (profile.company_id || profile.company?.id) {
+      const companyId = profile.company_id || profile.company?.id
+      if (companyId) {
+        await fetchCompanyMembers(companyId)
+      }
+    }
+
+    // Trigger sidebar refresh
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("userIconUpdated"))
+    }
+  }
+
+  const handleUpdateUserNotifications = async (channels: ChannelChoice[], outageTypes: NotificationChoice[]) => {
+    if (!profile?.user_id) return
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({
+        notify_channels: channels,
+        notify_outage_types: outageTypes,
+      })
+      .eq("user_id", profile.user_id)
+
+    if (error) {
+      console.error("Failed to update notification preferences:", error)
+      setError("Failed to update notification preferences")
+      throw error
+    }
+
+    // Update local state
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            notify_channels: channels,
+            notify_outage_types: outageTypes,
+          }
+        : null,
+    )
+  }
+
+  const handleChangePassword = async (newPassword: string) => {
+    if (!profile?.user_id) return
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+
+    if (error) {
+      console.error("Failed to change password:", error)
+      setError("Failed to change password")
+      throw error
+    }
+  }
+
+  const handleUpdateCompanyDetails = async (name: string, location: string) => {
+    if (!profile?.company?.id) return
+
+    const { error } = await supabase
+      .from("companies")
+      .update({
+        name: name,
+        location: location,
+      })
+      .eq("id", profile.company.id)
+
+    if (error) {
+      console.error("Failed to update company details:", error)
+      setError("Failed to update company details")
+      throw error
+    }
+
+    // Update local state
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            company: prev.company
+              ? {
+                  ...prev.company,
+                  name: name,
+                  location: location,
+                }
+              : null,
+          }
+        : null,
+    )
+  }
+
+  const handleUpdateUserIcon = async (letters: string, bgColor: string, textColor: string) => {
+    if (!profile?.user_id) return
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({
+        icon_letters: letters,
+        icon_bg_color: bgColor,
+        icon_text_color: textColor,
+      })
+      .eq("user_id", profile.user_id)
+
+    if (error) {
+      console.error("Failed to update user icon:", error)
+      setError("Failed to update user icon")
+      throw error
+    }
+
+    // Update local state
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            icon_letters: letters,
+            icon_bg_color: bgColor,
+            icon_text_color: textColor,
+          }
+        : null,
+    )
+
+    // Refresh company members to update their icons in the table
+    if (profile.company_id || profile.company?.id) {
+      const companyId = profile.company_id || profile.company?.id
+      if (companyId) {
+        await fetchCompanyMembers(companyId)
+      }
+    }
+
+    // Trigger sidebar refresh by dispatching a custom event
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("userIconUpdated"))
+    }
+  }
+
   const toggleProvider = (value: ProviderChoice) => {
     if (!profile) return
     const current = profile.notify_providers || []
@@ -625,8 +1047,8 @@ export default function ProfilePage() {
     return (
       <div className="min-h-svh bg-slate-50 flex">
         <AppSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex w-full flex-col">
+          <ProfilePageSkeleton />
         </div>
       </div>
     )
@@ -850,11 +1272,9 @@ export default function ProfilePage() {
                   Manage your company, team members, and notification settings
                 </p>
               </div>
-              {isAdmin && (
-                <Button onClick={() => setInviteOpen(true)} disabled={saving}>
-                  Invite User
-                </Button>
-              )}
+              <Button onClick={handleInviteUserClick} disabled={saving || !isAdmin}>
+                Invite User
+              </Button>
             </div>
 
             {error && (
@@ -863,42 +1283,141 @@ export default function ProfilePage() {
               </Alert>
             )}
 
-            {/* Company Info */}
-            {profile?.company && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
+            {/* Company Info and User Profile Side by Side */}
+            {profile && companyId && (
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* User Profile Card */}
+                <Card>
+                  <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
                     <div className="relative group">
-                      <div
-                        className="h-12 w-12 rounded-lg flex items-center justify-center font-bold text-xl"
-                        style={{
-                          backgroundColor: profile.company.logoBgColor || "#f97316",
-                          color: profile.company.logoTextColor || "#ffffff",
-                        }}
-                      >
-                        {profile.company.logoLetters || profile.company.name[0]}
-                      </div>
+                      <Avatar className="h-20 w-20">
+                        <AvatarFallback
+                          className="font-bold text-2xl"
+                          style={{
+                            backgroundColor: profileIconBgColor,
+                            color: profileIconTextColor,
+                          }}
+                        >
+                          {profileInitials}
+                        </AvatarFallback>
+                      </Avatar>
                       <button
-                        onClick={() => setEditIconOpen(true)}
+                        onClick={() => setEditUserIconOpen(true)}
                         className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
-                        aria-label="Edit company icon"
+                        aria-label="Edit user icon"
                       >
                         <Pencil className="h-3 w-3 text-slate-600" />
                       </button>
                     </div>
-                    <div>
-                      <CardTitle>{profile.company.name}</CardTitle>
-                      <CardDescription>{members.length} team members</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-center">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center gap-2">
+                        <p className="text-xl font-semibold">
+                          {profile.first_name} {profile.last_name}
+                        </p>
+                        <button
+                          onClick={() => setEditUserDetailsOpen(true)}
+                          className="flex items-center justify-center hover:opacity-70 transition-opacity"
+                          aria-label="Edit user details"
+                        >
+                          <Pencil className="h-4 w-4 text-black" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{profile.email}</p>
                     </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                    <div className="space-y-2">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">User Role: </span>
+                        <span className="font-medium capitalize">{profile.role}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Mobile: </span>
+                        <span className="font-medium">{profile.mobile}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Company Info */}
+                {profile?.company && (
+                  <Card>
+                    <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
+                      <div className="relative group">
+                        <div
+                          className="h-20 w-20 rounded-lg flex items-center justify-center font-bold text-2xl"
+                          style={{
+                            backgroundColor: profile.company.logoBgColor || "#f97316",
+                            color: profile.company.logoTextColor || "#ffffff",
+                          }}
+                        >
+                          {profile.company.logoLetters || profile.company.name[0]}
+                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setEditIconOpen(true)}
+                            className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                            aria-label="Edit company icon"
+                          >
+                            <Pencil className="h-3 w-3 text-slate-600" />
+                          </button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-center">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-center gap-2">
+                          <p className="text-xl font-semibold">{profile.company.name}</p>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setEditCompanyDetailsOpen(true)}
+                              className="flex items-center justify-center hover:opacity-70 transition-opacity"
+                              aria-label="Edit company details"
+                            >
+                              <Pencil className="h-4 w-4 text-black" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{profile.company.location}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Team Members: </span>
+                          <span className="font-medium">{members.length}</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Number of POIs: </span>
+                          <span className="font-medium">{poiCount}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
-            {/* Admin Table View */}
-              {isAdmin && members.length > 0 && (
-                <CompanyMembersTable members={members} onUpdateMember={(member) => { void saveMember(member); }} saving={saving} />
-              )}
+            {/* POI Locations Section */}
+            {profile && companyId && (
+              <PoiLocationsTable
+                locations={poiLocations}
+                onAddPoi={handleOpenAddPoi}
+                onImportCsv={handleOpenImportCsv}
+                loading={saving}
+                isAdmin={isAdmin}
+              />
+            )}
+
+            {/* Team Members Table View */}
+            {members.length > 0 && (
+              <CompanyMembersTable 
+                members={members} 
+                onUpdateMember={(member) => { void saveMember(member); }}
+                onDeleteMember={isAdmin ? deleteMember : undefined}
+                saving={saving}
+                currentUserId={profile?.user_id}
+                currentUserRole={profile?.role}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -927,6 +1446,76 @@ export default function ProfilePage() {
           currentTextColor={profile.company.logoTextColor || "#ffffff"}
           companyName={profile.company.name}
           onSave={handleUpdateCompanyIcon}
+        />
+      )}
+
+      {/* Edit User Icon Dialog */}
+      {profile && (
+        <EditUserIconDialog
+          open={editUserIconOpen}
+          onOpenChange={setEditUserIconOpen}
+          currentLetters={profile.icon_letters || profileInitials}
+          currentBgColor={profile.icon_bg_color || profileIconBgColor}
+          currentTextColor={profile.icon_text_color || profileIconTextColor}
+          userName={`${profile.first_name} ${profile.last_name}`.trim() || profile.email || "User"}
+          onSave={handleUpdateUserIcon}
+        />
+      )}
+
+      {/* Edit User Details Dialog */}
+      {profile && (
+        <EditUserDetailsDialog
+          open={editUserDetailsOpen}
+          onOpenChange={setEditUserDetailsOpen}
+          currentFirstName={profile.first_name}
+          currentLastName={profile.last_name}
+          currentMobile={profile.mobile}
+          currentEmail={profile.email}
+          currentNotifyChannels={profile.notify_channels || ["email"]}
+          currentNotifyOutageTypes={profile.notify_outage_types || ["unplanned", "planned", "future"]}
+          onSave={handleUpdateUserDetails}
+          onUpdateNotifications={handleUpdateUserNotifications}
+          onChangePassword={handleChangePassword}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Alert className="bg-gray-900 text-white border-none shadow-lg min-w-[300px]">
+            <AlertDescription>{toastMessage}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Edit Company Details Dialog */}
+      {profile?.company && isAdmin && (
+        <EditCompanyDetailsDialog
+          open={editCompanyDetailsOpen}
+          onOpenChange={setEditCompanyDetailsOpen}
+          currentName={profile.company.name}
+          currentLocation={profile.company.location}
+          onSave={handleUpdateCompanyDetails}
+        />
+      )}
+
+      {/* Add POI Dialog */}
+      {profile?.company && (
+        <AddPoiDialog
+          open={addPoiOpen}
+          onOpenChange={setAddPoiOpen}
+          onSave={handleAddPoi}
+          saving={saving}
+        />
+      )}
+
+      {/* Import CSV Dialog */}
+      {profile?.company && (
+        <ImportCsvDialog
+          open={importCsvOpen}
+          onOpenChange={setImportCsvOpen}
+          companyId={profile.company.id}
+          onSuccess={handleImportCsvSuccess}
         />
       )}
     </>

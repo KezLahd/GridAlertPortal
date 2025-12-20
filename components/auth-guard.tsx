@@ -11,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
   const router = useRouter()
-  const [checking, setChecking] = useState(true)
+  const [checking, setChecking] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -24,19 +24,13 @@ export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
       }
       setChecking(false)
     }
+    // Check auth in background without blocking render
     checkAuth()
     return () => {
       mounted = false
     }
   }, [redirectTo, router])
 
-  if (checking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Checking authentication…</p>
-      </div>
-    )
-  }
-
+  // Always render children immediately, auth check happens in background
   return <>{children}</>
 }

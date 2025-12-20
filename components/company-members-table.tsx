@@ -10,13 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Pencil, ChevronsUpDown, Check, X } from "lucide-react"
+import { Pencil, ChevronsUpDown, Check, X, Trash2 } from "lucide-react"
+import { DeleteUserConfirmationDialog } from "@/components/delete-user-confirmation-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 
 type NotificationChoice = "unplanned" | "planned" | "future"
-type ProviderChoice = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power"
+type ProviderChoice = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power" | "Horizon Power" | "WPower" | "AusNet" | "CitiPowerCor" | "Essential Energy" | "Jemena" | "UnitedEnergy" | "TasNetworks"
 
 export interface MemberRecord {
   user_id: string
@@ -29,12 +30,18 @@ export interface MemberRecord {
   notify_providers: ProviderChoice[]
   notify_channels: string[]
   region_access: string[]
+  icon_letters?: string | null
+  icon_bg_color?: string | null
+  icon_text_color?: string | null
 }
 
 interface CompanyMembersTableProps {
   members: MemberRecord[]
   onUpdateMember: (member: MemberRecord) => void
+  onDeleteMember?: (memberId: string) => Promise<void>
   saving: boolean
+  currentUserId?: string
+  currentUserRole?: "admin" | "manager" | "member"
 }
 
 const providerOptions = [
@@ -43,6 +50,14 @@ const providerOptions = [
   { value: "Energex", label: "Energex", color: "bg-cyan-500" },
   { value: "Ergon", label: "Ergon", color: "bg-red-500" },
   { value: "SA Power", label: "SA Power", color: "bg-orange-500" },
+  { value: "Horizon Power", label: "Horizon Power", color: "bg-rose-500" },
+  { value: "WPower", label: "WPower", color: "bg-amber-500" },
+  { value: "AusNet", label: "AusNet", color: "bg-emerald-500" },
+  { value: "CitiPowerCor", label: "CitiPowerCor", color: "bg-blue-500" },
+  { value: "Essential Energy", label: "Essential Energy", color: "bg-orange-500" },
+  { value: "Jemena", label: "Jemena", color: "bg-cyan-500" },
+  { value: "UnitedEnergy", label: "UnitedEnergy", color: "bg-purple-500" },
+  { value: "TasNetworks", label: "TasNetworks", color: "bg-purple-500" },
 ]
 
 const outageOptions = [
@@ -125,14 +140,27 @@ function MultiSelect({
   )
 }
 
-export function CompanyMembersTable({ members, onUpdateMember, saving }: CompanyMembersTableProps) {
+export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, saving, currentUserId, currentUserRole = "member" }: CompanyMembersTableProps) {
   const [editMember, setEditMember] = useState<MemberRecord | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [memberToDelete, setMemberToDelete] = useState<MemberRecord | null>(null)
+  const isAdmin = currentUserRole === "admin"
 
   const getInitials = (member: MemberRecord) => {
+    if (member.icon_letters) return member.icon_letters
     const first = member.first_name?.trim()?.[0]
     const last = member.last_name?.trim()?.[0]
     if (first || last) return `${first ?? ""}${last ?? ""}`.toUpperCase()
     return (member.email?.[0] ?? "U").toUpperCase()
+  }
+
+  const getIconBgColor = (member: MemberRecord) => {
+    return member.icon_bg_color || "#f97316"
+  }
+
+  const getIconTextColor = (member: MemberRecord) => {
+    return member.icon_text_color || "#ffffff"
   }
 
   const getMemberName = (member: MemberRecord) => {
@@ -145,19 +173,6 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
   const toggleArray = <T,>(arr: T[], value: T): T[] => {
     return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
   }
-
-  // Group members by name
-  const groupedMembers = members.reduce(
-    (acc, member) => {
-      const name = getMemberName(member)
-      if (!acc[name]) {
-        acc[name] = []
-      }
-      acc[name].push(member)
-      return acc
-    },
-    {} as Record<string, MemberRecord[]>,
-  )
 
   return (
     <>
@@ -180,25 +195,26 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(groupedMembers).map(([name, groupMembers]) =>
-                  groupMembers.map((member, index) => (
+                {members.map((member) => {
+                  const name = getMemberName(member)
+                  return (
                     <TableRow key={member.user_id}>
                       <TableCell>
-                        {index === 0 ? (
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-orange-500 text-white text-sm font-semibold">
-                                {getInitials(member)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{name}</div>
-                              <div className="text-sm text-muted-foreground">{member.email}</div>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                            style={{
+                              backgroundColor: getIconBgColor(member),
+                              color: getIconTextColor(member),
+                            }}
+                          >
+                            {getInitials(member)}
                           </div>
-                        ) : (
-                          <div className="pl-12 text-sm text-muted-foreground">{member.email}</div>
-                        )}
+                          <div>
+                            <div className="font-medium">{name}</div>
+                            <div className="text-sm text-muted-foreground">{member.email}</div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
@@ -206,52 +222,74 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {member.region_access.slice(0, 3).map((region) => (
-                            <Badge key={region} variant="outline" className="text-xs">
-                              {region}
-                            </Badge>
-                          ))}
-                          {member.region_access.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{member.region_access.length - 3}
-                            </Badge>
-                          )}
-                        </div>
+                        {isAdmin || member.user_id === currentUserId ? (
+                          <div className="flex flex-wrap gap-1">
+                            {member.region_access.slice(0, 3).map((region) => (
+                              <Badge key={region} variant="outline" className="text-xs">
+                                {region}
+                              </Badge>
+                            ))}
+                            {member.region_access.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{member.region_access.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant="outline" className="text-xs opacity-50">—</Badge>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {member.notify_providers.map((provider) => {
-                            const providerOption = providerOptions.find((p) => p.value === provider)
-                            return (
-                              <div
-                                key={provider}
-                                className={`h-6 w-6 rounded-full ${providerOption?.color} flex items-center justify-center text-white text-xs font-bold`}
-                                title={provider}
-                              >
-                                {provider[0]}
-                              </div>
-                            )
-                          })}
-                        </div>
+                        {isAdmin || member.user_id === currentUserId ? (
+                          <div className="flex flex-wrap gap-1">
+                            {[...member.notify_providers].sort().map((provider) => {
+                              const providerOption = providerOptions.find((p) => p.value === provider)
+                              return (
+                                <div
+                                  key={provider}
+                                  className={`h-6 w-6 rounded-full ${providerOption?.color} flex items-center justify-center text-white text-xs font-bold`}
+                                  title={provider}
+                                >
+                                  {provider[0]}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs font-bold opacity-50">
+                              —
+                            </div>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {member.notify_outage_types.map((type) => (
-                            <Badge key={type} variant="outline" className="text-xs capitalize">
-                              {type}
-                            </Badge>
-                          ))}
-                        </div>
+                        {member.user_id === currentUserId ? (
+                          <div className="flex flex-wrap gap-1">
+                            {member.notify_outage_types.map((type) => (
+                              <Badge key={type} variant="outline" className="text-xs capitalize">
+                                {type}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant="outline" className="text-xs opacity-50">—</Badge>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setEditMember(member)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {(isAdmin || member.user_id === currentUserId) && (
+                          <Button variant="ghost" size="sm" onClick={() => setEditMember(member)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  )),
-                )}
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -265,9 +303,15 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
           <div className="relative bg-white rounded-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold">Edit Member Permissions</h2>
+                <h2 className="text-2xl font-bold">
+                  {isAdmin && editMember && editMember.user_id !== currentUserId
+                    ? "Edit Member Permissions"
+                    : "Edit Your Preferences"}
+                </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Manage {editMember && getMemberName(editMember)}'s access and notification settings
+                  {isAdmin && editMember && editMember.user_id !== currentUserId
+                    ? `Manage ${editMember && getMemberName(editMember)}'s access and notification settings`
+                    : "Manage your access and notification settings"}
                 </p>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setEditMember(null)}>
@@ -277,19 +321,21 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
 
             {editMember && (
               <div className="px-8 py-6 space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-900">Role</Label>
-                  <MultiSelect
-                    value={[editMember.role]}
-                    options={[
-                      { value: "admin", label: "Admin" },
-                      { value: "manager", label: "Manager" },
-                      { value: "member", label: "Member" },
-                    ]}
-                    onChange={(vals) => setEditMember({ ...editMember, role: (vals[0] as any) || "member" })}
-                    placeholder="Select role"
-                  />
-                </div>
+                {isAdmin && editMember.user_id !== currentUserId && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-900">Role</Label>
+                    <MultiSelect
+                      value={[editMember.role]}
+                      options={[
+                        { value: "admin", label: "Admin" },
+                        { value: "manager", label: "Manager" },
+                        { value: "member", label: "Member" },
+                      ]}
+                      onChange={(vals) => setEditMember({ ...editMember, role: (vals[0] as any) || "member" })}
+                      placeholder="Select role"
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -313,10 +359,10 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
                         if (value.length === 0) return "Select providers"
                         if (value.length === options.length) {
                           return (
-                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
                               <span>All</span>
                               <div className="flex gap-1">
-                                {providerOptions.map((provider) => (
+                                {providerOptions.slice().sort((a, b) => a.value.localeCompare(b.value)).map((provider) => (
                                   <div
                                     key={provider.value}
                                     className={`h-5 w-5 rounded-full ${provider.color} flex items-center justify-center text-white text-[10px] font-bold`}
@@ -331,6 +377,7 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
                         }
                         return options
                           .filter((o) => value.includes(o.value))
+                          .sort((a, b) => a.label.localeCompare(b.label))
                           .map((o) => o.label)
                           .join(", ")
                       }}
@@ -338,39 +385,73 @@ export function CompanyMembersTable({ members, onUpdateMember, saving }: Company
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-900">Outage Types</Label>
-                  <MultiSelect
-                    value={editMember.notify_outage_types}
-                    options={outageOptions.map((o) => ({ value: o.value, label: o.label }))}
-                    onChange={(vals) =>
-                      setEditMember({ ...editMember, notify_outage_types: vals as NotificationChoice[] })
-                    }
-                    placeholder="Select outage types"
-                  />
-                </div>
               </div>
             )}
 
-            <div className="sticky bottom-0 bg-white border-t px-8 py-4 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setEditMember(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (editMember) {
-                    onUpdateMember(editMember)
-                  }
-                }}
-                disabled={saving}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
+            <div className="sticky bottom-0 bg-white border-t px-8 py-4 flex justify-between items-center">
+              {isAdmin && editMember && editMember.user_id !== currentUserId && onDeleteMember && (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setMemberToDelete(editMember)
+                    setDeleteConfirmOpen(true)
+                  }}
+                  disabled={deleting || saving}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete User
+                </Button>
+              )}
+              <div className="flex gap-3 ml-auto">
+                <Button variant="outline" onClick={() => setEditMember(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editMember) {
+                      onUpdateMember(editMember)
+                    }
+                  }}
+                  disabled={saving || deleting}
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      {memberToDelete && onDeleteMember && (
+        <DeleteUserConfirmationDialog
+          open={deleteConfirmOpen}
+          onOpenChange={(open) => {
+            setDeleteConfirmOpen(open)
+            if (!open) {
+              setMemberToDelete(null)
+            }
+          }}
+          userName={getMemberName(memberToDelete)}
+          userEmail={memberToDelete.email || ""}
+          onConfirm={async () => {
+            setDeleting(true)
+            try {
+              await onDeleteMember(memberToDelete.user_id)
+              setEditMember(null)
+              setDeleteConfirmOpen(false)
+              setMemberToDelete(null)
+            } catch (error) {
+              console.error("Failed to delete user:", error)
+              throw error
+            } finally {
+              setDeleting(false)
+            }
+          }}
+          deleting={deleting}
+        />
+      )}
     </>
   )
 }

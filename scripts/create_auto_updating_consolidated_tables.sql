@@ -55,57 +55,127 @@ CREATE INDEX IF NOT EXISTS idx_unplanned_status ON gridalert.unplanned_outages_c
 -- Function to refresh a specific provider's unplanned outages
 CREATE OR REPLACE FUNCTION gridalert.refresh_provider_unplanned(provider_name TEXT)
 RETURNS void AS $$
+DECLARE
+    feeder_count BIGINT;
+    consolidated_count BIGINT;
 BEGIN
     -- Delete existing records for this provider
     DELETE FROM gridalert.unplanned_outages_consolidated WHERE provider = provider_name;
+    
+    -- Get feeder table count before insert
+    CASE provider_name
+        WHEN 'Ausgrid' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.ausgrid_unplanned_outages;
+        WHEN 'Endeavour' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.endeavour_current_unplanned_outages;
+        WHEN 'Energex' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.energex_current_unplanned_outages;
+        WHEN 'Ergon' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.ergon_current_unplanned_outages;
+        WHEN 'SA Power' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.sapower_current_unplanned_outages;
+        WHEN 'Horizon Power' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.horizon_current_unplanned_outages;
+        WHEN 'WPower' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.wpower_current_unplanned_outages;
+        WHEN 'AusNet' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.ausnet_current_unplanned_outages;
+        WHEN 'CitiPowerCor' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.citipowercor_current_unplanned_outages;
+        WHEN 'Essential Energy' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.essential_current_unplanned_outages;
+        WHEN 'Jemena' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.jemena_current_unplanned_outages;
+        WHEN 'UnitedEnergy' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.unitedenergy_current_unplanned_outages;
+        WHEN 'TasNetworks' THEN SELECT COUNT(*) INTO feeder_count FROM gridalert.tasnetworks_current_unplanned_outages;
+        ELSE feeder_count := 0;
+    END CASE;
     
     -- Re-insert based on provider (using same logic as views)
     CASE provider_name
         WHEN 'Ausgrid' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT
-                COALESCE(id::text, webid::text), 'Ausgrid', statusheading, area_suburb, cause,
+                id::text, 'Ausgrid', statusheading, area_suburb, cause,
                 customers_affected::text, estimated_finish_time, start_time, webid::text, status,
                 point_lat::numeric, point_lng::numeric, NULL::text, 'NSW'::text, NULL::text,
-                polygon_geojson, webid::text, NULL::jsonb, NULL::jsonb, NULL::text,
+                polygon_geojson, webid::text, NULL::jsonb, NULL::jsonb, cause,
                 CURRENT_TIMESTAMP
-            FROM gridalert.ausgrid_unplanned_outages;
+            FROM gridalert.ausgrid_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Endeavour' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(id::text, incident_id::text), 'Endeavour', status, suburb, reason,
+                id::text, 'Endeavour', status, suburb, reason,
                 number_customers_affected::text, end_date_time, start_date_time, NULL::text, status,
                 latitude::numeric, longitude::numeric, NULL::text, 'NSW'::text, NULL::text,
                 NULL::jsonb, incident_id::text, NULL::jsonb, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
             FROM gridalert.endeavour_current_unplanned_outages
-            WHERE status != 'OUTAGE COMPLETED';
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Energex' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(id::text, event_id::text), 'Energex', status, suburbs, reason,
+                id::text, 'Energex', status, suburbs, reason,
                 customers_affected::text, est_fix_time, start_time, NULL::text, status,
                 point_lat::numeric, point_lng::numeric, NULL::text, 'QLD'::text, COALESCE(streets, ''),
                 polygon_geojson, event_id::text, NULL::jsonb, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
-            FROM gridalert.energex_current_unplanned_outages;
+            FROM gridalert.energex_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                streets_affected = EXCLUDED.streets_affected,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Ergon' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(id::text, event_id::text), 'Ergon', status, suburbs, reason,
+                id::text, 'Ergon', status, suburbs, reason,
                 customers_affected::text, est_fix_time, start_time, NULL::text, status,
                 point_lat::numeric, point_lng::numeric, NULL::text, 'QLD'::text, COALESCE(streets, ''),
                 polygon_geojson, event_id::text, NULL::jsonb, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
-            FROM gridalert.ergon_current_unplanned_outages;
+            FROM gridalert.ergon_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                streets_affected = EXCLUDED.streets_affected,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'SA Power' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(id::text, job_id::text), 'SA Power', status,
+                id::text, 'SA Power', status,
                 CASE 
                     WHEN affected_suburbs IS NULL THEN 'Unknown area'
                     WHEN jsonb_typeof(affected_suburbs) = 'array' THEN 
@@ -121,12 +191,25 @@ BEGIN
                 point_lat::numeric, point_lng::numeric, NULL::text, 'SA'::text, NULL::text,
                 polygon_geojson, job_id::text, affected_suburbs, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
-            FROM gridalert.sapower_current_unplanned_outages;
+            FROM gridalert.sapower_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                suburbs = EXCLUDED.suburbs,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Horizon Power' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'Horizon Power', status,
+                id::text, 'Horizon Power', status,
                 COALESCE(service_area, region, 
                     CASE 
                         WHEN service_areas IS NOT NULL AND jsonb_typeof(service_areas) = 'array' THEN
@@ -138,12 +221,23 @@ BEGIN
                 point_lat::numeric, point_lng::numeric, NULL::text, 'WA'::text, NULL::text,
                 NULL::jsonb, outage_id::text, NULL::jsonb, NULL::jsonb, NULL::text,
                 CURRENT_TIMESTAMP
-            FROM gridalert.horizon_current_unplanned_outages;
+            FROM gridalert.horizon_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'WPower' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'WPower',
+                id::text, 'WPower',
                 COALESCE(outage_updated_time::text, outage_type, 'In progress'),
                 CASE 
                     WHEN areas IS NOT NULL AND jsonb_typeof(areas) = 'array' THEN
@@ -155,12 +249,24 @@ BEGIN
                 point_lat::numeric, point_lng::numeric, NULL::text, 'WA'::text, NULL::text,
                 polygon_geojson, outage_id::text, NULL::jsonb, NULL::jsonb, NULL::text,
                 CURRENT_TIMESTAMP
-            FROM gridalert.wpower_current_unplanned_outages;
+            FROM gridalert.wpower_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'AusNet' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(incident_id::text, id::text), 'AusNet',
+                id::text, 'AusNet',
                 COALESCE(status, incident_status, 'In progress'),
                 CASE 
                     WHEN suburbs IS NOT NULL AND array_length(suburbs, 1) > 0 THEN
@@ -186,19 +292,32 @@ BEGIN
                 CASE WHEN postcodes IS NOT NULL THEN to_jsonb(postcodes) ELSE NULL END,
                 NULL::text, CURRENT_TIMESTAMP
             FROM gridalert.ausnet_current_unplanned_outages
-            WHERE 
-                UPPER(TRIM(COALESCE(status, ''))) NOT IN ('MERGED', 'RESTORED')
-                AND UPPER(REPLACE(TRIM(COALESCE(incident_status, '')), '  ', ' ')) IN ('IN PROGRESS', 'EMERGENCY REPAIR')
-                AND (
-                    (status_last_updated IS NOT NULL AND status_last_updated > NOW() - INTERVAL '7 days')
-                    OR (status_last_updated IS NULL AND incident_last_updated IS NOT NULL AND incident_last_updated > NOW() - INTERVAL '7 days')
-                    OR (status_last_updated IS NULL AND incident_last_updated IS NULL AND unplanned_start_time IS NOT NULL AND unplanned_start_time > NOW() - INTERVAL '7 days')
-                );
+            WHERE
+                (status NOT ILIKE '%MERGED%' OR status IS NULL) AND
+                (status NOT ILIKE '%RESTORED%' OR status IS NULL) AND
+                (incident_status NOT ILIKE '%MERGED%' OR incident_status IS NULL) AND
+                (incident_status NOT ILIKE '%RESTORED%' OR incident_status IS NULL) AND
+                status_last_updated >= (CURRENT_TIMESTAMP - INTERVAL '14 days') AND
+                incident_status = 'In Progress'
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                suburbs = EXCLUDED.suburbs,
+                postcodes = EXCLUDED.postcodes,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'CitiPowerCor' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'CitiPowerCor',
+                id::text, 'CitiPowerCor',
                 COALESCE(outage_type, crew_status, 'In progress'), COALESCE(town, area, 'Unknown area'),
                 COALESCE(reason, 'Unplanned outage'), COALESCE(customers_affected, 0)::text,
                 est_time_on, time_off, NULL::text, COALESCE(outage_type, crew_status, 'In progress')::text,
@@ -209,24 +328,51 @@ BEGIN
                 END,
                 polygon_geojson, outage_id::text, NULL::jsonb, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
-            FROM gridalert.citipowercor_current_unplanned_outages;
+            FROM gridalert.citipowercor_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                streets_affected = EXCLUDED.streets_affected,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Essential Energy' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'Essential Energy',
+                id::text, 'Essential Energy',
                 COALESCE(outage_type, 'In progress'), 'Unknown area',
                 COALESCE(reason, 'Unplanned outage'), COALESCE(customers_affected, 0)::text,
                 est_time_on, time_off, NULL::text, COALESCE(outage_type, 'In progress'),
                 point_lat::numeric, point_lng::numeric, NULL::text, 'NSW'::text, NULL::text,
                 polygon_geojson, outage_id::text, NULL::jsonb, NULL::jsonb, reason,
                 CURRENT_TIMESTAMP
-            FROM gridalert.essential_current_unplanned_outages;
+            FROM gridalert.essential_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'Jemena' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'Jemena',
+                id::text, 'Jemena',
                 COALESCE(status, outage_type, 'In progress'),
                 CASE 
                     WHEN suburbs IS NOT NULL AND array_length(suburbs, 1) > 0 THEN
@@ -251,12 +397,28 @@ BEGIN
                 CASE WHEN suburbs IS NOT NULL THEN to_jsonb(suburbs) ELSE NULL END,
                 CASE WHEN postcodes IS NOT NULL THEN to_jsonb(postcodes) ELSE NULL END,
                 reason, CURRENT_TIMESTAMP
-            FROM gridalert.jemena_current_unplanned_outages;
+            FROM gridalert.jemena_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                streets_affected = EXCLUDED.streets_affected,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                suburbs = EXCLUDED.suburbs,
+                postcodes = EXCLUDED.postcodes,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'UnitedEnergy' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, id::text), 'UnitedEnergy',
+                id::text, 'UnitedEnergy',
                 COALESCE(outage_type, 'In progress'),
                 CASE 
                     WHEN suburbs IS NOT NULL AND array_length(suburbs, 1) > 0 THEN
@@ -270,30 +432,69 @@ BEGIN
                 CASE WHEN suburbs IS NOT NULL THEN to_jsonb(suburbs) ELSE NULL END,
                 CASE WHEN postcodes IS NOT NULL THEN to_jsonb(postcodes) ELSE NULL END,
                 reason, CURRENT_TIMESTAMP
-            FROM gridalert.unitedenergy_current_unplanned_outages;
+            FROM gridalert.unitedenergy_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                streets_affected = EXCLUDED.streets_affected,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                suburbs = EXCLUDED.suburbs,
+                postcodes = EXCLUDED.postcodes,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
             
         WHEN 'TasNetworks' THEN
             INSERT INTO gridalert.unplanned_outages_consolidated
             SELECT 
-                COALESCE(outage_id::text, job_id::text, id::text), 'TasNetworks',
+                id::text, 'TasNetworks',
                 COALESCE(outage_type, dispatch_status, 'In progress'),
                 COALESCE(affected_areas, affected_regions, 'Unknown area'),
                 COALESCE(reason, 'Unplanned outage'), COALESCE(customers_affected, 0)::text,
                 est_time_on, time_off, NULL::text, COALESCE(outage_type, dispatch_status, 'In progress'),
                 point_lat::numeric, point_lng::numeric, NULL::text, 'TAS'::text, NULL::text,
-                polygon_geojson, outage_id::text, NULL::jsonb,
+                polygon_geojson, COALESCE(outage_id::text, job_id::text), NULL::jsonb,
                 CASE WHEN postcodes IS NOT NULL THEN to_jsonb(ARRAY[postcodes]) ELSE NULL END,
                 reason, CURRENT_TIMESTAMP
-            FROM gridalert.tasnetworks_current_unplanned_outages;
+            FROM gridalert.tasnetworks_current_unplanned_outages
+            ON CONFLICT (id, provider) DO UPDATE SET
+                statusheading = EXCLUDED.statusheading,
+                area_suburb = EXCLUDED.area_suburb,
+                cause = EXCLUDED.cause,
+                customers_affected = EXCLUDED.customers_affected,
+                estimated_finish_time = EXCLUDED.estimated_finish_time,
+                start_time = EXCLUDED.start_time,
+                status = EXCLUDED.status,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                polygon_geojson = EXCLUDED.polygon_geojson,
+                postcodes = EXCLUDED.postcodes,
+                reason = EXCLUDED.reason,
+                consolidated_at = CURRENT_TIMESTAMP;
     END CASE;
+
+    -- Get consolidated table count after insert
+    SELECT COUNT(*) INTO consolidated_count FROM gridalert.unplanned_outages_consolidated WHERE provider = provider_name;
+
+    RAISE NOTICE 'Provider: %, Feeder Count: %, Consolidated Count: %, Match: %', 
+        provider_name, feeder_count, consolidated_count, 
+        CASE WHEN feeder_count = consolidated_count THEN 'YES' ELSE 'NO' END;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger function that refreshes provider data after INSERT/UPDATE/DELETE
+-- Only triggers consolidation when geometry data is present for Ausgrid
 CREATE OR REPLACE FUNCTION gridalert.trigger_refresh_unplanned()
 RETURNS TRIGGER AS $$
 DECLARE
     provider_name TEXT;
+    has_geometry BOOLEAN := FALSE;
 BEGIN
     -- Determine provider from table name
     provider_name := CASE TG_TABLE_NAME
@@ -312,11 +513,30 @@ BEGIN
         WHEN 'tasnetworks_current_unplanned_outages' THEN 'TasNetworks'
         ELSE NULL
     END;
-    
+
     IF provider_name IS NOT NULL THEN
-        PERFORM gridalert.refresh_provider_unplanned(provider_name);
+        -- For Ausgrid, only trigger consolidation on INSERT/UPDATE (not DELETE)
+        -- Check if ANY records in the table have geometry data before refreshing
+        IF provider_name = 'Ausgrid' THEN
+            -- Skip DELETE operations - they will be handled when new data is inserted
+            IF TG_OP = 'DELETE' THEN
+                RETURN NULL;
+            END IF;
+
+            -- For INSERT/UPDATE, always refresh after batch insert completes
+            -- The refresh function will include all records (with or without geometry)
+            IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+                -- Always refresh - the function handles all records appropriately
+                PERFORM gridalert.refresh_provider_unplanned(provider_name);
+            END IF;
+        ELSE
+            -- For all other providers, trigger immediately (but skip DELETE)
+            IF TG_OP != 'DELETE' THEN
+                PERFORM gridalert.refresh_provider_unplanned(provider_name);
+            END IF;
+        END IF;
     END IF;
-    
+
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
