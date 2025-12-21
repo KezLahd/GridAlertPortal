@@ -1034,9 +1034,17 @@ export default function ProfilePage() {
       }),
     })
 
+    const result = await response.json()
+
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || "Failed to invite user")
+      throw new Error(result.error || "Failed to invite user")
+    }
+
+    // Show appropriate toast based on email sending status
+    if (result.emailSent) {
+      showToast(`Invitation sent successfully to ${data.email}!`)
+    } else {
+      showToast(`Invitation created but email failed to send. Please contact administrator to resend the invitation.`)
     }
 
     // Refresh the company members list

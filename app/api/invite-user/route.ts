@@ -138,7 +138,13 @@ export async function POST(request: Request) {
       // Don't fail the whole operation if email fails
     }
 
-    return NextResponse.json({ success: true, invitation })
+    const emailSuccess = emailResponse.ok
+    return NextResponse.json({
+      success: true,
+      invitation,
+      emailSent: emailSuccess,
+      emailError: emailSuccess ? null : "Failed to send invitation email. Please contact administrator."
+    })
   } catch (error: any) {
     console.error("[v0] Invite user error:", error)
     return NextResponse.json({ error: error.message || "Failed to invite user" }, { status: 500 })
