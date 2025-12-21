@@ -162,8 +162,8 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
       streetViewControl: false,
       mapTypeControl: false,
       fullscreenControl: true,
-      minZoom: 4, // Minimum zoom level to keep map focused on Australia
-      maxZoom: 15, // Increased zoom-out ability by 4 units
+      minZoom: 1, // Minimum zoom level to keep map focused on Australia
+      maxZoom: 11, // Allow more zoom-out (lower maxZoom = more zoom-out ability)
       // Restrict map viewport to Australia (expanded boundaries)
       restriction: {
         latLngBounds: {
