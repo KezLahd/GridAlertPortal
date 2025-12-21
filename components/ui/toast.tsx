@@ -78,13 +78,19 @@ function ToastItem({ toast, onClose }: ToastProps) {
 interface ToastContainerProps {
   toasts: Toast[]
   onClose: (id: string) => void
+  position?: "top-center" | "bottom-right"
 }
 
-export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
+export function ToastContainer({ toasts, onClose, position = "top-center" }: ToastContainerProps) {
   if (toasts.length === 0) return null
 
+  const positionClasses = {
+    "top-center": "absolute top-4 left-1/2 -translate-x-1/2 items-center",
+    "bottom-right": "absolute bottom-4 right-4 items-end",
+  }
+
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+    <div className={`z-50 flex flex-col gap-2 pointer-events-none ${positionClasses[position]}`}>
       {toasts.map((toast) => (
         <div key={toast.id} className="pointer-events-auto">
           <ToastItem toast={toast} onClose={onClose} />

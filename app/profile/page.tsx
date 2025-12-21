@@ -12,6 +12,7 @@ import { CompanyMembersTable } from "@/components/company-members-table"
 import { CreateCompanyDialog } from "@/components/create-company-dialog"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ToastContainer, type Toast } from "@/components/ui/toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -220,7 +221,7 @@ export default function ProfilePage() {
   const [editUserDetailsOpen, setEditUserDetailsOpen] = useState(false)
   const [addPoiOpen, setAddPoiOpen] = useState(false)
   const [importCsvOpen, setImportCsvOpen] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
   const [inviteState, setInviteState] = useState({
     first_name: "",
     last_name: "",
@@ -239,9 +240,16 @@ export default function ProfilePage() {
   const companyId = useMemo(() => profile?.company_id || profile?.company?.id || null, [profile])
 
   // Show toast message
-  const showToast = (message: string) => {
-    setToastMessage(message)
-    setTimeout(() => setToastMessage(null), 3000)
+  const showToast = (message: string, type: "success" | "warning" | "error" = "success") => {
+    const toast: Toast = {
+      id: crypto.randomUUID(),
+      title: message,
+      type,
+    }
+    setToasts((prev) => [...prev, toast])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== toast.id))
+    }, 5000)
   }
 
   // Handle invite user with admin check
@@ -1042,9 +1050,9 @@ export default function ProfilePage() {
 
     // Show appropriate toast based on email sending status
     if (result.emailSent) {
-      showToast(`Invitation sent successfully to ${data.email}!`)
+      showToast(`Invitation sent successfully to ${data.email}!`, "success")
     } else {
-      showToast(`Invitation created but email failed to send. Please contact administrator to resend the invitation.`)
+      showToast(`Invitation created but email failed to send. Please contact administrator to resend the invitation.`, "warning")
     }
 
     // Refresh the company members list
@@ -1488,13 +1496,11 @@ export default function ProfilePage() {
       )}
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <Alert className="bg-gray-900 text-white border-none shadow-lg min-w-[300px]">
-            <AlertDescription>{toastMessage}</AlertDescription>
-          </Alert>
-        </div>
-      )}
+      <ToastContainer
+        toasts={toasts}
+        onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+        position="bottom-right"
+      />
 
       {/* Edit Company Details Dialog */}
       {profile?.company && isAdmin && (
