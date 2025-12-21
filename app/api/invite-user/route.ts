@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase"
+import { createClient, createServiceClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = createClient() // For email sending
+    const dbClient = createServiceClient() // For admin database operations
 
     const {
       email,
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       invited_by,
     } = await request.json()
 
-    const { data: existingInvitation } = await supabase
+    const { data: existingInvitation } = await dbClient
       .from("user_invitations")
       .select("*")
       .eq("email", email)
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
     if (existingInvitation) {
       // Update existing invitation
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = await dbClient
         .from("user_invitations")
         .update({
           first_name,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       invitation = data
     } else {
       // Create new invitation
-      const { data, error: invitationError } = await supabase
+      const { data, error: invitationError } = await dbClient
         .from("user_invitations")
         .insert({
           email,
@@ -81,9 +82,9 @@ export async function POST(request: Request) {
     }
 
     // Get company name and admin info for the email
-    const { data: company } = await supabase.from("companies").select("name").eq("id", company_id).single()
+    const { data: company } = await dbClient.from("companies").select("name").eq("id", company_id).single()
 
-    const { data: admin } = await supabase
+    const { data: admin } = await dbClient
       .from("user_profiles")
       .select("first_name, last_name")
       .eq("user_id", invited_by)
