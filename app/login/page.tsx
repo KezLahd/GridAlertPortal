@@ -45,9 +45,6 @@ export default function Page() {
           alt="GridAlert"
           className="h-28 w-auto md:h-36 drop-shadow-[0_14px_48px_rgba(0,0,0,0.6)] animate-[logoCycle_7s_ease-in-out_infinite]"
         />
-        <span className="text-white text-2xl md:text-3xl font-semibold tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.55)]">
-          GridAlert
-        </span>
       </div>
 
       <div className="relative w-full max-w-md px-2 sm:px-4">

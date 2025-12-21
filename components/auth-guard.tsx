@@ -11,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
   const router = useRouter()
-  const [checking, setChecking] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -22,15 +22,18 @@ export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
         router.replace(redirectTo)
         return
       }
-      setChecking(false)
+      setIsAuthenticated(true)
     }
-    // Check auth in background without blocking render
     checkAuth()
     return () => {
       mounted = false
     }
   }, [redirectTo, router])
 
-  // Always render children immediately, auth check happens in background
+  // Show nothing until auth check completes
+  if (isAuthenticated === null) {
+    return null // or a loading spinner
+  }
+
   return <>{children}</>
 }
