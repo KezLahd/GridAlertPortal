@@ -134,20 +134,33 @@ function SetupAccountContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    // Debug logging
+    console.log("SetupAccountContent loaded")
+    console.log("Token:", token)
+    console.log("Search params:", Object.fromEntries(searchParams.entries()))
+
     if (!token) {
-      setError("Invalid invitation link")
+      console.error("No token found in URL")
+      setError("Invalid invitation link - no token provided")
       setLoading(false)
       return
     }
 
     // Fetch the pending profile
+    console.log("Fetching invitation data...")
     fetch(`/api/get-invitation?token=${token}`)
-      .then((res) => res.json())
+      .then((res) => {
+        console.log("API Response status:", res.status)
+        return res.json()
+      })
       .then((data) => {
+        console.log("API Response data:", data)
         if (data.error) {
+          console.error("API returned error:", data.error)
           setError(data.error)
         } else {
           const safeProfile = data.profile || {}
+          console.log("Setting profile:", safeProfile)
           setProfile(safeProfile)
           setFormData((prev) => ({
             ...prev,
@@ -160,10 +173,11 @@ function SetupAccountContent() {
         setLoading(false)
       })
       .catch((err) => {
-        setError("Failed to load invitation")
+        console.error("Failed to load invitation:", err)
+        setError(`Failed to load invitation: ${err.message}`)
         setLoading(false)
       })
-  }, [token])
+  }, [token, searchParams])
 
   const toggleChannel = (channel: string) => {
     setFormData((prev) => ({
