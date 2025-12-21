@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "GridAlert <noreply@gridalert.mjsons.net>",
+        from: "GridAlert <gridalert@mjsons.net>",
         to: email,
         subject: `You've been invited to ${company?.name || "a company"}'s GridAlert portal`,
         html: `
