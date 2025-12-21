@@ -383,4 +383,3 @@ FROM gridalert.tasnetworks_current_unplanned_outages;
 
 -- Grant access to the view
 GRANT SELECT ON gridalert.unplanned_outages TO anon, authenticated;
-

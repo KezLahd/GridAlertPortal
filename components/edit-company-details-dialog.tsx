@@ -284,4 +284,3 @@ export function EditCompanyDetailsDialog({
     </Dialog>
   )
 }
-

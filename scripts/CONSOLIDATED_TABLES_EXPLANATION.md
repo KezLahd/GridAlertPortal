@@ -157,4 +157,3 @@ Would you like me to:
 - A) Keep the refresh function approach (Option 4)
 - B) Create trigger-based tables (Option 2) - more complex but fully automatic
 - C) Help optimize your existing views instead?
-

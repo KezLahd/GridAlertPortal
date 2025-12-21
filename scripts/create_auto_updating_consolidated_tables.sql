@@ -659,4 +659,3 @@ GRANT EXECUTE ON FUNCTION gridalert.refresh_provider_unplanned(TEXT) TO service_
 -- 
 -- The pattern is identical - just change the table names and field mappings.
 -- ============================================================================
-

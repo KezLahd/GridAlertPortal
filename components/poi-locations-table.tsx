@@ -317,4 +317,3 @@ export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = 
     </Card>
   )
 }
-

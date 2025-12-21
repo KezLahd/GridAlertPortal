@@ -31,100 +31,100 @@ Each consolidated table contains normalized data from all providers with these c
 
 ### Basic Query (All Outages)
 
-```sql
+\`\`\`sql
 SELECT * FROM gridalert.unplanned_outages_consolidated;
 SELECT * FROM gridalert.current_planned_outages_consolidated;
 SELECT * FROM gridalert.future_planned_outages_consolidated;
-```
+\`\`\`
 
 ### Filter by Provider
 
-```sql
+\`\`\`sql
 SELECT * FROM gridalert.unplanned_outages_consolidated 
 WHERE provider = 'Ausgrid';
-```
+\`\`\`
 
 ### Filter by State
 
-```sql
+\`\`\`sql
 SELECT * FROM gridalert.unplanned_outages_consolidated 
 WHERE state = 'NSW';
-```
+\`\`\`
 
 ### Filter by Date Range
 
-```sql
+\`\`\`sql
 SELECT * FROM gridalert.current_planned_outages_consolidated 
 WHERE start_date_time >= '2024-01-01' 
   AND end_date_time <= '2024-12-31';
-```
+\`\`\`
 
 ### Count Outages by Provider
 
-```sql
+\`\`\`sql
 SELECT provider, COUNT(*) as outage_count 
 FROM gridalert.unplanned_outages_consolidated 
 GROUP BY provider 
 ORDER BY outage_count DESC;
-```
+\`\`\`
 
 ## How to Use in Frontend (Supabase Client)
 
 ### Replace Old Queries
 
 **OLD WAY (13 separate queries):**
-```typescript
+\`\`\`typescript
 const [ausgridRes, endeavourRes, energexRes, ...] = await Promise.all([
   supabase.from("ausgrid_unplanned_outages").select("*"),
   supabase.from("endeavour_current_unplanned_outages").select("*"),
   supabase.from("energex_current_unplanned_outages").select("*"),
   // ... 10 more queries
 ]);
-```
+\`\`\`
 
 **NEW WAY (1 query):**
-```typescript
+\`\`\`typescript
 const { data, error } = await supabase
   .from("unplanned_outages_consolidated")
   .select("*");
-```
+\`\`\`
 
 ### Filter by Provider in Frontend
 
-```typescript
+\`\`\`typescript
 const { data, error } = await supabase
   .from("unplanned_outages_consolidated")
   .select("*")
   .eq("provider", "Ausgrid");
-```
+\`\`\`
 
 ### Filter by Multiple Providers
 
-```typescript
+\`\`\`typescript
 const { data, error } = await supabase
   .from("unplanned_outages_consolidated")
   .select("*")
   .in("provider", ["Ausgrid", "Endeavour", "Energex"]);
-```
+\`\`\`
 
 ### Filter by State
 
-```typescript
+\`\`\`typescript
 const { data, error } = await supabase
   .from("unplanned_outages_consolidated")
   .select("*")
   .eq("state", "NSW");
-```
+\`\`\`
 
 ### Get Outages Near Location (using coordinates)
 
-```typescript
+\`\`\`typescript
 const { data, error } = await supabase
   .from("unplanned_outages_consolidated")
   .select("*")
   .not("latitude", "is", null)
   .not("longitude", "is", null);
-```
+\`\`\`
 
 ## How to Refresh the Tables
 
@@ -132,17 +132,17 @@ const { data, error } = await supabase
 
 Run these functions in Supabase SQL Editor:
 
-```sql
+\`\`\`sql
 SELECT gridalert.refresh_unplanned_outages_consolidated();
 SELECT gridalert.refresh_current_planned_outages_consolidated();
 SELECT gridalert.refresh_future_planned_outages_consolidated();
-```
+\`\`\`
 
 ### Automatic Refresh (pg_cron)
 
 If pg_cron is enabled in Supabase:
 
-```sql
+\`\`\`sql
 -- Refresh every 5 minutes
 SELECT cron.schedule(
   'refresh-unplanned-outages',
@@ -161,16 +161,16 @@ SELECT cron.schedule(
   '*/5 * * * *',
   $$SELECT gridalert.refresh_future_planned_outages_consolidated()$$
 );
-```
+\`\`\`
 
 ### Refresh from Backend/Node.js
 
-```typescript
+\`\`\`typescript
 // Using Supabase client
 const { error } = await supabase.rpc('refresh_unplanned_outages_consolidated');
 const { error } = await supabase.rpc('refresh_current_planned_outages_consolidated');
 const { error } = await supabase.rpc('refresh_future_planned_outages_consolidated');
-```
+\`\`\`
 
 ## Provider-Specific Data Transformations
 
@@ -216,7 +216,7 @@ The consolidated tables normalize data from each provider:
 
 ### Map Display
 
-```typescript
+\`\`\`typescript
 // Get outages with coordinates
 const { data: outages } = await supabase
   .from("unplanned_outages_consolidated")
@@ -233,11 +233,11 @@ outages.forEach(outage => {
     provider: outage.provider
   });
 });
-```
+\`\`\`
 
 ### List Display
 
-```typescript
+\`\`\`typescript
 // Get all outages
 const { data: outages } = await supabase
   .from("unplanned_outages_consolidated")
@@ -250,11 +250,11 @@ const grouped = outages.reduce((acc, outage) => {
   acc[outage.provider].push(outage);
   return acc;
 }, {});
-```
+\`\`\`
 
 ### Statistics
 
-```typescript
+\`\`\`typescript
 // Total outages
 const { count } = await supabase
   .from("unplanned_outages_consolidated")
@@ -267,7 +267,7 @@ const { data } = await supabase
   .then(results => {
     // Count in JavaScript or use SQL aggregation
   });
-```
+\`\`\`
 
 ## Performance Tips
 
@@ -281,14 +281,14 @@ const { data } = await supabase
 If you were using views before:
 
 **OLD:**
-```typescript
+\`\`\`typescript
 supabase.from("unplanned_outages").select("*")
-```
+\`\`\`
 
 **NEW:**
-```typescript
+\`\`\`typescript
 supabase.from("unplanned_outages_consolidated").select("*")
-```
+\`\`\`
 
 The data structure is identical, so no frontend changes needed except the table name!
 
@@ -316,4 +316,3 @@ The data structure is identical, so no frontend changes needed except the table 
 2. **Refresh**: Call refresh functions every 5-10 minutes
 3. **Filter**: Use standard Supabase filters (`.eq()`, `.in()`, `.gte()`, etc.)
 4. **Display**: Data structure matches old views, just change table name
-

@@ -9,9 +9,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@emotion/is-prop-valid": "latest",
     "@heroui/react": "^2.8.5",
     "@heroui/theme": "2.4.23",
     "@hookform/resolvers": "^3.9.1",
+    "@internationalized/date": "3.10.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
@@ -39,6 +41,7 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
+    "@react-aria/i18n": "3.12.14",
     "@react-google-maps/api": "latest",
     "@supabase/supabase-js": "latest",
     "autoprefixer": "^10.4.20",

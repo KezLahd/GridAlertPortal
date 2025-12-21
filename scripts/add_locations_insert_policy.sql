@@ -11,4 +11,3 @@ create policy locations_insert_company_member on gridalert.locations
   with check (
     gridalert.same_company(auth.uid(), company_id)
   );
-

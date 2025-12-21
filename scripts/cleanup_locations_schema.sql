@@ -19,4 +19,3 @@ ALTER TABLE IF EXISTS gridalert.locations
   DROP COLUMN IF EXISTS latitude;
 
 COMMIT;
-

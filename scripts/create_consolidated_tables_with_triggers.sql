@@ -323,4 +323,3 @@ SELECT gridalert.refresh_provider_current_planned('TasNetworks');
 
 -- Grant permissions
 GRANT SELECT ON gridalert.current_planned_outages_consolidated TO anon, authenticated;
-

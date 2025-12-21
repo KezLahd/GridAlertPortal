@@ -17,13 +17,13 @@ This guide details how to implement an at-risk power outage scoring system for c
 ## Database Schema
 
 ### Step 1: Enable PostGIS Extension
-```sql
+\`\`\`sql
 -- Enable PostGIS for spatial calculations
 CREATE EXTENSION IF NOT EXISTS postgis;
-```
+\`\`\`
 
 ### Step 2: Create Risk Scoring Table
-```sql
+\`\`\`sql
 -- Create table to store clinic-outage risk assessments
 CREATE TABLE IF NOT EXISTS gridalert.clinic_outage_risk (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,10 +60,10 @@ CREATE INDEX IF NOT EXISTS idx_clinic_outage_risk_outage_type ON gridalert.clini
 
 -- Composite index for common queries
 CREATE INDEX IF NOT EXISTS idx_clinic_outage_risk_clinic_risk ON gridalert.clinic_outage_risk(clinic_id, risk_level, risk_score DESC);
-```
+\`\`\`
 
 ### Step 3: Add Spatial Columns to Existing Tables (if needed)
-```sql
+\`\`\`sql
 -- Add PostGIS geometry columns for locations if not already present
 -- This assumes locations table has latitude/longitude columns
 DO $$
@@ -90,7 +90,7 @@ BEGIN
     CREATE INDEX idx_locations_geom ON gridalert.locations USING GIST(geom);
   END IF;
 END $$;
-```
+\`\`\`
 
 ---
 
@@ -99,7 +99,7 @@ END $$;
 ### Step 4: Create Helper Functions
 
 #### Function 1: Calculate Distance Between Two Points
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.calculate_distance_km(
   lat1 DOUBLE PRECISION,
   lng1 DOUBLE PRECISION,
@@ -119,10 +119,10 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-```
+\`\`\`
 
 #### Function 2: Check if Point is Inside Polygon
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.is_point_in_polygon(
   point_lat DOUBLE PRECISION,
   point_lng DOUBLE PRECISION,
@@ -152,10 +152,10 @@ BEGIN
   END;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-```
+\`\`\`
 
 #### Function 3: Calculate Risk Score
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.calculate_risk_score(
   distance_km DOUBLE PRECISION,
   is_inside_polygon BOOLEAN,
@@ -210,7 +210,7 @@ BEGIN
     END;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-```
+\`\`\`
 
 ---
 
@@ -218,7 +218,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 ### Step 5: Create Main Risk Calculation Function
 
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.calculate_clinic_outage_risks(
   p_outage_type VARCHAR(20) DEFAULT NULL -- NULL = all types
 ) RETURNS INTEGER AS $$
@@ -365,14 +365,14 @@ BEGIN
   RETURN v_count;
 END;
 $$ LANGUAGE plpgsql;
-```
+\`\`\`
 
 ---
 
 ## Triggers & Auto-Updates
 
 ### Step 6: Create Cleanup Function for Resolved Outages
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.cleanup_resolved_outage_risks()
 RETURNS INTEGER AS $$
 DECLARE
@@ -394,10 +394,10 @@ BEGIN
   RETURN v_deleted_count;
 END;
 $$ LANGUAGE plpgsql;
-```
+\`\`\`
 
 ### Step 7: Create Scheduled Job Function
-```sql
+\`\`\`sql
 -- Function to run full risk calculation
 CREATE OR REPLACE FUNCTION gridalert.update_all_clinic_risks()
 RETURNS TABLE(
@@ -426,10 +426,10 @@ BEGIN
   END LOOP;
 END;
 $$ LANGUAGE plpgsql;
-```
+\`\`\`
 
 ### Step 8: Set Up pg_cron (Optional - for automatic updates)
-```sql
+\`\`\`sql
 -- Install pg_cron extension (requires superuser)
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
@@ -446,7 +446,7 @@ SELECT cron.schedule(
   '0 * * * *', -- Every hour
   $$SELECT gridalert.cleanup_resolved_outage_risks()$$
 );
-```
+\`\`\`
 
 ---
 
@@ -455,7 +455,7 @@ SELECT cron.schedule(
 ### Step 9: Create Supabase Functions/API Endpoints
 
 #### Get At-Risk Clinics
-```sql
+\`\`\`sql
 -- Function to get clinics with risk scores
 CREATE OR REPLACE FUNCTION gridalert.get_at_risk_clinics(
   p_risk_level VARCHAR(20) DEFAULT NULL,
@@ -510,10 +510,10 @@ BEGIN
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
-```
+\`\`\`
 
 #### Get Clinic Risk Details
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION gridalert.get_clinic_risk_details(
   p_clinic_id UUID
 )
@@ -562,7 +562,7 @@ BEGIN
   GROUP BY l.id, l.institutionname, l.institutioncode;
 END;
 $$ LANGUAGE plpgsql STABLE;
-```
+\`\`\`
 
 ---
 
@@ -570,7 +570,7 @@ $$ LANGUAGE plpgsql STABLE;
 
 ### Step 10: Test the Implementation
 
-```sql
+\`\`\`sql
 -- Test 1: Calculate risks for all clinics
 SELECT * FROM gridalert.update_all_clinic_risks();
 
@@ -601,7 +601,7 @@ FROM gridalert.clinic_outage_risk;
 -- Test 6: Performance test
 EXPLAIN ANALYZE
 SELECT * FROM gridalert.get_at_risk_clinics(NULL, 0, 100);
-```
+\`\`\`
 
 ---
 
@@ -609,7 +609,7 @@ SELECT * FROM gridalert.get_at_risk_clinics(NULL, 0, 100);
 
 ### Step 11: Additional Optimizations
 
-```sql
+\`\`\`sql
 -- Create materialized view for dashboard (refresh periodically)
 CREATE MATERIALIZED VIEW IF NOT EXISTS gridalert.clinic_risk_summary AS
 SELECT 
@@ -648,7 +648,7 @@ SELECT cron.schedule(
   '*/10 * * * *', -- Every 10 minutes
   $$SELECT gridalert.refresh_clinic_risk_summary()$$
 );
-```
+\`\`\`
 
 ---
 
@@ -700,7 +700,7 @@ SELECT cron.schedule(
 
 Once the backend is set up, the frontend can query:
 
-```typescript
+\`\`\`typescript
 // Get all at-risk clinics
 const { data: atRiskClinics } = await supabase
   .rpc('get_at_risk_clinics', {
@@ -714,7 +714,7 @@ const { data: clinicRisk } = await supabase
   .rpc('get_clinic_risk_details', {
     p_clinic_id: clinicId
   })
-```
+\`\`\`
 
 ---
 
@@ -731,4 +731,3 @@ const { data: clinicRisk } = await supabase
 
 **Issue**: Triggers not firing
 - **Solution**: Check pg_cron is enabled, verify cron jobs are scheduled correctly
-

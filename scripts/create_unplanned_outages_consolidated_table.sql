@@ -449,4 +449,3 @@ GRANT EXECUTE ON FUNCTION gridalert.refresh_unplanned_outages_consolidated() TO 
 
 -- Initial population
 SELECT gridalert.refresh_unplanned_outages_consolidated();
-

@@ -9,14 +9,14 @@ Your frontend currently:
 - Does data transformations in the frontend
 
 **Example from your code:**
-```typescript
+\`\`\`typescript
 const [ausgridRes, endeavourRes, energexRes, ...] = await Promise.all([
   supabase.from("ausgrid_unplanned_outages").select("*"),
   supabase.from("endeavour_current_unplanned_outages").select("*"),
   supabase.from("energex_current_unplanned_outages").select("*"),
   // ... 10 more queries
 ]);
-```
+\`\`\`
 
 ## The Best Solution: **Tables with Database Triggers** ✅
 
@@ -30,11 +30,11 @@ const [ausgridRes, endeavourRes, energexRes, ...] = await Promise.all([
 2. **✅ Frontend Simplification**
    - **OLD:** 13 queries with complex merging logic
    - **NEW:** 1 simple query
-   ```typescript
+   \`\`\`typescript
    const { data } = await supabase
      .from("unplanned_outages_consolidated")
      .select("*");
-   ```
+   \`\`\`
 
 3. **✅ Better Performance**
    - Single query is faster than 13 parallel queries
@@ -77,7 +77,7 @@ This creates:
 ### Step 2: Update Frontend Code
 
 **OLD CODE (13 queries):**
-```typescript
+\`\`\`typescript
 const fetchUnplannedOutages = async () => {
   const [ausgridRes, endeavourRes, energexRes, ...] = await Promise.all([
     supabase.from("ausgrid_unplanned_outages").select("*"),
@@ -95,10 +95,10 @@ const fetchUnplannedOutages = async () => {
   
   return merged;
 };
-```
+\`\`\`
 
 **NEW CODE (1 query):**
-```typescript
+\`\`\`typescript
 const fetchUnplannedOutages = async () => {
   const { data, error } = await supabase
     .from("unplanned_outages_consolidated")
@@ -111,7 +111,7 @@ const fetchUnplannedOutages = async () => {
   
   return data || [];
 };
-```
+\`\`\`
 
 **That's it!** No merging, no transformations, no provider labels needed.
 
@@ -216,4 +216,3 @@ Scheduled refreshes work, but have downsides:
 - ✅ Zero maintenance
 
 Your frontend goes from **13 complex queries** to **1 simple query**! 🚀
-

@@ -31,4 +31,3 @@ where icon_letters is null
 update gridalert.user_profiles
 set icon_letters = 'U'
 where icon_letters is null;
-

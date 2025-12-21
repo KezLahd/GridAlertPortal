@@ -344,4 +344,3 @@ FROM gridalert.tasnetworks_current_planned_outages;
 
 -- Grant access to the view
 GRANT SELECT ON gridalert.current_planned_outages TO anon, authenticated;
-
