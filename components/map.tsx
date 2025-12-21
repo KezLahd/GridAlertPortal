@@ -163,14 +163,14 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
       mapTypeControl: false,
       fullscreenControl: true,
       minZoom: 1, // Minimum zoom level to keep map focused on Australia
-      maxZoom: 11, // Allow more zoom-out (lower maxZoom = more zoom-out ability)
-      // Restrict map viewport to Australia (expanded boundaries)
+      maxZoom: 19, // Allow more zoom-in (lower maxZoom = less zoom-in ability)
+      // Restrict map viewport to Australia and surrounding areas (expanded for zoom-out)
       restriction: {
         latLngBounds: {
-          north: -6.0,   // Northern boundary of Australia (expanded north by 2)
-          south: -48.0,  // Southern boundary of Australia (expanded south by 4)
-          east: 160.0,   // Eastern boundary of Australia
-          west: 107.0,   // Western boundary of Australia (expanded west by 4)
+          north: 10.0,   // Much further north to allow zoom-out
+          south: -60.0,  // Much further south to allow zoom-out
+          east: 180.0,   // Much further east to allow zoom-out
+          west: 90.0,    // Much further west to allow zoom-out
         },
         strictBounds: true, // Prevent panning outside bounds
       },
