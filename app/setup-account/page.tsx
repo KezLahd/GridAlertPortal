@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState, Suspense, use } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/heroui"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -115,8 +115,13 @@ function MultiSelect({
 
 function SetupAccountContent() {
   const router = useRouter()
-  const searchParams = use(useSearchParams())
-  const token = searchParams.get("token")
+  const [token, setToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Get token from URL on client side
+    const urlParams = new URLSearchParams(window.location.search)
+    setToken(urlParams.get("token"))
+  }, [])
 
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -137,7 +142,11 @@ function SetupAccountContent() {
     // Debug logging
     console.log("SetupAccountContent loaded")
     console.log("Token:", token)
-    console.log("Search params:", Object.fromEntries(searchParams.entries()))
+
+    if (token === null) {
+      // Still loading token from URL
+      return
+    }
 
     if (!token) {
       console.error("No token found in URL")
@@ -177,7 +186,7 @@ function SetupAccountContent() {
         setError(`Failed to load invitation: ${err.message}`)
         setLoading(false)
       })
-  }, [token, searchParams])
+  }, [token])
 
   const toggleChannel = (channel: string) => {
     setFormData((prev) => ({
