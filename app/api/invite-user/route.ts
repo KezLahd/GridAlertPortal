@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const envAppUrl = process.env.NEXT_PUBLIC_APP_URL
     const normalizedAppUrl = (() => {
       if (envAppUrl && envAppUrl.startsWith("http")) return envAppUrl
-      if (envAppUrl) return `http://${envAppUrl}`
+      if (envAppUrl) return `https://${envAppUrl}`
       return "http://localhost:3000"
     })()
     const inviteUrl = `${normalizedAppUrl.replace(/\/$/, "")}/setup-account?token=${invitationToken}`
