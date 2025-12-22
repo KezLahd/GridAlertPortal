@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState, Suspense, use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/heroui"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -115,13 +115,8 @@ function MultiSelect({
 
 function SetupAccountContent() {
   const router = useRouter()
-  const [token, setToken] = useState<string | null>(null)
-
-  useEffect(() => {
-    // Get token from URL on client side
-    const urlParams = new URLSearchParams(window.location.search)
-    setToken(urlParams.get("token"))
-  }, [])
+  const searchParams = use(useSearchParams())
+  const token = searchParams.get("token")
 
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -139,37 +134,20 @@ function SetupAccountContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    // Debug logging
-    console.log("SetupAccountContent loaded")
-    console.log("Token:", token)
-
-    if (token === null) {
-      // Still loading token from URL
-      return
-    }
-
     if (!token) {
-      console.error("No token found in URL")
-      setError("Invalid invitation link - no token provided")
+      setError("Invalid invitation link")
       setLoading(false)
       return
     }
 
     // Fetch the pending profile
-    console.log("Fetching invitation data...")
     fetch(`/api/get-invitation?token=${token}`)
-      .then((res) => {
-        console.log("API Response status:", res.status)
-        return res.json()
-      })
+      .then((res) => res.json())
       .then((data) => {
-        console.log("API Response data:", data)
         if (data.error) {
-          console.error("API returned error:", data.error)
           setError(data.error)
         } else {
           const safeProfile = data.profile || {}
-          console.log("Setting profile:", safeProfile)
           setProfile(safeProfile)
           setFormData((prev) => ({
             ...prev,
@@ -182,8 +160,7 @@ function SetupAccountContent() {
         setLoading(false)
       })
       .catch((err) => {
-        console.error("Failed to load invitation:", err)
-        setError(`Failed to load invitation: ${err.message}`)
+        setError("Failed to load invitation")
         setLoading(false)
       })
   }, [token])

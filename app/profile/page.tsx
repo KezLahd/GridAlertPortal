@@ -12,7 +12,6 @@ import { CompanyMembersTable } from "@/components/company-members-table"
 import { CreateCompanyDialog } from "@/components/create-company-dialog"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ToastContainer, type Toast } from "@/components/ui/toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -26,9 +25,26 @@ import { AddPoiDialog } from "@/components/add-poi-dialog"
 import { PoiLocationsTable, type PoiLocation } from "@/components/poi-locations-table"
 import { ImportCsvDialog } from "@/components/import-csv-dialog"
 import { ProfilePageSkeleton } from "@/components/skeleton-components"
+import { createBrowserClient } from "@supabase/ssr" // Import for createBrowserClient
+import { useToast } from "@/components/ui/use-toast" // Import for toast
+
+import { PoiEditDialog } from "@/components/poi-edit-dialog"
 
 type NotificationChoice = "unplanned" | "planned" | "future"
-type ProviderChoice = "Ausgrid" | "Endeavour" | "Energex" | "Ergon" | "SA Power" | "Horizon Power" | "WPower" | "AusNet" | "CitiPowerCor" | "Essential Energy" | "Jemena" | "UnitedEnergy" | "TasNetworks"
+type ProviderChoice =
+  | "Ausgrid"
+  | "Endeavour"
+  | "Energex"
+  | "Ergon"
+  | "SA Power"
+  | "Horizon Power"
+  | "WPower"
+  | "AusNet"
+  | "CitiPowerCor"
+  | "Essential Energy"
+  | "Jemena"
+  | "UnitedEnergy"
+  | "TasNetworks"
 type ChannelChoice = "email" | "sms"
 type RoleChoice = "admin" | "manager" | "member"
 type MultiSelectOption = { value: string; label: string }
@@ -146,7 +162,21 @@ const emptyProfile: ProfileRecord = {
   mobile: "",
   role: "member",
   notify_outage_types: ["unplanned", "planned", "future"],
-  notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"],
+  notify_providers: [
+    "Ausgrid",
+    "Endeavour",
+    "Energex",
+    "Ergon",
+    "SA Power",
+    "Horizon Power",
+    "WPower",
+    "AusNet",
+    "CitiPowerCor",
+    "Essential Energy",
+    "Jemena",
+    "UnitedEnergy",
+    "TasNetworks",
+  ],
   notify_channels: ["email"],
   company: null,
   company_id: null,
@@ -193,7 +223,7 @@ const normalizeProfile = (raw: any): ProfileRecord => ({
   icon_text_color: raw?.icon_text_color ?? null,
 })
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 export default function ProfilePage() {
   const { isLoaded: mapsLoaded } = useJsApiLoader({
@@ -204,6 +234,7 @@ export default function ProfilePage() {
 
   const router = useRouter()
   const supabase = getSupabaseClient()
+  const { toast } = useToast() // Initialize toast
   const [profile, setProfile] = useState<ProfileRecord | null>(null)
   const [members, setMembers] = useState<MemberRecord[]>([])
   const [poiCount, setPoiCount] = useState<number>(0)
@@ -221,7 +252,7 @@ export default function ProfilePage() {
   const [editUserDetailsOpen, setEditUserDetailsOpen] = useState(false)
   const [addPoiOpen, setAddPoiOpen] = useState(false)
   const [importCsvOpen, setImportCsvOpen] = useState(false)
-  const [toasts, setToasts] = useState<Toast[]>([])
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [inviteState, setInviteState] = useState({
     first_name: "",
     last_name: "",
@@ -230,26 +261,39 @@ export default function ProfilePage() {
     password: "",
     role: "member" as RoleChoice,
     notify_outage_types: ["unplanned", "planned", "future"] as NotificationChoice[],
-    notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"] as ProviderChoice[],
+    notify_providers: [
+      "Ausgrid",
+      "Endeavour",
+      "Energex",
+      "Ergon",
+      "SA Power",
+      "Horizon Power",
+      "WPower",
+      "AusNet",
+      "CitiPowerCor",
+      "Essential Energy",
+      "Jemena",
+      "UnitedEnergy",
+      "TasNetworks",
+    ] as ProviderChoice[],
     notify_channels: ["email"] as ChannelChoice[],
     region_access: ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"] as string[],
   })
   const [editMember, setEditMember] = useState<MemberRecord | null>(null)
 
+  const [editingPoi, setEditingPoi] = useState<PoiLocation | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+
+  const [statusFilter, setStatusFilter] = useState<string>("ACTIVE")
+
   const isAdmin = useMemo(() => profile?.role === "admin", [profile])
   const companyId = useMemo(() => profile?.company_id || profile?.company?.id || null, [profile])
+  const role = profile?.role // Added for simpler access in JSX
 
   // Show toast message
-  const showToast = (message: string, type: "success" | "warning" | "error" = "success") => {
-    const toast: Toast = {
-      id: crypto.randomUUID(),
-      title: message,
-      type,
-    }
-    setToasts((prev) => [...prev, toast])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== toast.id))
-    }, 5000)
+  const showToast = (message: string) => {
+    setToastMessage(message)
+    setTimeout(() => setToastMessage(null), 3000)
   }
 
   // Handle invite user with admin check
@@ -277,6 +321,68 @@ export default function ProfilePage() {
       return
     }
     setImportCsvOpen(true)
+  }
+
+  const handleDeletePoi = async (locationId: string) => {
+    if (!supabase || !companyId) return
+
+    try {
+      const { error } = await supabase.from("locations").delete().eq("id", locationId).eq("company_id", companyId)
+
+      if (error) {
+        console.error("Error deleting POI:", error)
+        setError("Failed to delete POI. Please try again.")
+        return
+      }
+
+      // Refresh POI locations
+      const { data, error: fetchError } = await supabase
+        .from("locations")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("institutionstatus", "ACTIVE")
+
+      if (fetchError) {
+        console.error("Error fetching POIs:", fetchError)
+        return
+      }
+
+      const normalizedLocations: PoiLocation[] = (data || []).map((poi: any) => ({
+        id: poi.id,
+        institution_code: poi.institutioncode,
+        poi_name: poi.institutionname,
+        street_address: poi.addressline1,
+        city: poi.addresssuburb,
+        state: poi.addressstate,
+        postcode: poi.addresspostcode,
+        country: "Australia",
+        contact_name: null,
+        contact_email: poi.institutionemail,
+        contact_phone: poi.institutionphoneno,
+        latitude: poi.addresslatitude,
+        longitude: poi.addresslongitude,
+        created_at: poi.created_at,
+        institutionstatus: poi.institutionstatus, // Added institutionstatus
+      }))
+
+      normalizedLocations.sort((a, b) => {
+        const getNumericCode = (code: string | null): number => {
+          if (!code) return Number.POSITIVE_INFINITY
+          const numeric = Number.parseInt(code.replace(/\D/g, ""), 10)
+          return isNaN(numeric) ? Number.POSITIVE_INFINITY : numeric
+        }
+
+        const numA = getNumericCode(a.institution_code)
+        const numB = getNumericCode(b.institution_code)
+        return numA - numB
+      })
+
+      setPoiLocations(normalizedLocations)
+      setPoiCount(normalizedLocations.length)
+    } catch (error) {
+      console.error("Error deleting POI:", error)
+      setError("Failed to delete POI. Please try again.")
+    }
   }
 
   const isProfileIncomplete = useMemo(() => {
@@ -399,7 +505,21 @@ export default function ProfilePage() {
       mobile: (row?.mobile ?? "").trim(),
       role: (row?.role as RoleChoice) ?? "member",
       notify_outage_types: (row?.notify_outage_types as NotificationChoice[]) ?? ["unplanned", "planned", "future"],
-      notify_providers: ((row?.notify_providers ?? ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"]) as ProviderChoice[]),
+      notify_providers: (row?.notify_providers ?? [
+        "Ausgrid",
+        "Endeavour",
+        "Energex",
+        "Ergon",
+        "SA Power",
+        "Horizon Power",
+        "WPower",
+        "AusNet",
+        "CitiPowerCor",
+        "Essential Energy",
+        "Jemena",
+        "UnitedEnergy",
+        "TasNetworks",
+      ]) as ProviderChoice[],
       notify_channels: (row?.notify_channels as string[]) ?? ["email"],
       region_access: (row?.region_access as string[]) ?? [],
       icon_letters: row?.icon_letters ?? null,
@@ -411,11 +531,13 @@ export default function ProfilePage() {
   }
 
   const fetchPoiCount = async (companyId: string) => {
-    const { count, error: poiError } = await supabase
-      .from("locations")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("institutionstatus", "ACTIVE")
+    let query = supabase.from("locations").select("*", { count: "exact", head: true }).eq("company_id", companyId)
+
+    if (statusFilter !== "ALL") {
+      query = query.eq("institutionstatus", statusFilter)
+    }
+
+    const { count, error: poiError } = await query
 
     if (poiError) {
       console.error("Failed to fetch POI count:", poiError)
@@ -426,11 +548,13 @@ export default function ProfilePage() {
   }
 
   const fetchPoiLocations = async (companyId: string) => {
-    const { data, error: locationsError } = await supabase
-      .from("locations")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("institutionstatus", "ACTIVE")
+    let query = supabase.from("locations").select("*").eq("company_id", companyId)
+
+    if (statusFilter !== "ALL") {
+      query = query.eq("institutionstatus", statusFilter)
+    }
+
+    const { data, error: locationsError } = await query
 
     if (locationsError) {
       console.error("Failed to fetch POI locations:", locationsError)
@@ -456,17 +580,18 @@ export default function ProfilePage() {
       latitude: row.addresslatitude,
       longitude: row.addresslongitude,
       created_at: row.created_at,
+      institutionstatus: row.institutionstatus, // Added institutionstatus
     }))
 
     // Sort numerically by institution code
     normalizedLocations.sort((a, b) => {
       const getNumericCode = (code: string | null): number => {
-        if (!code) return Infinity // Put nulls at the end
+        if (!code) return Number.POSITIVE_INFINITY // Put nulls at the end
         // Extract numeric part (remove any non-numeric characters)
-        const numeric = parseInt(code.replace(/\D/g, ''), 10)
-        return isNaN(numeric) ? Infinity : numeric
+        const numeric = Number.parseInt(code.replace(/\D/g, ""), 10)
+        return isNaN(numeric) ? Number.POSITIVE_INFINITY : numeric
       }
-      
+
       const numA = getNumericCode(a.institution_code)
       const numB = getNumericCode(b.institution_code)
       return numA - numB
@@ -482,7 +607,7 @@ export default function ProfilePage() {
     longitude: number,
     contactName?: string,
     contactEmail?: string,
-    contactPhone?: string
+    contactPhone?: string,
   ) => {
     if (!profile?.company?.id) return
 
@@ -490,17 +615,15 @@ export default function ProfilePage() {
     setError(null)
 
     // Map to new schema: poi_name -> institutionname, street_address -> addressline1, etc.
-    const { error: insertError } = await supabase
-      .from("locations")
-      .insert({
-        company_id: profile.company.id,
-        institutionname: poiName,
-        addressline1: location,
-        addresslatitude: latitude,
-        addresslongitude: longitude,
-        institutionemail: contactEmail || null,
-        institutionphoneno: contactPhone || null,
-      })
+    const { error: insertError } = await supabase.from("locations").insert({
+      company_id: profile.company.id,
+      institutionname: poiName,
+      addressline1: location,
+      addresslatitude: latitude,
+      addresslongitude: longitude,
+      institutionemail: contactEmail || null,
+      institutionphoneno: contactPhone || null,
+    })
 
     if (insertError) {
       setError(insertError.message)
@@ -512,6 +635,93 @@ export default function ProfilePage() {
     await fetchPoiLocations(profile.company.id)
     await fetchPoiCount(profile.company.id)
     setSaving(false)
+  }
+
+  const handleEditPoi = async (
+    locationId: string,
+    poiName: string,
+    location: string,
+    latitude: number,
+    longitude: number,
+    contactName?: string,
+    contactEmail?: string,
+    contactPhone?: string,
+  ) => {
+    if (!profile?.company?.id) return
+
+    setSaving(true)
+    setError(null)
+
+    const { error: updateError } = await supabase
+      .from("locations")
+      .update({
+        institutionname: poiName,
+        addressline1: location,
+        addresslatitude: latitude,
+        addresslongitude: longitude,
+        institutionemail: contactEmail || null,
+        institutionphoneno: contactPhone || null,
+      })
+      .eq("id", locationId)
+      .eq("company_id", profile.company.id)
+
+    if (updateError) {
+      setError(updateError.message)
+      setSaving(false)
+      throw updateError
+    }
+
+    // Refresh the POI locations
+    await fetchPoiLocations(profile.company.id)
+    setSaving(false)
+  }
+
+  const handleEditPoiClick = (location: PoiLocation) => {
+    setEditingPoi(location)
+    setShowEditDialog(true)
+  }
+
+  const handleSavePoi = async (locationId: string, updates: Partial<PoiLocation>) => {
+    try {
+      const supabase = createBrowserClient()
+
+      // Map the normalized field names back to database column names
+      const dbUpdates: any = {}
+      if (updates.institution_code !== undefined) dbUpdates.institutioncode = updates.institution_code
+      if (updates.poi_name !== undefined) dbUpdates.institutionname = updates.poi_name
+      if (updates.street_address !== undefined) dbUpdates.addressline1 = updates.street_address
+      if (updates.city !== undefined) dbUpdates.addresssuburb = updates.city
+      if (updates.state !== undefined) dbUpdates.addressstate = updates.state
+      if (updates.postcode !== undefined) dbUpdates.addresspostcode = updates.postcode
+      if (updates.contact_email !== undefined) dbUpdates.institutionemail = updates.contact_email
+      if (updates.contact_phone !== undefined) dbUpdates.institutionphoneno = updates.contact_phone
+      if (updates.latitude !== undefined) dbUpdates.addresslatitude = updates.latitude
+      if (updates.longitude !== undefined) dbUpdates.addresslongitude = updates.longitude
+      if (updates.institutionstatus !== undefined) dbUpdates.institutionstatus = updates.institutionstatus // Add institutionstatus here
+
+      const { error } = await supabase.from("locations").update(dbUpdates).eq("id", locationId)
+
+      if (error) {
+        console.error("Error updating POI:", error)
+        throw error
+      }
+
+      // Refresh the POI locations
+      await fetchPoiLocations(companyId!) // Use companyId from memoized value
+
+      toast({
+        title: "Success",
+        description: "POI updated successfully",
+      })
+    } catch (error) {
+      console.error("Failed to update POI:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update POI. Please try again.",
+        variant: "destructive",
+      })
+      throw error
+    }
   }
 
   const handleImportCsv = () => {
@@ -616,10 +826,7 @@ export default function ProfilePage() {
     setError(null)
 
     // Delete the user profile
-    const { error: deleteError } = await supabase
-      .from("user_profiles")
-      .delete()
-      .eq("user_id", userId)
+    const { error: deleteError } = await supabase.from("user_profiles").delete().eq("user_id", userId)
 
     if (deleteError) {
       setError(deleteError.message)
@@ -644,23 +851,20 @@ export default function ProfilePage() {
   const saveMember = async (member: MemberRecord) => {
     setSaving(true)
     setError(null)
-    
+
     // Members can't change their own role, only admins can change roles
     const updateData: any = {
       notify_providers: member.notify_providers,
       notify_channels: member.notify_channels,
       region_access: member.region_access ?? [],
     }
-    
+
     // Only allow role update if current user is admin and editing someone else
     if (isAdmin && member.user_id !== profile?.user_id) {
       updateData.role = member.role
     }
-    
-    const { error: updateError } = await supabase
-      .from("user_profiles")
-      .update(updateData)
-      .eq("user_id", member.user_id)
+
+    const { error: updateError } = await supabase.from("user_profiles").update(updateData).eq("user_id", member.user_id)
 
     if (updateError) {
       setError(updateError.message)
@@ -718,7 +922,21 @@ export default function ProfilePage() {
       password: "",
       role: "member",
       notify_outage_types: ["unplanned", "planned", "future"],
-      notify_providers: ["Ausgrid", "Endeavour", "Energex", "Ergon", "SA Power", "Horizon Power", "WPower", "AusNet", "CitiPowerCor", "Essential Energy", "Jemena", "UnitedEnergy", "TasNetworks"],
+      notify_providers: [
+        "Ausgrid",
+        "Endeavour",
+        "Energex",
+        "Ergon",
+        "SA Power",
+        "Horizon Power",
+        "WPower",
+        "AusNet",
+        "CitiPowerCor",
+        "Essential Energy",
+        "Jemena",
+        "UnitedEnergy",
+        "TasNetworks",
+      ],
       notify_channels: ["email"],
       region_access: ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"],
     })
@@ -1042,22 +1260,21 @@ export default function ProfilePage() {
       }),
     })
 
-    const result = await response.json()
-
     if (!response.ok) {
-      throw new Error(result.error || "Failed to invite user")
-    }
-
-    // Show appropriate toast based on email sending status
-    if (result.emailSent) {
-      showToast(`Invitation sent successfully to ${data.email}!`, "success")
-    } else {
-      showToast(`Invitation created but email failed to send. Please contact administrator to resend the invitation.`, "warning")
+      const error = await response.json()
+      throw new Error(error.error || "Failed to invite user")
     }
 
     // Refresh the company members list
     await fetchCompanyMembers(profile.company.id)
   }
+
+  useEffect(() => {
+    if (companyId) {
+      fetchPoiLocations(companyId)
+      fetchPoiCount(companyId)
+    }
+  }, [companyId, statusFilter])
 
   if (loading) {
     return (
@@ -1084,7 +1301,9 @@ export default function ProfilePage() {
           setProfile({
             ...profile,
             ...updates,
-            notify_outage_types: (updates.notify_outage_types ?? profile.notify_outage_types ?? []) as NotificationChoice[],
+            notify_outage_types: (updates.notify_outage_types ??
+              profile.notify_outage_types ??
+              []) as NotificationChoice[],
             notify_providers: (updates.notify_providers ?? profile.notify_providers ?? []) as ProviderChoice[],
             notify_channels: (updates.notify_channels ?? profile.notify_channels ?? []) as ChannelChoice[],
             region_access: updates.region_access ?? profile.region_access ?? [],
@@ -1420,14 +1639,20 @@ export default function ProfilePage() {
                 onImportCsv={handleOpenImportCsv}
                 loading={saving}
                 isAdmin={isAdmin}
+                onEditPoi={handleEditPoiClick} // Use the new handler
+                onDeletePoi={handleDeletePoi}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
               />
             )}
 
             {/* Team Members Table View */}
             {members.length > 0 && (
-              <CompanyMembersTable 
-                members={members} 
-                onUpdateMember={(member) => { void saveMember(member); }}
+              <CompanyMembersTable
+                members={members}
+                onUpdateMember={(member) => {
+                  void saveMember(member)
+                }}
                 onDeleteMember={isAdmin ? deleteMember : undefined}
                 saving={saving}
                 currentUserId={profile?.user_id}
@@ -1496,11 +1721,13 @@ export default function ProfilePage() {
       )}
 
       {/* Toast Notification */}
-      <ToastContainer
-        toasts={toasts}
-        onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
-        position="bottom-right"
-      />
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Alert className="bg-gray-900 text-white border-none shadow-lg min-w-[300px]">
+            <AlertDescription>{toastMessage}</AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Edit Company Details Dialog */}
       {profile?.company && isAdmin && (
@@ -1515,12 +1742,7 @@ export default function ProfilePage() {
 
       {/* Add POI Dialog */}
       {profile?.company && (
-        <AddPoiDialog
-          open={addPoiOpen}
-          onOpenChange={setAddPoiOpen}
-          onSave={handleAddPoi}
-          saving={saving}
-        />
+        <AddPoiDialog open={addPoiOpen} onOpenChange={setAddPoiOpen} onSave={handleAddPoi} saving={saving} />
       )}
 
       {/* Import CSV Dialog */}
@@ -1532,6 +1754,13 @@ export default function ProfilePage() {
           onSuccess={handleImportCsvSuccess}
         />
       )}
+
+      <PoiEditDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        location={editingPoi}
+        onSave={handleSavePoi}
+      />
     </>
   )
 }

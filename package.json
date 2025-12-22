@@ -43,6 +43,7 @@
     "@radix-ui/react-tooltip": "latest",
     "@react-aria/i18n": "3.12.14",
     "@react-google-maps/api": "latest",
+    "@supabase/ssr": "0.8.0",
     "@supabase/supabase-js": "latest",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
