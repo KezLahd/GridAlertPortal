@@ -1,10 +1,9 @@
-import { createClient, createServiceClient } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient() // For email sending
-    const dbClient = createServiceClient() // For admin database operations
+    const supabase = createClient()
 
     const {
       email,
@@ -18,7 +17,7 @@ export async function POST(request: Request) {
       invited_by,
     } = await request.json()
 
-    const { data: existingInvitation } = await dbClient
+    const { data: existingInvitation } = await supabase
       .from("user_invitations")
       .select("*")
       .eq("email", email)
@@ -31,7 +30,7 @@ export async function POST(request: Request) {
 
     if (existingInvitation) {
       // Update existing invitation
-      const { data, error: updateError } = await dbClient
+      const { data, error: updateError } = await supabase
         .from("user_invitations")
         .update({
           first_name,
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
       invitation = data
     } else {
       // Create new invitation
-      const { data, error: invitationError } = await dbClient
+      const { data, error: invitationError } = await supabase
         .from("user_invitations")
         .insert({
           email,
@@ -82,9 +81,9 @@ export async function POST(request: Request) {
     }
 
     // Get company name and admin info for the email
-    const { data: company } = await dbClient.from("companies").select("name").eq("id", company_id).single()
+    const { data: company } = await supabase.from("companies").select("name").eq("id", company_id).single()
 
-    const { data: admin } = await dbClient
+    const { data: admin } = await supabase
       .from("user_profiles")
       .select("first_name, last_name")
       .eq("user_id", invited_by)
@@ -106,7 +105,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "GridAlert <gridalert@mjsons.net>",
+        from: "GridAlert <noreply@gridalert.mjsons.net>",
         to: email,
         subject: `You've been invited to ${company?.name || "a company"}'s GridAlert portal`,
         html: `
@@ -138,13 +137,7 @@ export async function POST(request: Request) {
       // Don't fail the whole operation if email fails
     }
 
-    const emailSuccess = emailResponse.ok
-    return NextResponse.json({
-      success: true,
-      invitation,
-      emailSent: emailSuccess,
-      emailError: emailSuccess ? null : "Failed to send invitation email. Please contact administrator."
-    })
+    return NextResponse.json({ success: true, invitation })
   } catch (error: any) {
     console.error("[v0] Invite user error:", error)
     return NextResponse.json({ error: error.message || "Failed to invite user" }, { status: 500 })
