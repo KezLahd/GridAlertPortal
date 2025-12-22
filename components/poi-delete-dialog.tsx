@@ -50,7 +50,7 @@ export function PoiDeleteDialog({ open, onOpenChange, count, onConfirm }: PoiDel
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <AlertCircle className="h-5 w-5" />
@@ -93,7 +93,7 @@ export function PoiDeleteDialog({ open, onOpenChange, count, onConfirm }: PoiDel
             variant="destructive"
             onClick={handleConfirm}
             disabled={confirmText.toLowerCase() !== requiredText || isDeleting}
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
             {isDeleting ? "Deleting..." : `Delete ${count} POI${count !== 1 ? "s" : ""}`}
           </Button>

@@ -36,7 +36,7 @@ interface PoiLocationsTableProps {
   loading?: boolean
   isAdmin?: boolean
   onEditPoi?: (location: PoiLocation) => void
-  onDeletePoi?: (locationId: string) => Promise<void>
+  onDeletePoi?: (locationIds: string[]) => Promise<void>
   statusFilter: string // Added statusFilter prop
   onStatusFilterChange: (filter: string) => void // Added filter change handler
 }
@@ -73,10 +73,20 @@ export function PoiLocationsTable({
   const rowsPerPage = 25
 
   const filteredLocations = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    if (!query) return locations
+    // First filter by status
+    let statusFiltered = locations
+    if (statusFilter !== "ALL") {
+      statusFiltered = locations.filter((location) => {
+        const locationStatus = location.institutionstatus?.toUpperCase() || ""
+        return locationStatus === statusFilter.toUpperCase()
+      })
+    }
 
-    return locations.filter((location) => {
+    // Then filter by search query
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return statusFiltered
+
+    return statusFiltered.filter((location) => {
       const centreNumber = location.institution_code ? `C${location.institution_code}` : ""
       const institutionName = location.poi_name || ""
       const state = location.state || ""
@@ -93,7 +103,7 @@ export function PoiLocationsTable({
         phone.toLowerCase().includes(query)
       )
     })
-  }, [locations, searchQuery])
+  }, [locations, searchQuery, statusFilter])
 
   const sortedLocations = useMemo(() => {
     return [...filteredLocations].sort((a, b) => {
@@ -189,13 +199,25 @@ export function PoiLocationsTable({
   }
 
   const handleConfirmDelete = async () => {
-    if (!onDeletePoi || selectedRows.size === 0) return
+    console.log("handleConfirmDelete called, selectedRows:", Array.from(selectedRows))
+    
+    if (!onDeletePoi) {
+      console.error("onDeletePoi is not defined")
+      return
+    }
+    
+    if (selectedRows.size === 0) {
+      console.error("No rows selected")
+      return
+    }
 
     setIsDeleting(true)
     try {
-      for (const locationId of selectedRows) {
-        await onDeletePoi(locationId)
-      }
+      // Pass all selected IDs at once for bulk delete
+      const idsToDelete = Array.from(selectedRows)
+      console.log("Calling onDeletePoi with IDs:", idsToDelete)
+      await onDeletePoi(idsToDelete)
+      console.log("Delete completed successfully")
       setSelectedRows(new Set())
     } catch (error) {
       console.error("Failed to delete POIs:", error)
@@ -476,7 +498,7 @@ export function PoiLocationsTable({
                           )}
                           <TableCell className="font-medium">
                             {location.institution_code ? (
-                              <Badge className={getStatusBadgeVariant(location.institutionstatus)}>
+                              <Badge className={getStatusBadgeVariant(location.institutionstatus || "")}>
                                 C{location.institution_code}
                               </Badge>
                             ) : (

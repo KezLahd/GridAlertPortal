@@ -433,20 +433,15 @@ export function ImportCsvDialog({ open, onOpenChange, companyId, onSuccess }: Im
     setStatus("Preparing to geocode addresses...")
     setErrors([])
 
-    // Filter rows that need geocoding: ACTIVE status AND have address data
+    // Filter rows that need geocoding: ALL ACTIVE rows with address data
+    // This ensures we cross-check and update all coordinates, even if they already exist
     const locationsToGeocode = parsedRows.filter(
       (row) => {
         if (row.institutionStatus !== "ACTIVE") return false
 
         // Check if we have address data to geocode
         const hasAddress = row.addressLine1 || row.addressLine2 || row.addressLine3 || row.addressSuburb || row.addressPostcode || row.addressState
-        if (!hasAddress) return false
-
-        // Geocode if lat or lng is missing/null, or if they have placeholder values (like 1)
-        const latMissing = row.addressLatitude === null || row.addressLatitude === 1
-        const lngMissing = row.addressLongitude === null || row.addressLongitude === 1
-
-        return latMissing || lngMissing
+        return hasAddress
       }
     )
 

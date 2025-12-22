@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase"
+import { createClient, createServiceClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = createClient() // For email sending
+    const dbClient = createServiceClient() // For admin database operations
 
     const {
       email,
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       invited_by,
     } = await request.json()
 
-    const { data: existingInvitation } = await supabase
+    const { data: existingInvitation } = await dbClient
       .from("user_invitations")
       .select("*")
       .eq("email", email)
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
     if (existingInvitation) {
       // Update existing invitation
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = await dbClient
         .from("user_invitations")
         .update({
           first_name,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       invitation = data
     } else {
       // Create new invitation
-      const { data, error: invitationError } = await supabase
+      const { data, error: invitationError } = await dbClient
         .from("user_invitations")
         .insert({
           email,
@@ -81,9 +82,9 @@ export async function POST(request: Request) {
     }
 
     // Get company name and admin info for the email
-    const { data: company } = await supabase.from("companies").select("name").eq("id", company_id).single()
+    const { data: company } = await dbClient.from("companies").select("name").eq("id", company_id).single()
 
-    const { data: admin } = await supabase
+    const { data: admin } = await dbClient
       .from("user_profiles")
       .select("first_name, last_name")
       .eq("user_id", invited_by)
@@ -98,46 +99,52 @@ export async function POST(request: Request) {
     const inviteUrl = `${normalizedAppUrl.replace(/\/$/, "")}/setup-account?token=${invitationToken}`
 
     // Send invitation email using Resend
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "GridAlert <noreply@gridalert.mjsons.net>",
-        to: email,
-        subject: `You've been invited to ${company?.name || "a company"}'s GridAlert portal`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a1a1a;">Welcome to GridAlert!</h2>
-            <p>Hi ${first_name},</p>
-            <p>${admin?.first_name} ${admin?.last_name} has invited you to join <strong>${company?.name}</strong>'s GridAlert portal to view live outage data and receive notifications.</p>
-            <p>To complete your account setup, please click the link below:</p>
-            <p style="margin: 30px 0;">
-              <a href="${inviteUrl}" style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Account Setup</a>
-            </p>
-            <p>You'll need to:</p>
-            <ul>
-              <li>Set your password</li>
-              <li>Add your mobile number (optional)</li>
-              <li>Configure notification preferences</li>
-            </ul>
-            <p style="margin-top: 30px; color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
-            <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-            <p>Best regards,<br/>The GridAlert Team</p>
-          </div>
-        `,
-      }),
-    })
+    let emailSent = false
+    try {
+      const emailResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: "GridAlert <gridalert@mjsons.net>",
+          to: email,
+          subject: `You've been invited to ${company?.name || "a company"}'s GridAlert portal`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1a1a1a;">Welcome to GridAlert!</h2>
+              <p>Hi ${first_name},</p>
+              <p>${admin?.first_name} ${admin?.last_name} has invited you to join <strong>${company?.name}</strong>'s GridAlert portal to view live outage data and receive notifications.</p>
+              <p>To complete your account setup, please click the link below:</p>
+              <p style="margin: 30px 0;">
+                <a href="${inviteUrl}" style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Account Setup</a>
+              </p>
+              <p>You'll need to:</p>
+              <ul>
+                <li>Set your password</li>
+                <li>Add your mobile number (optional)</li>
+                <li>Configure notification preferences</li>
+              </ul>
+              <p style="margin-top: 30px; color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
+              <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+              <p>Best regards,<br/>The GridAlert Team</p>
+            </div>
+          `,
+        }),
+      })
 
-    if (!emailResponse.ok) {
-      const error = await emailResponse.text()
-      console.error("[v0] Error sending email:", error)
-      // Don't fail the whole operation if email fails
+      if (emailResponse.ok) {
+        emailSent = true
+      } else {
+        const error = await emailResponse.text()
+        console.error("[v0] Error sending email:", error)
+      }
+    } catch (emailError) {
+      console.error("[v0] Error sending email:", emailError)
     }
 
-    return NextResponse.json({ success: true, invitation })
+    return NextResponse.json({ success: true, invitation, emailSent })
   } catch (error: any) {
     console.error("[v0] Invite user error:", error)
     return NextResponse.json({ error: error.message || "Failed to invite user" }, { status: 500 })
