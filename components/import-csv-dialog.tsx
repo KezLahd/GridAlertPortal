@@ -433,27 +433,20 @@ export function ImportCsvDialog({ open, onOpenChange, companyId, onSuccess }: Im
     setStatus("Preparing to geocode addresses...")
     setErrors([])
 
-    // Filter rows that need geocoding: ACTIVE status AND (lat = 1 OR lng = 1, not actual coordinates)
+    // Filter rows that need geocoding: ACTIVE status AND have address data
     const locationsToGeocode = parsedRows.filter(
       (row) => {
         if (row.institutionStatus !== "ACTIVE") return false
-        
-        // Check if lat or lng equals exactly 1 (needs geocoding)
-        const latIsOne = row.addressLatitude === 1
-        const lngIsOne = row.addressLongitude === 1
-        
-        // Only geocode if lat OR lng is exactly 1
-        // Don't geocode if both already have real coordinates (not 1 and not null)
-        if (!latIsOne && !lngIsOne) return false
-        
-        // Don't geocode if both lat and lng already have real coordinates (not 1, not null)
-        const hasRealLat = row.addressLatitude !== null && row.addressLatitude !== 1
-        const hasRealLng = row.addressLongitude !== null && row.addressLongitude !== 1
-        if (hasRealLat && hasRealLng) return false
-        
+
         // Check if we have address data to geocode
         const hasAddress = row.addressLine1 || row.addressLine2 || row.addressLine3 || row.addressSuburb || row.addressPostcode || row.addressState
-        return hasAddress
+        if (!hasAddress) return false
+
+        // Geocode if lat or lng is missing/null, or if they have placeholder values (like 1)
+        const latMissing = row.addressLatitude === null || row.addressLatitude === 1
+        const lngMissing = row.addressLongitude === null || row.addressLongitude === 1
+
+        return latMissing || lngMissing
       }
     )
 

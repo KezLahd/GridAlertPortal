@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MapPin, ChevronUp, ChevronDown, Search } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MapPin, ChevronUp, ChevronDown, Search, Trash2, CheckSquare, Square } from "lucide-react"
 import { Pagination } from "@heroui/react"
 
 export interface PoiLocation {
@@ -29,6 +30,7 @@ interface PoiLocationsTableProps {
   locations: PoiLocation[]
   onAddPoi: () => void
   onImportCsv?: () => void
+  onDeletePoi?: (poiIds: string[]) => void
   loading?: boolean
   isAdmin?: boolean
 }
@@ -36,11 +38,12 @@ interface PoiLocationsTableProps {
 type SortField = "centre_number" | "institution_name" | "state" | "postcode" | "contact_email" | "contact_phone" | "created_at"
 type SortDirection = "asc" | "desc"
 
-export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = false, isAdmin = false }: PoiLocationsTableProps) {
+export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, onDeletePoi, loading = false, isAdmin = false }: PoiLocationsTableProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortField, setSortField] = useState<SortField>("centre_number")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const rowsPerPage = 25
 
   // Filter locations based on search query
@@ -156,6 +159,32 @@ export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = 
     )
   }
 
+  // Row selection handlers
+  const handleSelectRow = (poiId: string) => {
+    const newSelected = new Set(selectedRows)
+    if (newSelected.has(poiId)) {
+      newSelected.delete(poiId)
+    } else {
+      newSelected.add(poiId)
+    }
+    setSelectedRows(newSelected)
+  }
+
+  const handleSelectAll = () => {
+    if (selectedRows.size === paginatedLocations.length) {
+      setSelectedRows(new Set())
+    } else {
+      setSelectedRows(new Set(paginatedLocations.map(location => location.id)))
+    }
+  }
+
+  const handleDeleteSelected = () => {
+    if (onDeletePoi && selectedRows.size > 0) {
+      onDeletePoi(Array.from(selectedRows))
+      setSelectedRows(new Set())
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -184,16 +213,51 @@ export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = 
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Bulk Actions */}
+            {selectedRows.size > 0 && onDeletePoi && isAdmin && (
+              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <span className="text-sm font-medium text-orange-800">
+                  {selectedRows.size} POI{selectedRows.size !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeleteSelected}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete Selected
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Search Bar and Top Pagination */}
             <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search POIs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex items-center gap-3">
+                {isAdmin && onDeletePoi && (
+                  <button
+                    onClick={handleSelectAll}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {selectedRows.size === paginatedLocations.length && paginatedLocations.length > 0 ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                    {selectedRows.size === paginatedLocations.length && paginatedLocations.length > 0 ? 'Deselect All' : 'Select All'}
+                  </button>
+                )}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search POIs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </div>
               {totalPages > 1 && (
                 <div className="flex items-center gap-4">
@@ -223,6 +287,15 @@ export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = 
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-100">
+                    {isAdmin && onDeletePoi && (
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedRows.size === paginatedLocations.length && paginatedLocations.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          className="rounded-md"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead className="font-semibold text-foreground uppercase text-sm py-3">
                       <button className="flex items-center gap-1" onClick={() => handleSort("centre_number")}>
                         Centre Number
@@ -270,13 +343,22 @@ export function PoiLocationsTable({ locations, onAddPoi, onImportCsv, loading = 
                 <TableBody>
                   {paginatedLocations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isAdmin && onDeletePoi ? 8 : 7} className="text-center py-8 text-muted-foreground">
                         No locations found matching your search.
                       </TableCell>
                     </TableRow>
                   ) : (
                     paginatedLocations.map((location) => (
                       <TableRow key={location.id}>
+                        {isAdmin && onDeletePoi && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRows.has(location.id)}
+                              onCheckedChange={() => handleSelectRow(location.id)}
+                              className="rounded-md"
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium">
                           {location.institution_code ? `C${location.institution_code}` : "—"}
                         </TableCell>
