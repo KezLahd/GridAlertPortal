@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState, Suspense, use } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/heroui"
 import { Input } from "@/components/ui/input"
@@ -115,7 +115,7 @@ function MultiSelect({
 
 function SetupAccountContent() {
   const router = useRouter()
-  const searchParams = use(useSearchParams())
+  const searchParams = useSearchParams()
   const token = searchParams.get("token")
 
   const [profile, setProfile] = useState<any>(null)
