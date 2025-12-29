@@ -233,17 +233,17 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[95vw] md:max-w-2xl bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle>Create Your Company</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Create Your Company</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">
             Set up your company profile to invite team members and manage access. The location will be used to center
             the map.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="companyName">Company Name *</Label>
+        <div className="space-y-3 md:space-y-4 py-2 md:py-4">
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="companyName" className="text-xs md:text-sm text-gray-300 md:text-foreground">Company Name *</Label>
             <Input
               id="companyName"
               value={companyName}
@@ -252,10 +252,11 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                 setError("")
               }}
               placeholder="Acme Corporation"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Company Address *</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="location" className="text-xs md:text-sm text-gray-300 md:text-foreground">Company Address *</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
               <Input
@@ -281,16 +282,16 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                 }}
                 placeholder={autocompleteReady ? "Start typing your company address..." : "Loading autocomplete..."}
                 disabled={!mapsLoaded || !autocompleteReady}
-                className="pl-10"
+                className="pl-10 bg-black md:bg-white text-white md:text-foreground placeholder:text-gray-400 md:placeholder:text-muted-foreground"
               />
               {latitude && longitude && (
-                <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600" />
+                <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600" />
               )}
             </div>
             {showSuggestions && predictions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-50 w-full mt-1 bg-black md:bg-white border border-gray-700 md:border-gray-200 rounded-md shadow-lg max-h-48 md:max-h-60 overflow-auto">
                 {isLoadingPredictions ? (
-                  <div className="p-3 text-sm text-gray-500">Searching addresses...</div>
+                  <div className="p-2 md:p-3 text-xs md:text-sm text-gray-400 md:text-gray-500">Searching addresses...</div>
                 ) : (
                   <div className="py-1">
                     {predictions.map((prediction) => (
@@ -298,17 +299,17 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                         key={prediction.place_id}
                         type="button"
                         onClick={() => handleSelectPlace(prediction.place_id, prediction.description)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
+                        className="w-full text-left px-2 md:px-3 py-1.5 md:py-2 hover:bg-gray-800 md:hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
                       >
-                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-900">{prediction.description}</span>
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs md:text-sm text-gray-300 md:text-gray-900">{prediction.description}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400 md:text-gray-500">
               {!mapsLoaded
                 ? "Loading Google Maps..."
                 : !autocompleteReady
@@ -317,26 +318,26 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
             </p>
           </div>
 
-          <div className="space-y-3 border-t pt-4">
+          <div className="space-y-2 md:space-y-3 border-t border-gray-700 md:border-gray-200 pt-3 md:pt-4">
             <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-gray-500" />
-              <Label className="text-base font-medium">Company Icon</Label>
+              <Palette className="h-3 w-3 md:h-4 md:w-4 text-gray-400 md:text-gray-500" />
+              <Label className="text-sm md:text-base font-medium text-gray-300 md:text-foreground">Company Icon</Label>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="flex flex-col items-center gap-2">
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="flex flex-col items-center gap-1.5 md:gap-2">
                 <div
-                  className="w-20 h-20 rounded-lg flex items-center justify-center text-2xl font-bold shadow-md"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-lg flex items-center justify-center text-xl md:text-2xl font-bold shadow-md"
                   style={{ backgroundColor: logoBgColor, color: logoTextColor }}
                 >
                   {logoLetters || "AA"}
                 </div>
-                <p className="text-xs text-gray-500">Preview</p>
+                <p className="text-xs text-gray-400 md:text-gray-500">Preview</p>
               </div>
 
-              <div className="flex-1 space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="logoLetters">Icon Letters (1-2 characters) *</Label>
+              <div className="flex-1 space-y-2 md:space-y-3">
+                <div className="space-y-1.5 md:space-y-2">
+                  <Label htmlFor="logoLetters" className="text-xs md:text-sm text-gray-300 md:text-foreground">Icon Letters (1-2 characters) *</Label>
                   <Input
                     id="logoLetters"
                     value={logoLetters}
@@ -347,45 +348,45 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                     }}
                     placeholder="AB"
                     maxLength={2}
-                    className="uppercase"
+                    className="uppercase bg-black md:bg-white text-white md:text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="logoBgColor">Background Color</Label>
-                    <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label htmlFor="logoBgColor" className="text-xs md:text-sm text-gray-300 md:text-foreground">Background Color</Label>
+                    <div className="flex gap-1.5 md:gap-2">
                       <Input
                         id="logoBgColor"
                         type="color"
                         value={logoBgColor}
                         onChange={(e) => setLogoBgColor(e.target.value)}
-                        className="w-14 h-10 p-1 cursor-pointer"
+                        className="w-12 h-8 md:w-14 md:h-10 p-1 cursor-pointer"
                       />
                       <Input
                         value={logoBgColor}
                         onChange={(e) => setLogoBgColor(e.target.value)}
                         placeholder="#3b82f6"
-                        className="flex-1"
+                        className="flex-1 bg-black md:bg-white text-white md:text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="logoTextColor">Text Color</Label>
-                    <div className="flex gap-2">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label htmlFor="logoTextColor" className="text-xs md:text-sm text-gray-300 md:text-foreground">Text Color</Label>
+                    <div className="flex gap-1.5 md:gap-2">
                       <Input
                         id="logoTextColor"
                         type="color"
                         value={logoTextColor}
                         onChange={(e) => setLogoTextColor(e.target.value)}
-                        className="w-14 h-10 p-1 cursor-pointer"
+                        className="w-12 h-8 md:w-14 md:h-10 p-1 cursor-pointer"
                       />
                       <Input
                         value={logoTextColor}
                         onChange={(e) => setLogoTextColor(e.target.value)}
                         placeholder="#ffffff"
-                        className="flex-1"
+                        className="flex-1 bg-black md:bg-white text-white md:text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
                       />
                     </div>
                   </div>
@@ -400,6 +401,7 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                       setLogoBgColor("#3b82f6")
                       setLogoTextColor("#ffffff")
                     }}
+                    className="text-white md:text-foreground border-gray-600 md:border-gray-200"
                   >
                     Blue
                   </Button>
@@ -411,6 +413,7 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                       setLogoBgColor("#10b981")
                       setLogoTextColor("#ffffff")
                     }}
+                    className="text-white md:text-foreground border-gray-600 md:border-gray-200"
                   >
                     Green
                   </Button>
@@ -422,6 +425,7 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                       setLogoBgColor("#f59e0b")
                       setLogoTextColor("#ffffff")
                     }}
+                    className="text-white md:text-foreground border-gray-600 md:border-gray-200"
                   >
                     Orange
                   </Button>
@@ -433,6 +437,7 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
                       setLogoBgColor("#8b5cf6")
                       setLogoTextColor("#ffffff")
                     }}
+                    className="text-white md:text-foreground border-gray-600 md:border-gray-200"
                   >
                     Purple
                   </Button>
@@ -441,14 +446,14 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          {latitude && longitude && <p className="text-xs text-green-600">✓ Address validated</p>}
+          {error && <p className="text-xs md:text-sm text-red-400 md:text-red-500">{error}</p>}
+          {latitude && longitude && <p className="text-xs text-green-400 md:text-green-600">✓ Address validated</p>}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+        <DialogFooter className="gap-2 md:gap-0">
+          <Button variant="outline" onClick={() => setOpen(false)} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={saving}>
+          <Button onClick={handleSubmit} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground">
             {saving ? "Creating..." : "Create Company"}
           </Button>
         </DialogFooter>

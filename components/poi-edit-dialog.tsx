@@ -60,127 +60,137 @@ export function PoiEditDialog({ open, onOpenChange, location, onSave }: PoiEditD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] md:max-w-3xl max-h-[90vh] overflow-y-auto bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle>Edit Point of Interest</DialogTitle>
-          <DialogDescription>Update the information for this POI location</DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Edit Point of Interest</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Update the information for this POI location</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 md:gap-x-6 gap-y-3 md:gap-y-4 py-2 md:py-4">
           {/* Institution Code */}
-          <div className="space-y-2">
-            <Label htmlFor="institution_code">Centre Number</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="institution_code" className="text-xs md:text-sm text-gray-300 md:text-foreground">Centre Number</Label>
             <Input
               id="institution_code"
               value={formData.institution_code || ""}
               onChange={(e) => handleChange("institution_code", e.target.value)}
               placeholder="e.g., 12345"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* POI Name */}
-          <div className="space-y-2">
-            <Label htmlFor="poi_name">Institution Name</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="poi_name" className="text-xs md:text-sm text-gray-300 md:text-foreground">Institution Name</Label>
             <Input
               id="poi_name"
               value={formData.poi_name || ""}
               onChange={(e) => handleChange("poi_name", e.target.value)}
               placeholder="Enter institution name"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Street Address */}
-          <div className="space-y-2 col-span-2">
+          <div className="space-y-1.5 md:space-y-2 md:col-span-2">
             <Label htmlFor="street_address">Street Address</Label>
             <Input
               id="street_address"
               value={formData.street_address || ""}
               onChange={(e) => handleChange("street_address", e.target.value)}
               placeholder="Enter street address"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* City */}
-          <div className="space-y-2">
-            <Label htmlFor="city">Suburb/City</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="city" className="text-xs md:text-sm text-gray-300 md:text-foreground">Suburb/City</Label>
             <Input
               id="city"
               value={formData.city || ""}
               onChange={(e) => handleChange("city", e.target.value)}
               placeholder="Enter suburb"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* State */}
-          <div className="space-y-2">
-            <Label htmlFor="state">State</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="state" className="text-xs md:text-sm text-gray-300 md:text-foreground">State</Label>
             <Input
               id="state"
               value={formData.state || ""}
               onChange={(e) => handleChange("state", e.target.value)}
               placeholder="e.g., NSW"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Postcode */}
-          <div className="space-y-2">
-            <Label htmlFor="postcode">Postcode</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="postcode" className="text-xs md:text-sm text-gray-300 md:text-foreground">Postcode</Label>
             <Input
               id="postcode"
               value={formData.postcode || ""}
               onChange={(e) => handleChange("postcode", e.target.value)}
               placeholder="e.g., 2000"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Country */}
-          <div className="space-y-2">
-            <Label htmlFor="country">Country</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="country" className="text-xs md:text-sm text-gray-300 md:text-foreground">Country</Label>
             <Input
               id="country"
               value={formData.country || ""}
               onChange={(e) => handleChange("country", e.target.value)}
               placeholder="e.g., Australia"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Contact Name */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_name">Contact Name</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="contact_name" className="text-xs md:text-sm text-gray-300 md:text-foreground">Contact Name</Label>
             <Input
               id="contact_name"
               value={formData.contact_name || ""}
               onChange={(e) => handleChange("contact_name", e.target.value)}
               placeholder="Enter contact name"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Contact Email */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_email">Contact Email</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="contact_email" className="text-xs md:text-sm text-gray-300 md:text-foreground">Contact Email</Label>
             <Input
               id="contact_email"
               type="email"
               value={formData.contact_email || ""}
               onChange={(e) => handleChange("contact_email", e.target.value)}
               placeholder="email@example.com"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Contact Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_phone">Contact Phone</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="contact_phone" className="text-xs md:text-sm text-gray-300 md:text-foreground">Contact Phone</Label>
             <Input
               id="contact_phone"
               value={formData.contact_phone || ""}
               onChange={(e) => handleChange("contact_phone", e.target.value)}
               placeholder="Enter phone number"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Latitude */}
-          <div className="space-y-2">
-            <Label htmlFor="latitude">Latitude</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="latitude" className="text-xs md:text-sm text-gray-300 md:text-foreground">Latitude</Label>
             <Input
               id="latitude"
               type="number"
@@ -188,12 +198,13 @@ export function PoiEditDialog({ open, onOpenChange, location, onSave }: PoiEditD
               value={formData.latitude ?? ""}
               onChange={(e) => handleChange("latitude", e.target.value ? Number.parseFloat(e.target.value) : null)}
               placeholder="e.g., -33.8688"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Longitude */}
-          <div className="space-y-2">
-            <Label htmlFor="longitude">Longitude</Label>
+          <div className="space-y-1.5 md:space-y-2">
+            <Label htmlFor="longitude" className="text-xs md:text-sm text-gray-300 md:text-foreground">Longitude</Label>
             <Input
               id="longitude"
               type="number"
@@ -201,18 +212,19 @@ export function PoiEditDialog({ open, onOpenChange, location, onSave }: PoiEditD
               value={formData.longitude ?? ""}
               onChange={(e) => handleChange("longitude", e.target.value ? Number.parseFloat(e.target.value) : null)}
               placeholder="e.g., 151.2093"
+              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+        <div className="flex justify-end gap-2 md:gap-3 pt-3 md:pt-4 border-t border-gray-700 md:border-gray-200">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="text-xs md:text-sm text-white md:text-foreground">
             {isSaving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
                 Saving...
               </>
             ) : (

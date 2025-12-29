@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { HeroUIProviders } from "@/components/heroui-provider"
+import { MobileEmailScroll } from "@/components/mobile-email-scroll"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -13,6 +14,12 @@ export const metadata: Metadata = {
   generator: 'v0.dev',
   icons: {
     icon: '/gridalert-favicon.svg',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
   },
 }
 
@@ -26,6 +33,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <HeroUIProviders>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+          <MobileEmailScroll />
           {children}
         </ThemeProvider>
         </HeroUIProviders>

@@ -196,23 +196,23 @@ export function EditUserDetailsDialog({
           <Button
             type="button"
             variant="bordered"
-            className="w-full justify-between rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="w-full justify-between rounded-none border-0 border-b-2 border-gray-700 md:border-gray-200 bg-black md:bg-white px-2 py-2 md:py-3 text-xs md:text-sm text-white md:text-slate-900 shadow-none hover:bg-gray-900 md:hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           >
-            <span className="truncate">{display}</span>
-            <ChevronsUpDown className="h-4 w-4 opacity-60" />
+            <span className="truncate text-white md:text-slate-900">{display}</span>
+            <ChevronsUpDown className="h-3 w-3 md:h-4 md:w-4 opacity-60 text-white md:text-slate-900" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[320px]">
-          <Command>
-            <CommandEmpty>No results.</CommandEmpty>
-            <CommandList>
-              <CommandGroup>
-                {options.map((opt) => (
-                  <CommandItem
-                    key={opt.value}
-                    onSelect={() => toggle(opt.value)}
-                    className="flex items-center gap-2 bg-white text-foreground hover:!bg-muted/70 data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-foreground data-[selected]:bg-white data-[selected]:text-foreground"
-                  >
+      <PopoverContent className="p-0 w-[280px] md:w-[320px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))]">
+        <Command>
+          <CommandEmpty className="text-gray-400 md:text-muted-foreground">No results.</CommandEmpty>
+          <CommandList>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.value}
+                  onSelect={() => toggle(opt.value)}
+                  className="flex items-center gap-2 bg-black md:bg-white text-gray-300 md:text-foreground hover:!bg-gray-800 md:hover:!bg-muted/70 data-[highlighted]:!bg-gray-800 md:data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-gray-300 md:data-[highlighted]:!text-foreground data-[selected]:bg-gray-800 md:data-[selected]:bg-white data-[selected]:text-gray-300 md:data-[selected]:text-foreground"
+                >
                     <div
                       className={cn(
                         "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
@@ -236,15 +236,15 @@ export function EditUserDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle>Edit Your Details</DialogTitle>
-          <DialogDescription>Update your name, mobile number, or change your password</DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Edit Your Details</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Update your name, mobile number, or change your password</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4 bg-white">
+        <div className="grid gap-3 md:gap-6 py-2 md:py-4 bg-black md:bg-white">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+            <div className="bg-red-900/50 border border-red-700 md:bg-red-50 md:border-red-200 text-red-300 md:text-red-800 px-3 md:px-4 py-2 md:py-3 rounded-md text-xs md:text-sm">
               {error}
             </div>
           )}
@@ -252,8 +252,11 @@ export function EditUserDetailsDialog({
           {/* Accordion Sections */}
           <Accordion defaultExpandedKeys={[]} selectionMode="single" className="w-full">
             {/* Personal Details */}
-            <AccordionItem key="personal" aria-label="Personal Details" title="Personal Details">
-              <div className="space-y-6 py-4 bg-white">
+            <AccordionItem key="personal" aria-label="Personal Details" title="Personal Details" classNames={{
+              title: "text-xs md:text-sm text-gray-300 md:text-foreground",
+              content: "text-gray-300 md:text-foreground"
+            }}>
+              <div className="space-y-3 md:space-y-6 py-2 md:py-4 bg-black md:bg-white">
                 {/* Name Fields */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -269,9 +272,9 @@ export function EditUserDetailsDialog({
                         base: "bg-transparent",
                         mainWrapper: "bg-transparent",
                         inputWrapper:
-                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                        input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                        label: "text-slate-700 data-[inside=true]:text-slate-500",
+                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                        input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                       }}
                     />
                   </div>
@@ -288,9 +291,9 @@ export function EditUserDetailsDialog({
                         base: "bg-transparent",
                         mainWrapper: "bg-transparent",
                         inputWrapper:
-                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                        input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                        label: "text-slate-700 data-[inside=true]:text-slate-500",
+                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                        input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                       }}
                     />
                   </div>
@@ -310,9 +313,9 @@ export function EditUserDetailsDialog({
                       base: "bg-transparent",
                       mainWrapper: "bg-transparent",
                       inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                      input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                      label: "text-slate-700 data-[inside=true]:text-slate-500",
+                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                     }}
                   />
                 </div>
@@ -330,19 +333,22 @@ export function EditUserDetailsDialog({
                       base: "bg-transparent",
                       mainWrapper: "bg-transparent",
                       inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-300 border-x-0 border-t-0 opacity-60",
-                      input: "bg-transparent text-base text-slate-900",
-                      label: "text-slate-700 data-[inside=true]:text-slate-500",
+                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-gray-300 border-x-0 border-t-0 opacity-60",
+                      input: "bg-transparent text-base !text-white md:!text-slate-900",
+                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                  <p className="text-xs text-gray-400 md:text-muted-foreground">Email cannot be changed</p>
                 </div>
               </div>
             </AccordionItem>
 
             {/* Notification Preferences */}
-            <AccordionItem key="notifications" aria-label="Notification Preferences" title="Notification Preferences">
-              <div className="space-y-6 py-4 bg-white">
+            <AccordionItem key="notifications" aria-label="Notification Preferences" title="Notification Preferences" classNames={{
+              title: "text-xs md:text-sm text-gray-300 md:text-foreground",
+              content: "text-gray-300 md:text-foreground"
+            }}>
+              <div className="space-y-3 md:space-y-6 py-2 md:py-4 bg-black md:bg-white">
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold">Notification Channels</Label>
                   <MultiSelect
@@ -368,7 +374,7 @@ export function EditUserDetailsDialog({
                   variant="bordered"
                   onClick={handleUpdateNotifications}
                   disabled={updatingNotifications || notifyChannels.length === 0 || notifyOutageTypes.length === 0}
-                  className="w-full"
+                  className="w-full text-white md:text-foreground border-gray-600 md:border-gray-200"
                 >
                   {updatingNotifications ? "Updating..." : "Update Notification Preferences"}
                 </Button>
@@ -376,9 +382,12 @@ export function EditUserDetailsDialog({
             </AccordionItem>
 
             {/* Change Password */}
-            <AccordionItem key="password" aria-label="Change Password" title="Change Password">
-              <div className="space-y-4 py-4 bg-white">
-                <p className="text-sm text-muted-foreground">Enter a new password to change your current one</p>
+            <AccordionItem key="password" aria-label="Change Password" title="Change Password" classNames={{
+              title: "text-xs md:text-sm text-gray-300 md:text-foreground",
+              content: "text-gray-300 md:text-foreground"
+            }}>
+              <div className="space-y-3 md:space-y-4 py-2 md:py-4 bg-black md:bg-white">
+                <p className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Enter a new password to change your current one</p>
                 <div className="space-y-2">
                   <Input
                     label="New Password"
@@ -393,9 +402,9 @@ export function EditUserDetailsDialog({
                       base: "bg-transparent",
                       mainWrapper: "bg-transparent",
                       inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                      input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                      label: "text-slate-700 data-[inside=true]:text-slate-500",
+                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                     }}
                   />
                 </div>
@@ -413,9 +422,9 @@ export function EditUserDetailsDialog({
                       base: "bg-transparent",
                       mainWrapper: "bg-transparent",
                       inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                      input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                      label: "text-slate-700 data-[inside=true]:text-slate-500",
+                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                     }}
                   />
                 </div>
@@ -424,7 +433,7 @@ export function EditUserDetailsDialog({
                   variant="bordered"
                   onClick={handleChangePassword}
                   disabled={changingPassword || !newPassword || newPassword !== confirmPassword}
-                  className="w-full"
+                  className="w-full text-white md:text-foreground border-gray-600 md:border-gray-200"
                 >
                   {changingPassword ? "Changing Password..." : "Change Password"}
                 </Button>
@@ -433,11 +442,11 @@ export function EditUserDetailsDialog({
           </Accordion>
         </div>
 
-        <DialogFooter>
-          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving || changingPassword || updatingNotifications}>
+        <DialogFooter className="gap-2 md:gap-0">
+          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving || changingPassword || updatingNotifications} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || changingPassword || updatingNotifications || !firstName.trim() || !lastName.trim()}>
+          <Button onClick={handleSave} disabled={saving || changingPassword || updatingNotifications || !firstName.trim() || !lastName.trim()} className="text-xs md:text-sm text-white md:text-foreground">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

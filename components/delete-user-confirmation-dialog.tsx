@@ -64,29 +64,29 @@ export function DeleteUserConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-destructive">Delete User</DialogTitle>
-          <DialogDescription>This action cannot be undone</DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-red-400 md:text-destructive">Delete User</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">This action cannot be undone</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
+        <div className="grid gap-3 md:gap-6 py-2 md:py-4">
+          <Alert variant="destructive" className="bg-red-900/50 md:bg-red-50 border-red-700 md:border-red-200">
+            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-300 md:text-red-600" />
+            <AlertDescription className="text-gray-300 md:text-red-800">
               You are about to permanently delete this user. This will remove all their data and cannot be undone.
             </AlertDescription>
           </Alert>
 
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div>
-              <Label className="text-sm font-medium">User Name</Label>
-              <p className="text-base font-semibold mt-1">{userName}</p>
+              <Label className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">User Name</Label>
+              <p className="text-sm md:text-base font-semibold mt-1 text-gray-300 md:text-foreground">{userName}</p>
             </div>
             <div>
-              <Label className="text-sm font-medium">Email Address</Label>
+              <Label className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">Email Address</Label>
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-base font-semibold flex-1">{userEmail}</p>
+                <p className="text-sm md:text-base font-semibold flex-1 text-gray-300 md:text-foreground">{userEmail}</p>
                 <Button
                   type="button"
                   variant="outline"
@@ -101,7 +101,7 @@ export function DeleteUserConfirmationDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmEmail">
+            <Label htmlFor="confirmEmail" className="text-xs md:text-sm text-gray-300 md:text-foreground">
               To confirm deletion, please type the email address: <span className="font-semibold">{userEmail}</span>
             </Label>
             <Input
@@ -112,22 +112,23 @@ export function DeleteUserConfirmationDialog({
                 setError(null)
               }}
               placeholder="Type email address to confirm"
-              className={error ? "border-red-500" : ""}
+              className={`text-xs md:text-sm bg-black md:bg-white !text-white md:!text-foreground placeholder:text-gray-400 md:placeholder:text-muted-foreground ${error ? "border-red-500" : ""}`}
             />
             {error && (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-xs md:text-sm text-red-400 md:text-red-600">{error}</p>
             )}
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
+        <DialogFooter className="gap-2 md:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
           <Button
             variant="destructive"
             onClick={handleConfirm}
             disabled={deleting || emailInput.trim().toLowerCase() !== userEmail.toLowerCase()}
+            className="text-xs md:text-sm text-white"
           >
             {deleting ? "Deleting..." : "Delete User"}
           </Button>

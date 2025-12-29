@@ -1,6 +1,7 @@
 ;"use client"
 
 import { LoginForm } from "@/components/login-form"
+import { useEffect } from "react"
 
 export const dynamic = 'force-dynamic'
 
@@ -14,12 +15,22 @@ export default function Page() {
     "/animation-6.svg",
   ]
 
+  // Set body and html background to black for login page
+  useEffect(() => {
+    const originalBodyBg = document.body.style.backgroundColor
+    const originalHtmlBg = document.documentElement.style.backgroundColor
+    
+    document.body.style.backgroundColor = "#000000"
+    document.documentElement.style.backgroundColor = "#000000"
+    
+    return () => {
+      document.body.style.backgroundColor = originalBodyBg
+      document.documentElement.style.backgroundColor = originalHtmlBg
+    }
+  }, [])
+
   return (
-    <div className="relative flex min-h-svh w-full items-center justify-center bg-[#050505] p-6 md:p-10 overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/6 to-black/80 mix-blend-screen" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22)_0%,_rgba(255,255,255,0)_40%)] opacity-60" />
-      </div>
+    <div className="relative flex h-mobile w-full items-center justify-center bg-[#000000] p-6 md:p-10 overflow-hidden fixed inset-0">
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {backgrounds.map((src, idx) => (

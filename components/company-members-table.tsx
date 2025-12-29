@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -42,6 +43,8 @@ interface CompanyMembersTableProps {
   saving: boolean
   currentUserId?: string
   currentUserRole?: "admin" | "manager" | "member"
+  companyBgColor?: string
+  companyTextColor?: string
 }
 
 const providerOptions = [
@@ -140,12 +143,97 @@ function MultiSelect({
   )
 }
 
-export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, saving, currentUserId, currentUserRole = "member" }: CompanyMembersTableProps) {
+export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, saving, currentUserId, currentUserRole = "member", companyBgColor, companyTextColor }: CompanyMembersTableProps) {
   const [editMember, setEditMember] = useState<MemberRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [memberToDelete, setMemberToDelete] = useState<MemberRecord | null>(null)
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [isMobile, setIsMobile] = useState(false)
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; memberId: string } | null>(null)
+  const [popoverCoords, setPopoverCoords] = useState<{ top: number; left: number } | null>(null)
+  const [selectionOrder, setSelectionOrder] = useState<string[]>([]) // Track selection order
   const isAdmin = currentUserRole === "admin"
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Update popover coordinates when selection changes
+  useEffect(() => {
+    if (!isMobile || !isAdmin || !popoverPosition?.memberId) {
+      setPopoverCoords(null)
+      return
+    }
+    
+    const updatePosition = () => {
+      const rowElement = document.querySelector(`[data-member-id="${popoverPosition.memberId}"]`) as HTMLElement
+      if (rowElement) {
+        // Find the first data column (Member column) in this row
+        const firstColumn = rowElement.querySelector('[data-first-column="true"]') as HTMLElement
+        if (firstColumn) {
+          const rect = firstColumn.getBoundingClientRect()
+          setPopoverCoords({
+            top: rect.bottom + 4,
+            left: rect.left
+          })
+        } else {
+          // Fallback to row position
+          const rect = rowElement.getBoundingClientRect()
+          setPopoverCoords({
+            top: rect.bottom + 4,
+            left: rect.left + 8
+          })
+        }
+      }
+    }
+    
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(() => {
+      updatePosition()
+    }, 50)
+    
+    // Update on scroll/resize
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [popoverPosition, isMobile, isAdmin, selectedRows])
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    if (!popoverPosition || !isMobile) return
+    
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement
+      // Don't close if clicking on the popover itself or buttons inside it
+      const isPopoverContent = target.closest('[class*="shadow-lg"]')
+      const isPopoverButton = target.closest('button') && target.closest('[class*="bg-gray-900"]')
+      
+      if (!isPopoverContent && !isPopoverButton) {
+        setPopoverPosition(null)
+      }
+    }
+
+    // Use setTimeout to avoid immediate trigger from the touch that opened it
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside, true)
+      document.addEventListener('touchstart', handleClickOutside, true)
+    }, 150)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside, true)
+      document.removeEventListener('touchstart', handleClickOutside, true)
+    }
+  }, [popoverPosition, isMobile])
 
   const getInitials = (member: MemberRecord) => {
     if (member.icon_letters) return member.icon_letters
@@ -174,32 +262,215 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
     return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
   }
 
+  const handleSelectRow = (memberId: string) => {
+    const newSelected = new Set(selectedRows)
+    const wasSelected = newSelected.has(memberId)
+    
+    if (wasSelected) {
+      // Deselecting
+      newSelected.delete(memberId)
+      // Remove from selection order
+      const newSelectionOrder = selectionOrder.filter(id => id !== memberId)
+      setSelectionOrder(newSelectionOrder)
+      
+      // If this was the popover row, move popover to the previously most recently selected row
+      if (popoverPosition?.memberId === memberId) {
+        if (newSelectionOrder.length > 0 && isMobile) {
+          // Show popover on the last item in selection order (most recently selected remaining row)
+          const newPopoverRowId = newSelectionOrder[newSelectionOrder.length - 1]
+          setPopoverPosition({
+            top: 0,
+            left: 0,
+            memberId: newPopoverRowId
+          })
+        } else {
+          setPopoverPosition(null)
+        }
+      }
+    } else {
+      // Selecting
+      newSelected.add(memberId)
+      // Add to selection order (append to end)
+      const newSelectionOrder = [...selectionOrder, memberId]
+      setSelectionOrder(newSelectionOrder)
+      
+      // Set popover position when selecting on mobile
+      if (isMobile) {
+        setPopoverPosition({
+          top: 0,
+          left: 0,
+          memberId: memberId
+        })
+      }
+    }
+    setSelectedRows(newSelected)
+  }
+  
+  // Clean up selectionOrder to only include IDs that are still selected
+  useEffect(() => {
+    const validSelectionOrder = selectionOrder.filter(id => selectedRows.has(id))
+    if (validSelectionOrder.length !== selectionOrder.length) {
+      setSelectionOrder(validSelectionOrder)
+    }
+  }, [selectedRows, selectionOrder])
+
+  const handleDeleteSelected = async () => {
+    if (!onDeleteMember || selectedRows.size === 0) return
+    const idsToDelete = Array.from(selectedRows)
+    if (idsToDelete.length === 1) {
+      const member = members.find((m) => m.user_id === idsToDelete[0])
+      if (member) {
+        setMemberToDelete(member)
+        setDeleteConfirmOpen(true)
+      }
+    } else {
+      // For multiple, show confirmation for first one as representative
+      const member = members.find((m) => m.user_id === idsToDelete[0])
+      if (member) {
+        setMemberToDelete(member)
+        setDeleteConfirmOpen(true)
+      }
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!onDeleteMember) return
+    const idsToDelete = Array.from(selectedRows)
+    if (idsToDelete.length === 0) return
+
+    setDeleting(true)
+    try {
+      // Delete all selected members
+      for (const id of idsToDelete) {
+        await onDeleteMember(id)
+      }
+      setSelectedRows(new Set())
+      setSelectionOrder([])
+      setDeleteConfirmOpen(false)
+      setMemberToDelete(null)
+      setPopoverPosition(null)
+    } catch (error) {
+      console.error("Failed to delete member(s):", error)
+      throw error
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleEditSelected = () => {
+    if (selectedRows.size !== 1) return
+    const selectedId = Array.from(selectedRows)[0]
+    const member = members.find((m) => m.user_id === selectedId)
+    if (member) {
+      setEditMember(member)
+      setPopoverPosition(null)
+    }
+  }
+
+
   return (
     <>
-      <Card>
+      <Card className="bg-black md:bg-[hsl(var(--card))] border-gray-900 md:border-[hsl(var(--border))]">
         <CardHeader>
-          <CardTitle>Team Members</CardTitle>
-          <CardDescription>Manage your team's access and notification preferences</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardDescription className="hidden md:block">Manage your team's access and notification preferences</CardDescription>
+            </div>
+            {isAdmin && (
+              <div className="hidden md:flex gap-2">
+                {selectedRows.size === 1 && (
+                  <Button 
+                    onClick={handleEditSelected} 
+                    disabled={saving} 
+                    variant="outline" 
+                    className="text-xs md:text-sm h-8 md:h-10 border-gray-700 md:border-[hsl(var(--border))] text-white md:text-foreground hover:bg-gray-800 md:hover:bg-muted"
+                  >
+                    Edit
+                  </Button>
+                )}
+                {selectedRows.size > 0 && (
+                  <Button
+                    onClick={handleDeleteSelected}
+                    disabled={deleting || saving}
+                    variant="outline"
+                    className="text-xs md:text-sm h-8 md:h-10 border-red-500 text-red-400 md:text-red-600 hover:bg-red-900/20 md:hover:bg-red-50 hover:text-red-300 md:hover:text-red-700 bg-transparent"
+                  >
+                    <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Delete ({selectedRows.size})</span>
+                    <span className="sm:hidden">({selectedRows.size})</span>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border-0 md:border border-gray-900 md:border-[hsl(var(--border))] overflow-visible">
+            <div className="overflow-visible">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Regions</TableHead>
-                  <TableHead>Providers</TableHead>
-                  <TableHead>Outage Types</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="bg-gray-900 md:bg-gray-100 border-gray-900 md:border-[hsl(var(--border))]">
+                  {isAdmin && <TableHead className="w-12 hidden md:table-cell"></TableHead>}
+                  <TableHead className="font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3">TEAM MEMBER</TableHead>
+                  <TableHead className="font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3">Role</TableHead>
+                  <TableHead className="font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3">Regions</TableHead>
+                  <TableHead className="font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3 min-w-[240px]">Providers</TableHead>
+                  <TableHead className="font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3">Outage Types</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-300 md:text-foreground uppercase text-sm py-3 hidden md:table-cell">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {members.map((member) => {
                   const name = getMemberName(member)
+                  const isSelected = selectedRows.has(member.user_id)
                   return (
-                    <TableRow key={member.user_id}>
-                      <TableCell>
+                    <TableRow 
+                      key={member.user_id}
+                      data-member-id={member.user_id}
+                      className={`border-gray-900 md:border-[hsl(var(--border))] ${isSelected ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-black md:bg-transparent hover:!bg-black md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
+                      style={{
+                        WebkitTapHighlightColor: 'transparent',
+                        userSelect: 'none',
+                      } as React.CSSProperties}
+                      onClick={isAdmin ? (e) => {
+                        // Don't trigger if clicking the checkbox button itself
+                        if ((e.target as HTMLElement).closest('button[type="button"]')) {
+                          return
+                        }
+                        handleSelectRow(member.user_id)
+                      } : undefined}
+                    >
+                      {isAdmin && (
+                        <TableCell className="w-12 hidden md:table-cell">
+                          <div className="flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleSelectRow(member.user_id)
+                              }}
+                              className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] transition-colors ${
+                                isSelected
+                                  ? "border-[#FF8E32] bg-[#FF8E32] text-white"
+                                  : "border-gray-800 md:border-gray-300 bg-black md:bg-white hover:border-gray-700 md:hover:border-gray-400"
+                              }`}
+                            >
+                              {isSelected && (
+                                <svg
+                                  className="h-3 w-3"
+                                  fill="none"
+                                  strokeWidth={3}
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </TableCell>
+                      )}
+                      <TableCell className="font-medium text-white md:text-foreground" data-first-column="true">
                         <div className="flex items-center gap-3">
                           <div
                             className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
@@ -212,36 +483,51 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                           </div>
                           <div>
                             <div className="font-medium">{name}</div>
-                            <div className="text-sm text-muted-foreground">{member.email}</div>
+                            <div className="text-sm text-gray-400 md:text-muted-foreground">{member.email}</div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="capitalize">
+                      <TableCell className="text-white md:text-foreground">
+                        <Badge 
+                          variant="secondary" 
+                          className="capitalize border-gray-800 md:border-[hsl(var(--border))]"
+                          style={{
+                            backgroundColor: member.role === "admin" 
+                              ? (companyTextColor || "#ffffff") 
+                              : (companyBgColor || "#f97316"),
+                            color: member.role === "admin" 
+                              ? (companyBgColor || "#f97316") 
+                              : (companyTextColor || "#ffffff"),
+                          }}
+                        >
                           {member.role}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-white md:text-foreground">
                         {isAdmin || member.user_id === currentUserId ? (
-                          <div className="flex flex-wrap gap-1">
-                            {member.region_access.slice(0, 3).map((region) => (
-                              <Badge key={region} variant="outline" className="text-xs">
-                                {region}
-                              </Badge>
-                            ))}
-                            {member.region_access.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{member.region_access.length - 3}
-                              </Badge>
-                            )}
-                          </div>
+                          member.region_access.length === regionOptions.length ? (
+                            <span className="text-white md:text-foreground text-sm">All States</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {member.region_access.slice(0, 3).map((region) => (
+                                <Badge key={region} variant="outline" className="text-xs border-gray-800 md:border-[hsl(var(--border))] text-white md:text-foreground">
+                                  {region}
+                                </Badge>
+                              ))}
+                              {member.region_access.length > 3 && (
+                                <Badge variant="outline" className="text-xs border-gray-800 md:border-[hsl(var(--border))] text-white md:text-foreground">
+                                  +{member.region_access.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            <Badge variant="outline" className="text-xs opacity-50">—</Badge>
+                            <Badge variant="outline" className="text-xs border-gray-800 md:border-[hsl(var(--border))] text-white md:text-foreground opacity-50">—</Badge>
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[240px]">
                         {isAdmin || member.user_id === currentUserId ? (
                           <div className="flex flex-wrap gap-1">
                             {[...member.notify_providers].sort().map((provider) => {
@@ -259,30 +545,38 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                           </div>
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs font-bold opacity-50">
+                            <div className="h-6 w-6 rounded-full bg-gray-800 md:bg-gray-300 flex items-center justify-center text-white text-xs font-bold opacity-50">
                               —
                             </div>
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-white md:text-foreground">
                         {member.user_id === currentUserId ? (
                           <div className="flex flex-wrap gap-1">
                             {member.notify_outage_types.map((type) => (
-                              <Badge key={type} variant="outline" className="text-xs capitalize">
+                              <Badge key={type} variant="outline" className="text-xs capitalize border-gray-800 md:border-[hsl(var(--border))] text-white md:text-foreground">
                                 {type}
                               </Badge>
                             ))}
                           </div>
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            <Badge variant="outline" className="text-xs opacity-50">—</Badge>
+                            <Badge variant="outline" className="text-xs border-gray-800 md:border-[hsl(var(--border))] text-white md:text-foreground opacity-50">—</Badge>
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         {(isAdmin || member.user_id === currentUserId) && (
-                          <Button variant="ghost" size="sm" onClick={() => setEditMember(member)}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditMember(member)
+                            }} 
+                            className="text-white md:text-foreground hover:bg-gray-900 md:hover:bg-muted"
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
@@ -292,7 +586,54 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                 })}
               </TableBody>
             </Table>
+            </div>
           </div>
+          
+          {/* Mobile: Popover portal - renders outside table */}
+          {isAdmin && isMobile && popoverPosition && popoverCoords && selectedRows.has(popoverPosition.memberId) && typeof window !== 'undefined' 
+            ? createPortal(
+                <div 
+                  className="fixed z-[9999]"
+                  style={{
+                    top: `${popoverCoords.top}px`,
+                    left: `${popoverCoords.left}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-auto min-w-[140px] max-w-[200px] p-1 bg-gray-900 border border-gray-800 rounded-md shadow-lg">
+                    <div className="flex flex-col gap-1">
+                      {selectedRows.size === 1 && selectedRows.has(popoverPosition.memberId) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-white hover:bg-gray-800 h-8 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEditSelected()
+                            setPopoverPosition(null)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-red-400 hover:bg-red-900/20 h-8 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteSelected()
+                          setPopoverPosition(null)
+                        }}
+                      >
+                        {selectedRows.size > 1 ? `Delete ${selectedRows.size} members` : 'Delete'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )
+            : null}
         </CardContent>
       </Card>
 
@@ -435,23 +776,11 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
           }}
           userName={getMemberName(memberToDelete)}
           userEmail={memberToDelete.email || ""}
-          onConfirm={async () => {
-            setDeleting(true)
-            try {
-              await onDeleteMember(memberToDelete.user_id)
-              setEditMember(null)
-              setDeleteConfirmOpen(false)
-              setMemberToDelete(null)
-            } catch (error) {
-              console.error("Failed to delete user:", error)
-              throw error
-            } finally {
-              setDeleting(false)
-            }
-          }}
+          onConfirm={handleConfirmDelete}
           deleting={deleting}
         />
       )}
+
     </>
   )
 }

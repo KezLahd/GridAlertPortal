@@ -5,16 +5,17 @@ interface MapLegendProps {
   zoomLevel: number
   showPoiMarkers?: boolean
   showPolygons?: boolean
+  companyName?: string
 }
 
-export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = false, showPolygons = false }: MapLegendProps) {
+export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = false, showPolygons = false, companyName }: MapLegendProps) {
   return (
-    <div className="absolute bottom-4 left-4 bg-white p-3 rounded-md shadow-md z-10 text-sm">
-      <h4 className="font-medium mb-2">Map Legend</h4>
-      <div className="space-y-2">
+    <div className="absolute bottom-4 left-4 bg-white p-2 rounded-md shadow-md z-10 text-xs">
+      <h4 className="font-medium mb-1 text-xs">Map Legend</h4>
+      <div className="space-y-1">
         {outageType === "unplanned" && (
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-center gap-1.5">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id={`multiColorGradient-${outageType}`} x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#EF4444" />
@@ -32,24 +33,24 @@ export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = fals
         )}
 
         {(outageType === "planned" || outageType === "future") && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <MapPin
-              className={`h-4 w-4 ${outageType === "planned" ? "text-orange-500 fill-orange-500" : "text-blue-500 fill-blue-500"}`}
+              className={`h-3 w-3 ${outageType === "planned" ? "text-orange-500 fill-orange-500" : "text-blue-500 fill-blue-500"}`}
             />
             <span>{outageType === "planned" ? "Planned" : "Future"} Outage</span>
           </div>
         )}
 
         {showPoiMarkers && (
-          <div className="flex items-center gap-2">
-            <Circle className="h-4 w-4 text-red-500 fill-red-500" />
+          <div className="flex items-center gap-1.5">
+            <Circle className="h-3 w-3 text-red-500 fill-red-500" />
             <span>Clinic (POI)</span>
           </div>
         )}
 
         {showPolygons && (
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-center gap-1.5">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M12 2L22 8.5L18 21H6L2 8.5L12 2Z"
                 stroke={outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6"}
@@ -66,8 +67,8 @@ export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = fals
         )}
 
         <div className="flex items-center gap-2">
-          <img src="/company_location.svg" alt="Company" className="h-4 w-4" />
-          <span>Company Location</span>
+          <img src="/company_location.svg" alt="Company" className="h-3 w-3" />
+          <span>{companyName || "Company Location"}</span>
         </div>
       </div>
     </div>

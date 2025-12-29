@@ -128,6 +128,17 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Mobile-friendly full height that accounts for browser UI */
+  .min-h-mobile {
+    min-height: 100dvh;
+    min-height: 100vh; /* Fallback for older browsers */
+  }
+  
+  .h-mobile {
+    height: 100dvh;
+    height: 100vh; /* Fallback for older browsers */
+  }
 }
 
 /* Custom scrollbar styles for table containers - outside layer for better specificity */

@@ -85,7 +85,7 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
   const progress = (step / totalSteps) * 100
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Welcome to GridAlert</CardTitle>

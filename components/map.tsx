@@ -1,15 +1,16 @@
 "use client"
 
 import { googleMapsApiKey } from "@/lib/config"
-import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from "@react-google-maps/api"
 import MapsError from "./maps-error"
 import MapLegend from "./map-legend"
+import { Badge } from "@/components/ui/badge"
 
-// Map container style
+// Map container style - will be overridden by parent container height
 const containerStyle = {
   width: "100%",
-  height: "70vh",
+  height: "100%",
 }
 
 // Default center (can be adjusted based on your location)
@@ -107,6 +108,7 @@ interface PoiLocation {
   city?: string
   state?: string
   postcode?: string
+  provider?: string | null
 }
 
 interface MapProps {
@@ -120,6 +122,8 @@ interface MapProps {
   poiLocations?: PoiLocation[]
   showPoiMarkers?: boolean
   showPolygons?: boolean
+  showServiceAreas?: boolean
+  serviceAreas?: Array<{ provider: string; geojson: any; feature_id?: number; color_hex?: string }>
 }
 
 // Function to check if Google Maps API is loaded
@@ -137,7 +141,7 @@ const ClientGoogleMap = ({ children, ...props }: any) => {
   return <GoogleMap {...props}>{children}</GoogleMap>
 }
 
-export default function Map({ outages, outageType, searchQuery = "", selectedOutageId, selectedPoiId, companyCenter, companyLocation, poiLocations = [], showPoiMarkers = false, showPolygons = false }: MapProps) {
+export default function Map({ outages, outageType, searchQuery = "", selectedOutageId, selectedPoiId, companyCenter, companyLocation, poiLocations = [], showPoiMarkers = false, showPolygons = false, showServiceAreas = false, serviceAreas = [] }: MapProps) {
   const [apiError, setApiError] = useState<string | null>(null)
   const [currentZoom, setCurrentZoom] = useState(12)
 
@@ -428,6 +432,25 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
     )
   }
 
+  const getProviderBadgeClass = (provider: string): string => {
+    const providerColors: Record<string, string> = {
+      Ausgrid: "bg-blue-100 text-blue-800",
+      Endeavour: "bg-green-100 text-green-800",
+      Energex: "bg-cyan-100 text-lime-700 border-lime-200",
+      Ergon: "bg-red-100 text-red-800",
+      "SA Power": "bg-orange-100 text-orange-800",
+      "Horizon Power": "bg-amber-100 text-amber-900",
+      WPower: "bg-amber-200 text-black",
+      AusNet: "bg-emerald-50 text-emerald-900 border-emerald-200",
+      CitiPowerCor: "bg-blue-50 text-red-700 border-blue-200",
+      "Essential Energy": "bg-orange-50 text-blue-700 border-orange-200",
+      Jemena: "bg-cyan-50 text-indigo-900 border-cyan-200",
+      UnitedEnergy: "bg-purple-100 text-purple-800 border-purple-200",
+      TasNetworks: "bg-pink-100 text-pink-700 border-pink-200",
+    }
+    return providerColors[provider] || "bg-gray-100 text-gray-800"
+  }
+
   const getPoiInfoWindowContent = (poi: PoiLocation) => {
     const addressParts = [
       poi.street_address,
@@ -445,6 +468,14 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
         <div className="space-y-1 text-sm">
           <div><strong>Institution:</strong> {poi.poi_name || "Unknown"}</div>
           <div><strong>Address:</strong> {fullAddress}</div>
+          {poi.provider && (
+            <div className="flex items-center gap-2">
+              <strong>Provider:</strong>
+              <Badge className={getProviderBadgeClass(poi.provider)} variant="outline">
+                {poi.provider}
+              </Badge>
+            </div>
+          )}
           {poi.institution_email && (
             <div><strong>Email:</strong> {poi.institution_email}</div>
           )}
@@ -669,7 +700,7 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
 
   if (!isLoaded) {
     return (
-      <div className="flex h-[70vh] w-full items-center justify-center bg-gray-100">
+      <div className="flex h-full w-full items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading map...</p>
@@ -679,9 +710,9 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
   }
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
       <ClientGoogleMap
-        mapContainerStyle={containerStyle}
+        mapContainerStyle={{ width: "100%", height: "100%" }}
         center={center}
         zoom={12}
         onLoad={onLoad}
@@ -857,6 +888,145 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
           </InfoWindow>
         )}
 
+        {/* Render service area polygons when toggle is enabled */}
+        {showServiceAreas && (() => {
+          console.log(`[DEBUG] Rendering ${serviceAreas.length} service areas on map, showServiceAreas=${showServiceAreas}`)
+          return null
+        })()}
+        {showServiceAreas && serviceAreas.flatMap((area, areaIndex) => {
+          try {
+            console.log(`[DEBUG] Processing service area ${areaIndex + 1}/${serviceAreas.length} for provider: ${area.provider}`)
+            const geoJsonData = typeof area.geojson === 'string' ? JSON.parse(area.geojson) : area.geojson
+            if (!geoJsonData?.geometry?.coordinates) {
+              console.warn(`[DEBUG] Service area ${area.provider} missing geometry.coordinates`)
+              return []
+            }
+
+            const geometryType = geoJsonData.geometry.type
+            const color = area.color_hex || '#4285F4'
+            const polygons: React.ReactElement[] = []
+
+            if (geometryType === 'Polygon') {
+              // Polygon format: [[[lon, lat], ...], [inner ring (holes)]]
+              const allRings = geoJsonData.geometry.coordinates
+              
+              // First ring is outer boundary
+              const outerRing = allRings[0].map((coord: number[]) => ({
+                lat: coord[1], // GeoJSON is [lon, lat]
+                lng: coord[0]  // Google Maps uses {lat, lng}
+              }))
+
+              // Additional rings are holes (if any)
+              const holes = allRings.slice(1).map((ring: number[][]) =>
+                ring.map((coord: number[]) => ({
+                  lat: coord[1],
+                  lng: coord[0]
+                }))
+              )
+
+              if (outerRing.length === 0) {
+                console.warn(`[DEBUG] Service area ${area.provider} has empty outer ring`)
+                return []
+              }
+
+              console.log(`[DEBUG] Created Polygon with ${outerRing.length} outer points and ${holes.length} holes for ${area.provider}`)
+
+              polygons.push(
+                <Polygon
+                  key={`service-area-${area.provider}-${area.feature_id || areaIndex}-polygon`}
+                  paths={[outerRing, ...holes]} // Google Maps handles holes automatically
+                  options={{
+                    strokeColor: color,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: color,
+                    fillOpacity: 0.15,
+                  }}
+                  onLoad={(polygon) => {
+                    // Add click listener to show provider name
+                    if (window.google?.maps && map) {
+                      polygon.addListener('click', () => {
+                        const infoWindow = new window.google.maps.InfoWindow({
+                          content: `<div style="padding: 8px;"><strong>${area.provider}</strong></div>`,
+                        })
+                        // Get polygon bounds to center the info window
+                        const bounds = new window.google.maps.LatLngBounds()
+                        outerRing.forEach((p: { lat: number; lng: number }) => bounds.extend(p))
+                        infoWindow.setPosition(bounds.getCenter())
+                        infoWindow.open(map)
+                      })
+                    }
+                  }}
+                />
+              )
+            } else if (geometryType === 'MultiPolygon') {
+              // MultiPolygon format: [[[[lon, lat], ...]], [[[second polygon]]]]
+              // Each polygon in the MultiPolygon
+              geoJsonData.geometry.coordinates.forEach((polygonCoords: number[][][], polygonIndex: number) => {
+                const allRings = polygonCoords
+                
+                // First ring is outer boundary
+                const outerRing = allRings[0].map((coord: number[]) => ({
+                  lat: coord[1], // GeoJSON is [lon, lat]
+                  lng: coord[0]  // Google Maps uses {lat, lng}
+                }))
+
+                // Additional rings are holes (if any)
+                const holes = allRings.slice(1).map((ring: number[][]) =>
+                  ring.map((coord: number[]) => ({
+                    lat: coord[1],
+                    lng: coord[0]
+                  }))
+                )
+
+                if (outerRing.length === 0) {
+                  console.warn(`[DEBUG] Service area ${area.provider} polygon ${polygonIndex} has empty outer ring`)
+                  return
+                }
+
+                polygons.push(
+                  <Polygon
+                    key={`service-area-${area.provider}-${area.feature_id || areaIndex}-multipolygon-${polygonIndex}`}
+                    paths={[outerRing, ...holes]}
+                    options={{
+                      strokeColor: color,
+                      strokeOpacity: 0.8,
+                      strokeWeight: 2,
+                      fillColor: color,
+                      fillOpacity: 0.15,
+                    }}
+                    onLoad={(polygon) => {
+                      // Add click listener to show provider name
+                      if (window.google?.maps && map) {
+                        polygon.addListener('click', () => {
+                          const infoWindow = new window.google.maps.InfoWindow({
+                            content: `<div style="padding: 8px;"><strong>${area.provider}</strong></div>`,
+                          })
+                          // Get polygon bounds to center the info window
+                          const bounds = new window.google.maps.LatLngBounds()
+                          outerRing.forEach((p: { lat: number; lng: number }) => bounds.extend(p))
+                          infoWindow.setPosition(bounds.getCenter())
+                          infoWindow.open(map)
+                        })
+                      }
+                    }}
+                  />
+                )
+              })
+              
+              console.log(`[DEBUG] Created ${polygons.length} polygons from MultiPolygon for ${area.provider}`)
+            } else {
+              console.warn(`[DEBUG] Unsupported geometry type: ${geometryType} for provider ${area.provider}`)
+              return []
+            }
+
+            return polygons
+          } catch (error) {
+            console.error(`[DEBUG] Error rendering service area polygon for ${area.provider}:`, error)
+            return []
+          }
+        })}
+
         {/* Render polygons for all outages when global toggle is enabled */}
         {showPolygons && visibleOutages
           .filter((outage) => outage.polygon_geojson)
@@ -885,7 +1055,7 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
       </ClientGoogleMap>
 
       {/* Map Legend */}
-      <MapLegend outageType={outageType} zoomLevel={currentZoom} showPoiMarkers={showPoiMarkers} showPolygons={showPolygons} />
+      <MapLegend outageType={outageType} zoomLevel={currentZoom} showPoiMarkers={showPoiMarkers} showPolygons={showPolygons} companyName={companyLocation?.name} />
     </div>
   )
 }

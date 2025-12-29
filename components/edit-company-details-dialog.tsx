@@ -171,13 +171,13 @@ export function EditCompanyDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle>Edit Company Details</DialogTitle>
-          <DialogDescription>Update your company's name and location</DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Edit Company Details</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Update your company's name and location</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4 bg-white">
+        <div className="grid gap-3 md:gap-6 py-2 md:py-4 bg-black md:bg-white">
           {/* Company Name */}
           <div className="space-y-2">
             <Input
@@ -192,9 +192,9 @@ export function EditCompanyDetailsDialog({
                 base: "bg-transparent",
                 mainWrapper: "bg-transparent",
                 inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                label: "text-slate-700 data-[inside=true]:text-slate-500",
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-white md:text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
               }}
             />
           </div>
@@ -234,19 +234,19 @@ export function EditCompanyDetailsDialog({
                   base: "bg-transparent",
                   mainWrapper: "bg-transparent",
                   inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                  input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                  label: "text-slate-700 data-[inside=true]:text-slate-500",
+                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                 }}
               />
               {latitude && longitude && (
-                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600 z-10" />
+                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10" />
               )}
             </div>
             {showSuggestions && predictions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-50 w-full mt-1 bg-black md:bg-white border border-gray-700 md:border-gray-200 rounded-md shadow-lg max-h-48 md:max-h-60 overflow-auto">
                 {isLoadingPredictions ? (
-                  <div className="p-3 text-sm text-gray-500">Searching addresses...</div>
+                  <div className="p-2 md:p-3 text-xs md:text-sm text-gray-400 md:text-gray-500">Searching addresses...</div>
                 ) : (
                   <div className="py-1">
                     {predictions.map((prediction) => (
@@ -254,17 +254,17 @@ export function EditCompanyDetailsDialog({
                         key={prediction.place_id}
                         type="button"
                         onClick={() => handleSelectPlace(prediction.place_id, prediction.description)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
+                        className="w-full text-left px-2 md:px-3 py-1.5 md:py-2 hover:bg-gray-800 md:hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
                       >
-                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-900">{prediction.description}</span>
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs md:text-sm text-gray-300 md:text-gray-900">{prediction.description}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400 md:text-gray-500">
               {!autocompleteReady
                 ? "Initializing address autocomplete..."
                 : "Select your address from the dropdown to ensure accurate map centering"}
@@ -272,11 +272,11 @@ export function EditCompanyDetailsDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving}>
+        <DialogFooter className="gap-2 md:gap-0">
+          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim()}>
+          <Button onClick={handleSave} disabled={saving || !name.trim()} className="text-xs md:text-sm text-white md:text-foreground">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

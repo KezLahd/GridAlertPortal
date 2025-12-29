@@ -27,7 +27,9 @@ interface AddPoiDialogProps {
     longitude: number,
     contactName?: string,
     contactEmail?: string,
-    contactPhone?: string
+    contactPhone?: string,
+    state?: string,
+    postcode?: string
   ) => Promise<void>
   saving?: boolean
 }
@@ -46,6 +48,8 @@ export function AddPoiDialog({
   const [contactName, setContactName] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
+  const [state, setState] = useState<string>("")
+  const [postcode, setPostcode] = useState<string>("")
   const [autocompleteReady, setAutocompleteReady] = useState(false)
   const [predictions, setPredictions] = useState<PlacePrediction[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -129,7 +133,7 @@ export function AddPoiDialog({
     placesServiceRef.current.getDetails(
       {
         placeId,
-        fields: ["formatted_address", "geometry", "name"],
+        fields: ["formatted_address", "geometry", "name", "address_components"],
       },
       (place: any, status: string) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
@@ -141,6 +145,34 @@ export function AddPoiDialog({
           setSearchValue(place.formatted_address || description)
           setLatitude(place.geometry.location.lat())
           setLongitude(place.geometry.location.lng())
+          
+          // Extract state and postcode from address components
+          let extractedState = ""
+          let extractedPostcode = ""
+          if (place.address_components) {
+            for (const component of place.address_components) {
+              if (component.types.includes("administrative_area_level_1")) {
+                // Map full state names to abbreviations
+                const stateMap: Record<string, string> = {
+                  "New South Wales": "NSW",
+                  "Victoria": "VIC",
+                  "Queensland": "QLD",
+                  "South Australia": "SA",
+                  "Western Australia": "WA",
+                  "Tasmania": "TAS",
+                  "Northern Territory": "NT",
+                  "Australian Capital Territory": "ACT",
+                }
+                const stateName = component.short_name || component.long_name
+                extractedState = stateMap[stateName] || stateName
+              }
+              if (component.types.includes("postal_code")) {
+                extractedPostcode = component.short_name || component.long_name
+              }
+            }
+          }
+          setState(extractedState)
+          setPostcode(extractedPostcode)
           setShowSuggestions(false)
         }
       },
@@ -158,6 +190,8 @@ export function AddPoiDialog({
       setContactName("")
       setContactEmail("")
       setContactPhone("")
+      setState("")
+      setPostcode("")
       setShowSuggestions(false)
       setPredictions([])
     }
@@ -182,7 +216,9 @@ export function AddPoiDialog({
         longitude,
         contactName.trim() || undefined,
         contactEmail.trim() || undefined,
-        contactPhone.trim() || undefined
+        contactPhone.trim() || undefined,
+        state || undefined,
+        postcode || undefined
       )
       onOpenChange(false)
     } catch (error) {
@@ -192,13 +228,13 @@ export function AddPoiDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle>Add POI</DialogTitle>
-          <DialogDescription>Add a new point of interest location to monitor</DialogDescription>
+          <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Add POI</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Add a new point of interest location to monitor</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4 bg-white">
+        <div className="grid gap-3 md:gap-6 py-2 md:py-4 bg-black md:bg-white">
           {/* POI Name */}
           <div className="space-y-2">
             <Input
@@ -213,9 +249,9 @@ export function AddPoiDialog({
                 base: "bg-transparent",
                 mainWrapper: "bg-transparent",
                 inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                label: "text-slate-700 data-[inside=true]:text-slate-500",
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-white md:text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
               }}
             />
           </div>
@@ -255,19 +291,19 @@ export function AddPoiDialog({
                   base: "bg-transparent",
                   mainWrapper: "bg-transparent",
                   inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                  input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                  label: "text-slate-700 data-[inside=true]:text-slate-500",
+                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
                 }}
               />
               {latitude && longitude && (
-                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600 z-10" />
+                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10" />
               )}
             </div>
             {showSuggestions && predictions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-50 w-full mt-1 bg-black md:bg-white border border-gray-700 md:border-gray-200 rounded-md shadow-lg max-h-48 md:max-h-60 overflow-auto">
                 {isLoadingPredictions ? (
-                  <div className="p-3 text-sm text-gray-500">Searching addresses...</div>
+                  <div className="p-2 md:p-3 text-xs md:text-sm text-gray-400 md:text-gray-500">Searching addresses...</div>
                 ) : (
                   <div className="py-1">
                     {predictions.map((prediction) => (
@@ -275,10 +311,10 @@ export function AddPoiDialog({
                         key={prediction.place_id}
                         type="button"
                         onClick={() => handleSelectPlace(prediction.place_id, prediction.description)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
+                        className="w-full text-left px-2 md:px-3 py-1.5 md:py-2 hover:bg-gray-800 md:hover:bg-gray-100 flex items-start gap-2 cursor-pointer"
                       >
-                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-900">{prediction.description}</span>
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs md:text-sm text-gray-300 md:text-gray-900">{prediction.description}</span>
                       </button>
                     ))}
                   </div>
@@ -301,9 +337,9 @@ export function AddPoiDialog({
                 base: "bg-transparent",
                 mainWrapper: "bg-transparent",
                 inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                label: "text-slate-700 data-[inside=true]:text-slate-500",
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-white md:text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
               }}
             />
           </div>
@@ -323,9 +359,9 @@ export function AddPoiDialog({
                 base: "bg-transparent",
                 mainWrapper: "bg-transparent",
                 inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                label: "text-slate-700 data-[inside=true]:text-slate-500",
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-white md:text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
               }}
             />
           </div>
@@ -345,19 +381,19 @@ export function AddPoiDialog({
                 base: "bg-transparent",
                 mainWrapper: "bg-transparent",
                 inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-                label: "text-slate-700 data-[inside=true]:text-slate-500",
+                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
+                input: "bg-transparent text-base text-white md:text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
+                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
               }}
             />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving}>
+        <DialogFooter className="gap-2 md:gap-0">
+          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !poiName.trim() || !location.trim() || latitude === null || longitude === null}>
+          <Button onClick={handleSave} disabled={saving || !poiName.trim() || !location.trim() || latitude === null || longitude === null} className="text-xs md:text-sm text-white md:text-foreground">
             {saving ? "Adding..." : "Add POI"}
           </Button>
         </DialogFooter>

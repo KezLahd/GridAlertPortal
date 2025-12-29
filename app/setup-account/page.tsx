@@ -241,7 +241,7 @@ function SetupAccountContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+      <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-gray-600">Loading invitation...</p>
@@ -252,7 +252,7 @@ function SetupAccountContent() {
 
   if (error && !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+      <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
         <Card className="max-w-md w-full p-8">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -268,7 +268,7 @@ function SetupAccountContent() {
   }
 
   return (
-    <div className="relative flex min-h-svh w-full items-center justify-center bg-[#050505] p-6 md:p-10 overflow-hidden">
+    <div className="relative flex min-h-mobile w-full items-center justify-center bg-[#050505] p-6 md:p-10 overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/6 to-black/80 mix-blend-screen" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22)_0%,_rgba(255,255,255,0)_40%)] opacity-60" />
@@ -444,7 +444,7 @@ export default function SetupAccountPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-mobile flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       }

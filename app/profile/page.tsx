@@ -3,10 +3,14 @@ import type { MemberRecord } from "@/components/company-members-table"
 import { googleMapsApiKey } from "@/lib/config"
 import { getSupabaseClient } from "@/lib/supabase"
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { format } from "date-fns"
+import { useRouter, usePathname } from "next/navigation"
 import { useJsApiLoader } from "@react-google-maps/api"
 import { AppSidebar } from "@/components/sidebar"
-import { Bell, Zap, Building2, Pencil } from "lucide-react"
+import { Bell, Zap, Building2, Pencil, CloudLightning, ClipboardList, CalendarClock, User, LogOut, UserPlus } from "lucide-react"
+import { Button as HeroUIButton } from "@/components/ui/heroui"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { CompanyMembersTable } from "@/components/company-members-table"
 import { CreateCompanyDialog } from "@/components/create-company-dialog"
@@ -60,6 +64,7 @@ interface ProfileRecord {
   icon_letters?: string | null
   icon_bg_color?: string | null
   icon_text_color?: string | null
+  created_at?: string | null
 }
 
 const outageOptions: { value: NotificationChoice; label: string }[] = [
@@ -191,6 +196,7 @@ const normalizeProfile = (raw: any): ProfileRecord => ({
   icon_letters: raw?.icon_letters ?? null,
   icon_bg_color: raw?.icon_bg_color ?? null,
   icon_text_color: raw?.icon_text_color ?? null,
+  created_at: raw?.created_at ?? null,
 })
 
 export const dynamic = 'force-dynamic'
@@ -205,6 +211,21 @@ export default function ProfilePage() {
   const router = useRouter()
   const supabase = getSupabaseClient()
   const [profile, setProfile] = useState<ProfileRecord | null>(null)
+
+  // Ensure black background on mobile
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        document.body.style.backgroundColor = '#000000'
+        document.documentElement.style.backgroundColor = '#000000'
+      }
+      return () => {
+        document.body.style.backgroundColor = ''
+        document.documentElement.style.backgroundColor = ''
+      }
+    }
+  }, [])
   const [members, setMembers] = useState<MemberRecord[]>([])
   const [poiCount, setPoiCount] = useState<number>(0)
   const [poiLocations, setPoiLocations] = useState<PoiLocation[]>([])
@@ -340,6 +361,7 @@ export default function ProfilePage() {
         icon_letters,
         icon_bg_color,
         icon_text_color,
+        created_at,
         company:companies(id,name,location,latitude,longitude,logo_letters,logo_bg_color,logo_text_color)
       `,
       )
@@ -430,7 +452,7 @@ export default function ProfilePage() {
     // Fetch all locations (not just ACTIVE) so status filter can work
     const { data, error: locationsError } = await supabase
       .from("locations")
-      .select("*")
+      .select("id, institutioncode, institutionname, institutionemail, institutionphoneno, addresslatitude, addresslongitude, addressline1, addresssuburb, addressstate, addresspostcode, created_at, institutionstatus, provider")
       .eq("company_id", companyId)
 
     if (locationsError) {
@@ -458,6 +480,7 @@ export default function ProfilePage() {
       longitude: row.addresslongitude,
       created_at: row.created_at,
       institutionstatus: row.institutionstatus || null,
+      provider: row.provider || null,
     }))
 
     // Sort numerically by institution code
@@ -484,12 +507,24 @@ export default function ProfilePage() {
     longitude: number,
     contactName?: string,
     contactEmail?: string,
-    contactPhone?: string
+    contactPhone?: string,
+    state?: string,
+    postcode?: string
   ) => {
     if (!profile?.company?.id) return
 
     setSaving(true)
     setError(null)
+
+    // Determine provider based on location
+    let provider: string | null = null
+    try {
+      const { determineProviderForLocation } = await import("@/lib/provider-assignment")
+      provider = await determineProviderForLocation(latitude, longitude, postcode || null, state || null)
+    } catch (error) {
+      console.error("Error determining provider for location:", error)
+      // Continue without provider if determination fails
+    }
 
     // Map to new schema: poi_name -> institutionname, street_address -> addressline1, etc.
     const { error: insertError } = await supabase
@@ -500,8 +535,11 @@ export default function ProfilePage() {
         addressline1: location,
         addresslatitude: latitude,
         addresslongitude: longitude,
+        addressstate: state || null,
+        addresspostcode: postcode || null,
         institutionemail: contactEmail || null,
         institutionphoneno: contactPhone || null,
+        provider: provider || null,
       })
 
     if (insertError) {
@@ -1122,10 +1160,22 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-svh bg-slate-50 flex">
-        <AppSidebar />
+      <div className="min-h-screen bg-black md:bg-slate-50 flex">
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
         <div className="flex w-full flex-col">
-          <ProfilePageSkeleton />
+          <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
+                <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+              </div>
+            </div>
+          </div>
+          <div className="md:mt-0 mt-14">
+            <ProfilePageSkeleton />
+          </div>
         </div>
       </div>
     )
@@ -1158,14 +1208,86 @@ export default function ProfilePage() {
 
   if (!companyId && profile) {
     return (
-      <div className="min-h-svh bg-slate-50 flex">
-        <AppSidebar />
-        <div className="flex w-full flex-col">
-          <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      <div className="min-h-screen bg-black md:bg-slate-50 flex">
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        {/* Mobile Header Navigation */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
+              <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+            </div>
+            <nav className="flex items-center gap-2">
+              {[
+                { href: "/unplanned", label: "Unplanned", icon: CloudLightning, type: "unplanned" },
+                { href: "/planned", label: "Planned", icon: ClipboardList, type: "planned" },
+                { href: "/future", label: "Future", icon: CalendarClock, type: "future" },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <HeroUIButton
+                    key={item.href}
+                    isIconOnly
+                    variant="light"
+                    size="sm"
+                    className="flex items-center justify-center rounded-lg text-white hover:bg-white/20"
+                    onPress={() => {
+                      window.location.href = item.href
+                    }}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </HeroUIButton>
+                )
+              })}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <HeroUIButton
+                    isIconOnly
+                    variant="solid"
+                    size="sm"
+                    className="flex items-center justify-center rounded-lg bg-[#FF8E32] text-white"
+                  >
+                    <User className="h-5 w-5" />
+                  </HeroUIButton>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="end">
+                  <div className="flex flex-col gap-1">
+                    <HeroUIButton
+                      variant="light"
+                      className="w-full justify-start text-left"
+                      onPress={() => {
+                        window.location.href = "/profile"
+                      }}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </HeroUIButton>
+                    <HeroUIButton
+                      variant="light"
+                      className="w-full justify-start text-left text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onPress={async () => {
+                        const { supabase } = await import("@/lib/supabase")
+                        await supabase.auth.signOut()
+                        window.location.href = "/login"
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </HeroUIButton>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </nav>
+          </div>
+        </div>
+        <div className="flex w-full flex-col md:mt-0 mt-14 bg-black md:bg-transparent">
+          <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 bg-black md:bg-transparent">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold">My Profile</h1>
-                <p className="text-muted-foreground text-sm">Manage your preferences and notification settings</p>
+                <h1 className="text-2xl font-bold text-white md:text-foreground">My Profile</h1>
+                <p className="text-gray-400 md:text-muted-foreground text-sm">Manage your preferences and notification settings</p>
               </div>
               <CreateCompanyDialog onCreateCompany={createCompany} saving={saving} mapsLoaded={mapsLoaded} />
             </div>
@@ -1178,7 +1300,7 @@ export default function ProfilePage() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Profile Card */}
-              <Card className="md:col-span-2 lg:col-span-1">
+              <Card className="md:col-span-2 lg:col-span-1 bg-gray-900 md:bg-[hsl(var(--card))] border-gray-800 md:border-[hsl(var(--border))]">
                 <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
                   <Avatar className="h-20 w-20">
                     <AvatarFallback className="bg-orange-500 text-white font-bold text-2xl">
@@ -1188,35 +1310,35 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-center">
                   <div className="space-y-1">
-                    <p className="text-xl font-semibold">
+                    <p className="text-xl font-semibold text-white md:text-foreground">
                       {profile.first_name} {profile.last_name}
                     </p>
-                    <p className="text-sm text-muted-foreground">{profile.email}</p>
+                    <p className="text-sm text-gray-400 md:text-muted-foreground">{profile.email}</p>
                   </div>
                   <div className="space-y-2">
                     <div className="text-sm">
-                      <span className="text-muted-foreground">User Role: </span>
-                      <span className="font-medium capitalize">{profile.role}</span>
+                      <span className="text-gray-400 md:text-muted-foreground">User Role: </span>
+                      <span className="font-medium capitalize text-white md:text-foreground">{profile.role}</span>
                     </div>
-                    <Badge variant="outline" className="mx-auto">
+                    <Badge variant="outline" className="mx-auto border-gray-700 md:border-[hsl(var(--border))] text-white md:text-foreground">
                       Individual User
                     </Badge>
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Mobile: </span>
-                      <span className="font-medium">{profile.mobile}</span>
+                      <span className="text-gray-400 md:text-muted-foreground">Mobile: </span>
+                      <span className="font-medium text-white md:text-foreground">{profile.mobile}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Energy Providers */}
-              <Card>
+              <Card className="bg-gray-900 md:bg-[hsl(var(--card))] border-gray-800 md:border-[hsl(var(--border))]">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-orange-500" />
-                    <CardTitle className="text-lg">Energy Providers</CardTitle>
+                    <CardTitle className="text-lg text-white md:text-foreground">Energy Providers</CardTitle>
                   </div>
-                  <CardDescription>Select providers to track</CardDescription>
+                  <CardDescription className="text-gray-400 md:text-muted-foreground">Select providers to track</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -1238,7 +1360,7 @@ export default function ProfilePage() {
                         >
                           {provider.label[0]}
                         </div>
-                        <span className="text-sm font-medium group-hover:text-orange-500 transition-colors">
+                        <span className="text-sm font-medium text-white md:text-foreground group-hover:text-orange-500 transition-colors">
                           {provider.label}
                         </span>
                       </label>
@@ -1248,13 +1370,13 @@ export default function ProfilePage() {
               </Card>
 
               {/* Outage Types */}
-              <Card>
+              <Card className="bg-gray-900 md:bg-[hsl(var(--card))] border-gray-800 md:border-[hsl(var(--border))]">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Bell className="h-5 w-5 text-orange-500" />
-                    <CardTitle className="text-lg">Outage Types</CardTitle>
+                    <CardTitle className="text-lg text-white md:text-foreground">Outage Types</CardTitle>
                   </div>
-                  <CardDescription>Choose what to monitor</CardDescription>
+                  <CardDescription className="text-gray-400 md:text-muted-foreground">Choose what to monitor</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -1271,7 +1393,7 @@ export default function ProfilePage() {
                             })
                           }}
                         />
-                        <span className="text-sm font-medium group-hover:text-orange-500 transition-colors">
+                        <span className="text-sm font-medium text-white md:text-foreground group-hover:text-orange-500 transition-colors">
                           {option.label}
                         </span>
                       </label>
@@ -1281,10 +1403,10 @@ export default function ProfilePage() {
               </Card>
 
               {/* Region Access */}
-              <Card className="md:col-span-2">
+              <Card className="md:col-span-2 bg-gray-900 md:bg-[hsl(var(--card))] border-gray-800 md:border-[hsl(var(--border))]">
                 <CardHeader>
-                  <CardTitle className="text-lg">Region Access</CardTitle>
-                  <CardDescription>States and territories you want to monitor</CardDescription>
+                  <CardTitle className="text-lg text-white md:text-foreground">Region Access</CardTitle>
+                  <CardDescription className="text-gray-400 md:text-muted-foreground">States and territories you want to monitor</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -1294,7 +1416,7 @@ export default function ProfilePage() {
                         <Badge
                           key={region}
                           variant={hasAccess ? "default" : "outline"}
-                          className="cursor-pointer hover:scale-105 transition-transform"
+                          className="cursor-pointer hover:scale-105 transition-transform border-gray-700 md:border-[hsl(var(--border))] text-white md:text-foreground"
                           onClick={() => {
                             const newRegions = hasAccess
                               ? (profile.region_access || []).filter((r) => r !== region)
@@ -1312,13 +1434,13 @@ export default function ProfilePage() {
               </Card>
 
               {/* Create Company CTA */}
-              <Card className="md:col-span-2 lg:col-span-1 border-2 border-dashed border-orange-200 bg-orange-50/50">
+              <Card className="md:col-span-2 lg:col-span-1 border-2 border-dashed border-orange-500/50 md:border-orange-200 bg-gray-900 md:bg-orange-50/50">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-orange-500" />
-                    <CardTitle className="text-lg">Create a Company</CardTitle>
+                    <CardTitle className="text-lg text-white md:text-foreground">Create a Company</CardTitle>
                   </div>
-                  <CardDescription>Invite team members and manage access</CardDescription>
+                  <CardDescription className="text-gray-400 md:text-muted-foreground">Invite team members and manage access</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <CreateCompanyDialog
@@ -1338,14 +1460,87 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="min-h-svh bg-slate-50 flex">
-        <AppSidebar />
-        <div className="flex w-full flex-col">
-          <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-h-screen bg-black md:bg-slate-50 flex" style={{ minHeight: '100dvh' }}>
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        {/* Mobile Header Navigation */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
+              <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+            </div>
+            <nav className="flex items-center gap-2">
+              {[
+                { href: "/unplanned", label: "Unplanned", icon: CloudLightning, type: "unplanned" },
+                { href: "/planned", label: "Planned", icon: ClipboardList, type: "planned" },
+                { href: "/future", label: "Future", icon: CalendarClock, type: "future" },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <HeroUIButton
+                    key={item.href}
+                    isIconOnly
+                    variant="light"
+                    size="sm"
+                    className="flex items-center justify-center rounded-lg text-white hover:bg-white/20"
+                    onPress={() => {
+                      window.location.href = item.href
+                    }}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </HeroUIButton>
+                )
+              })}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <HeroUIButton
+                    isIconOnly
+                    variant="solid"
+                    size="sm"
+                    className="flex items-center justify-center rounded-lg bg-[#FF8E32] text-white"
+                  >
+                    <User className="h-5 w-5" />
+                  </HeroUIButton>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="end">
+                  <div className="flex flex-col gap-1">
+                    <HeroUIButton
+                      variant="light"
+                      className="w-full justify-start text-left"
+                      onPress={() => {
+                        window.location.href = "/profile"
+                      }}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </HeroUIButton>
+                    <HeroUIButton
+                      variant="light"
+                      className="w-full justify-start text-left text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onPress={async () => {
+                        const { supabase } = await import("@/lib/supabase")
+                        await supabase.auth.signOut()
+                        window.location.href = "/login"
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </HeroUIButton>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </nav>
+          </div>
+        </div>
+        <div className="flex w-full flex-col md:mt-0 mt-14 bg-black md:bg-transparent">
+          <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 bg-black md:bg-transparent">
+            {/* Desktop: Title and Invite Button */}
+            <div className="hidden md:flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold">Profile & Team</h1>
-                <p className="text-muted-foreground text-sm">
+                <h1 className="text-2xl font-bold text-white md:text-foreground">Profile & Team</h1>
+                <p className="text-gray-400 md:text-muted-foreground text-sm">
                   Manage your company, team members, and notification settings
                 </p>
               </div>
@@ -1360,16 +1555,19 @@ export default function ProfilePage() {
               </Alert>
             )}
 
-            {/* Company Info and User Profile Side by Side */}
+            {/* Mobile: Bento Box Layout - Company Info and User Profile Side by Side */}
+            {/* Desktop: Original Layout */}
             {profile && companyId && (
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* User Profile Card */}
-                <Card>
-                  <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
+              <>
+                {/* Mobile Bento Box */}
+                <div className="md:hidden grid gap-4 grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
+                  {/* User Profile Card */}
+                  <Card className="bg-black border-gray-900 min-w-0 h-full flex flex-col">
+                  <CardHeader className="flex flex-col items-center text-center space-y-2 pb-2">
                     <div className="relative group">
-                      <Avatar className="h-20 w-20">
+                      <Avatar className="h-16 w-16 md:h-20 md:w-20">
                         <AvatarFallback
-                          className="font-bold text-2xl"
+                          className="font-bold text-xl md:text-2xl"
                           style={{
                             backgroundColor: profileIconBgColor,
                             color: profileIconTextColor,
@@ -1380,17 +1578,17 @@ export default function ProfilePage() {
                       </Avatar>
                       <button
                         onClick={() => setEditUserIconOpen(true)}
-                        className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                        className="absolute -top-1 -right-1 h-5 w-5 md:h-6 md:w-6 rounded-full bg-gray-800 md:bg-white border border-gray-700 md:border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-700 md:hover:bg-slate-50"
                         aria-label="Edit user icon"
                       >
-                        <Pencil className="h-3 w-3 text-slate-600" />
+                        <Pencil className="h-3 w-3 text-gray-300 md:text-slate-600" />
                       </button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-center">
+                  <CardContent className="space-y-2 text-center flex-1 flex flex-col">
                     <div className="space-y-1">
                       <div className="flex items-center justify-center gap-2">
-                        <p className="text-xl font-semibold">
+                        <p className="text-lg md:text-xl font-semibold text-white md:text-foreground">
                           {profile.first_name} {profile.last_name}
                         </p>
                         <button
@@ -1398,79 +1596,213 @@ export default function ProfilePage() {
                           className="flex items-center justify-center hover:opacity-70 transition-opacity"
                           aria-label="Edit user details"
                         >
-                          <Pencil className="h-4 w-4 text-black" />
+                          <Pencil className="h-3 w-3 md:h-4 md:w-4 text-gray-300 md:text-black" />
                         </button>
                       </div>
-                      <p className="text-sm text-muted-foreground">{profile.email}</p>
+                      <p className="text-xs md:text-sm text-gray-400 md:text-muted-foreground break-words">{profile.email}</p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">User Role: </span>
-                        <span className="font-medium capitalize">{profile.role}</span>
+                    <div className="space-y-1.5 flex-1">
+                      <div className="text-xs md:text-sm">
+                        <span className="text-gray-400 md:text-muted-foreground">User Role: </span>
+                        <span className="font-medium capitalize text-white md:text-foreground">{profile.role}</span>
                       </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Mobile: </span>
-                        <span className="font-medium">{profile.mobile}</span>
+                      <div className="text-xs md:text-sm">
+                        <span className="text-gray-400 md:text-muted-foreground">Mobile: </span>
+                        <span className="font-medium text-white md:text-foreground">{profile.mobile}</span>
                       </div>
+                      {profile.created_at && (
+                        <div className="text-xs md:text-sm">
+                          <span className="text-gray-400 md:text-muted-foreground">Date Joined: </span>
+                          <span className="font-medium text-white md:text-foreground">
+                            {format(new Date(profile.created_at), "dd/MM/yyyy")}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Company Info */}
+                {/* Company Info Card with Invite Button Inside */}
                 {profile?.company && (
-                  <Card>
+                  <Card className="bg-black border-gray-900 min-w-0 h-full flex flex-col">
+                      <CardHeader className="flex flex-col items-center text-center space-y-2 pb-2">
+                        <div className="relative group">
+                          <div
+                            className="h-16 w-16 md:h-20 md:w-20 rounded-lg flex items-center justify-center font-bold text-xl md:text-2xl"
+                            style={{
+                              backgroundColor: profile.company.logoBgColor || "#f97316",
+                              color: profile.company.logoTextColor || "#ffffff",
+                            }}
+                          >
+                            {profile.company.logoLetters || profile.company.name[0]}
+                          </div>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setEditIconOpen(true)}
+                              className="absolute -top-1 -right-1 h-5 w-5 md:h-6 md:w-6 rounded-full bg-gray-800 md:bg-white border border-gray-700 md:border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-700 md:hover:bg-slate-50"
+                              aria-label="Edit company icon"
+                            >
+                              <Pencil className="h-3 w-3 text-gray-300 md:text-slate-600" />
+                            </button>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-center flex-1 flex flex-col">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <p className="text-lg md:text-xl font-semibold text-white md:text-foreground">{profile.company.name}</p>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditCompanyDetailsOpen(true)}
+                                className="flex items-center justify-center hover:opacity-70 transition-opacity"
+                                aria-label="Edit company details"
+                              >
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4 text-gray-300 md:text-black" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">{profile.company.location}</p>
+                        </div>
+                        <div className="space-y-1.5 flex-1">
+                          <div className="text-xs md:text-sm">
+                            <span className="text-gray-400 md:text-muted-foreground">Team Members: </span>
+                            <span className="font-medium text-white md:text-foreground">{members.length}</span>
+                          </div>
+                          <div className="text-xs md:text-sm">
+                            <span className="text-gray-400 md:text-muted-foreground">Number of POIs: </span>
+                            <span className="font-medium text-white md:text-foreground">{poiCount}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Invite User Button - Inside Company Card */}
+                        {isAdmin && (
+                          <div className="mt-auto pt-2">
+                            <Button 
+                              onClick={handleInviteUserClick} 
+                              disabled={saving || !isAdmin}
+                              className="w-full h-auto py-2 text-white bg-[#FF8E32] hover:bg-[#FF8E32]/90"
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Invite User
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Desktop: Original Layout */}
+                <div className="hidden md:grid gap-6 md:grid-cols-2">
+                  {/* User Profile Card */}
+                  <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
                     <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
                       <div className="relative group">
-                        <div
-                          className="h-20 w-20 rounded-lg flex items-center justify-center font-bold text-2xl"
-                          style={{
-                            backgroundColor: profile.company.logoBgColor || "#f97316",
-                            color: profile.company.logoTextColor || "#ffffff",
-                          }}
-                        >
-                          {profile.company.logoLetters || profile.company.name[0]}
-                        </div>
-                        {isAdmin && (
-                          <button
-                            onClick={() => setEditIconOpen(true)}
-                            className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
-                            aria-label="Edit company icon"
+                        <Avatar className="h-20 w-20">
+                          <AvatarFallback
+                            className="font-bold text-2xl"
+                            style={{
+                              backgroundColor: profileIconBgColor,
+                              color: profileIconTextColor,
+                            }}
                           >
-                            <Pencil className="h-3 w-3 text-slate-600" />
-                          </button>
-                        )}
+                            {profileInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <button
+                          onClick={() => setEditUserIconOpen(true)}
+                          className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                          aria-label="Edit user icon"
+                        >
+                          <Pencil className="h-3 w-3 text-slate-600" />
+                        </button>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3 text-center">
                       <div className="space-y-1">
                         <div className="flex items-center justify-center gap-2">
-                          <p className="text-xl font-semibold">{profile.company.name}</p>
-                          {isAdmin && (
-                            <button
-                              onClick={() => setEditCompanyDetailsOpen(true)}
-                              className="flex items-center justify-center hover:opacity-70 transition-opacity"
-                              aria-label="Edit company details"
-                            >
-                              <Pencil className="h-4 w-4 text-black" />
-                            </button>
-                          )}
+                          <p className="text-xl font-semibold">
+                            {profile.first_name} {profile.last_name}
+                          </p>
+                          <button
+                            onClick={() => setEditUserDetailsOpen(true)}
+                            className="flex items-center justify-center hover:opacity-70 transition-opacity"
+                            aria-label="Edit user details"
+                          >
+                            <Pencil className="h-4 w-4 text-black" />
+                          </button>
                         </div>
-                        <p className="text-sm text-muted-foreground">{profile.company.location}</p>
+                        <p className="text-sm text-muted-foreground">{profile.email}</p>
                       </div>
                       <div className="space-y-2">
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Team Members: </span>
-                          <span className="font-medium">{members.length}</span>
+                          <span className="text-muted-foreground">User Role: </span>
+                          <span className="font-medium capitalize">{profile.role}</span>
                         </div>
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Number of POIs: </span>
-                          <span className="font-medium">{poiCount}</span>
+                          <span className="text-muted-foreground">Mobile: </span>
+                          <span className="font-medium">{profile.mobile}</span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                )}
-              </div>
+
+                  {/* Company Info */}
+                  {profile?.company && (
+                    <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+                      <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
+                        <div className="relative group">
+                          <div
+                            className="h-20 w-20 rounded-lg flex items-center justify-center font-bold text-2xl"
+                            style={{
+                              backgroundColor: profile.company.logoBgColor || "#f97316",
+                              color: profile.company.logoTextColor || "#ffffff",
+                            }}
+                          >
+                            {profile.company.logoLetters || profile.company.name[0]}
+                          </div>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setEditIconOpen(true)}
+                              className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-50"
+                              aria-label="Edit company icon"
+                            >
+                              <Pencil className="h-3 w-3 text-slate-600" />
+                            </button>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-center">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <p className="text-xl font-semibold">{profile.company.name}</p>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditCompanyDetailsOpen(true)}
+                                className="flex items-center justify-center hover:opacity-70 transition-opacity"
+                                aria-label="Edit company details"
+                              >
+                                <Pencil className="h-4 w-4 text-black" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{profile.company.location}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Team Members: </span>
+                            <span className="font-medium">{members.length}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Number of POIs: </span>
+                            <span className="font-medium">{poiCount}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </>
             )}
 
             {/* POI Locations Section */}
@@ -1496,9 +1828,24 @@ export default function ProfilePage() {
                 saving={saving}
                 currentUserId={profile?.user_id}
                 currentUserRole={profile?.role}
+                companyBgColor={profile?.company?.logoBgColor}
+                companyTextColor={profile?.company?.logoTextColor}
               />
             )}
           </div>
+          
+          {/* Mobile Footer */}
+          <footer className={cn(
+            "w-full px-4 md:px-8 py-3 md:py-4",
+            "md:mt-auto md:border-t md:border-[#e0d9cf] md:bg-[#f2f2f4]",
+            "bg-black border-0"
+          )}>
+            <div className="mx-auto max-w-screen-2xl text-center text-sm">
+              <p className="text-white md:text-[#1f1f22]">
+                <span className="text-[#FF8E32] font-semibold">GridAlert</span> <span className="text-white md:text-[#1f1f22]">© {new Date().getFullYear()} - Real-time power outage monitoring</span>
+              </p>
+            </div>
+          </footer>
         </div>
       </div>
 
@@ -1563,7 +1910,6 @@ export default function ProfilePage() {
       <ToastContainer
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
-        position="bottom-right"
       />
 
       {/* Edit Company Details Dialog */}
