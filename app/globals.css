@@ -76,7 +76,21 @@
     font-family: "Inter", "Satoshi", "Geist", system-ui, -apple-system, sans-serif;
     letter-spacing: -0.01em;
     line-height: 1.55;
+    -webkit-overflow-scrolling: touch;
   }
+
+  /* Only prevent pull-to-refresh on map view, allow it on report view */
+  body[data-view-mode="map"] {
+    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+  }
+
+  html[data-view-mode="map"] {
+    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent scrolling on mobile for map pages only - handled by component */
 
   h1,
   h2,
@@ -179,4 +193,18 @@
 [data-disabled] {
   color: rgb(107, 114, 128) !important; /* text-gray-500 - darker grey */
   opacity: 0.6 !important;
+}
+
+/* Fix autofill text color for mobile dark theme */
+@media (max-width: 767px) {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    box-shadow: 0 0 0 30px transparent inset !important;
+    background-color: transparent !important;
+    background-clip: text !important;
+  }
 }

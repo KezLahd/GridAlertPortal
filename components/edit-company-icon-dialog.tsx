@@ -104,7 +104,7 @@ export function EditCompanyIconDialog({
 
           {/* Letters Input */}
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="letters" className="text-xs md:text-sm text-gray-300 md:text-foreground">Icon Letters (1-2 characters)</Label>
+            <Label htmlFor="letters" className="text-xs md:text-sm text-white md:text-foreground">Icon Letters (1-2 characters)</Label>
             <Input
               id="letters"
               value={letters}
@@ -117,47 +117,49 @@ export function EditCompanyIconDialog({
 
           {/* Background Color */}
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="bgColor" className="text-xs md:text-sm text-gray-300 md:text-foreground">Background Color</Label>
+            <Label htmlFor="bgColor" className="text-xs md:text-sm text-white md:text-foreground">Background Color</Label>
             <div className="flex gap-2">
               <Input
                 id="bgColor"
                 type="color"
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
-                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer"
+                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
+                style={{ backgroundColor: bgColor }}
               />
               <Input
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
                 placeholder="#3b82f6"
-                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-                />
+                className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
+              />
             </div>
           </div>
 
           {/* Text Color */}
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="textColor" className="text-xs md:text-sm text-gray-300 md:text-foreground">Text Color</Label>
+            <Label htmlFor="textColor" className="text-xs md:text-sm text-white md:text-foreground">Text Color</Label>
             <div className="flex gap-2">
               <Input
                 id="textColor"
                 type="color"
                 value={textColor}
                 onChange={(e) => setTextColor(e.target.value)}
-                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer"
+                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
+                style={{ backgroundColor: textColor }}
               />
               <Input
                 value={textColor}
                 onChange={(e) => setTextColor(e.target.value)}
                 placeholder="#ffffff"
-                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-                />
+                className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
+              />
             </div>
           </div>
 
           {/* Color Presets */}
           <div className="space-y-1.5 md:space-y-2">
-            <Label className="text-xs md:text-sm text-gray-300 md:text-foreground">Quick Presets</Label>
+            <Label className="text-xs md:text-sm text-white md:text-foreground">Quick Presets</Label>
             <div className="grid grid-cols-3 gap-1.5 md:gap-2">
               {COLOR_PRESETS.map((preset) => (
                 <Button
@@ -169,7 +171,7 @@ export function EditCompanyIconDialog({
                     setBgColor(preset.bg)
                     setTextColor(preset.text)
                   }}
-                  className="justify-start gap-2 text-white md:text-foreground border-gray-600 md:border-gray-200"
+                  className="justify-start gap-2 bg-black md:bg-white text-white md:text-foreground border-gray-600 md:border-gray-200 hover:bg-gray-800 md:hover:bg-gray-50"
                 >
                   <div className="h-4 w-4 rounded" style={{ backgroundColor: preset.bg }} />
                   {preset.name}
@@ -180,10 +182,10 @@ export function EditCompanyIconDialog({
         </div>
 
         <DialogFooter className="gap-2 md:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200 bg-black md:bg-transparent hover:bg-gray-800 md:hover:bg-gray-50">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !letters} className="text-xs md:text-sm text-white md:text-foreground">
+          <Button onClick={handleSave} disabled={saving || !letters} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

@@ -217,11 +217,11 @@ export function PoiEditDialog({ open, onOpenChange, location, onSave }: PoiEditD
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 md:gap-3 pt-3 md:pt-4 border-t border-gray-700 md:border-gray-200">
+        <div className="flex flex-row justify-end gap-2 pt-3 md:pt-4 border-t border-gray-700 md:border-gray-200">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving} className="text-xs md:text-sm text-white md:text-foreground">
+          <Button onClick={handleSave} disabled={isSaving} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />

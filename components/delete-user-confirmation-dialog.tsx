@@ -10,10 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
+import { Input } from "@/components/ui/heroui"
+import { AlertCircle } from "lucide-react"
 
 interface DeleteUserConfirmationDialogProps {
   open: boolean
@@ -58,77 +56,62 @@ export function DeleteUserConfirmationDialog({
     }
   }
 
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(userEmail)
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-base md:text-lg text-red-400 md:text-destructive">Delete User</DialogTitle>
-          <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">This action cannot be undone</DialogDescription>
+          <DialogTitle className="flex items-center gap-2 text-red-400 md:text-red-600 text-base md:text-lg">
+            <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
+            Delete User?
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="pt-2 md:pt-3 space-y-2 md:space-y-3">
+              <span className="block text-gray-300 md:text-foreground font-medium text-xs md:text-sm">This action cannot be undone.</span>
+              <span className="block text-xs md:text-sm text-gray-400 md:text-muted-foreground">
+                You are about to permanently delete <span className="font-semibold text-gray-300 md:text-foreground">{userName}</span> ({userEmail}). This will remove all their data and cannot be undone.
+              </span>
+              <span className="block text-xs md:text-sm text-gray-400 md:text-muted-foreground">
+                To confirm deletion, please type the email address: <span className="font-mono font-semibold bg-gray-800 md:bg-muted px-1.5 py-0.5 rounded text-gray-300 md:text-foreground">{userEmail}</span>
+              </span>
+            </div>
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="grid gap-3 md:gap-6 py-2 md:py-4">
-          <Alert variant="destructive" className="bg-red-900/50 md:bg-red-50 border-red-700 md:border-red-200">
-            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-300 md:text-red-600" />
-            <AlertDescription className="text-gray-300 md:text-red-800">
-              You are about to permanently delete this user. This will remove all their data and cannot be undone.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-3 md:space-y-4">
-            <div>
-              <Label className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">User Name</Label>
-              <p className="text-sm md:text-base font-semibold mt-1 text-gray-300 md:text-foreground">{userName}</p>
-            </div>
-            <div>
-              <Label className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">Email Address</Label>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm md:text-base font-semibold flex-1 text-gray-300 md:text-foreground">{userEmail}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyEmail}
-                  className="shrink-0"
-                >
-                  Copy
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmEmail" className="text-xs md:text-sm text-gray-300 md:text-foreground">
-              To confirm deletion, please type the email address: <span className="font-semibold">{userEmail}</span>
-            </Label>
+        <div className="py-2 md:py-4">
             <Input
-              id="confirmEmail"
               value={emailInput}
               onChange={(e) => {
                 setEmailInput(e.target.value)
                 setError(null)
               }}
               placeholder="Type email address to confirm"
-              className={`text-xs md:text-sm bg-black md:bg-white !text-white md:!text-foreground placeholder:text-gray-400 md:placeholder:text-muted-foreground ${error ? "border-red-500" : ""}`}
-            />
-            {error && (
-              <p className="text-xs md:text-sm text-red-400 md:text-red-600">{error}</p>
-            )}
+            variant="underlined"
+            labelPlacement="inside"
+            className="w-full"
+            classNames={{
+              base: "bg-transparent group",
+              mainWrapper: "bg-transparent",
+              inputWrapper:
+                "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-red-300 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-red-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
+              input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-red-500 outline-none focus:outline-none focus-visible:outline-none",
+              label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
+            }}
+            isInvalid={!!error}
+            errorMessage={error || undefined}
+          />
           </div>
-        </div>
-
-        <DialogFooter className="gap-2 md:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
+        <DialogFooter className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            disabled={deleting} 
+            className="text-xs md:text-sm bg-[#FF8E32] hover:bg-[#FFAA5B] text-black border-0"
+          >
             Cancel
           </Button>
           <Button
-            variant="destructive"
             onClick={handleConfirm}
             disabled={deleting || emailInput.trim().toLowerCase() !== userEmail.toLowerCase()}
-            className="text-xs md:text-sm text-white"
+            className="bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm"
           >
             {deleting ? "Deleting..." : "Delete User"}
           </Button>

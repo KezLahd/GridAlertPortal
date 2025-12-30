@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export default function PlannedPage() {
   return (
-    <main className="flex min-h-mobile flex-col">
+    <main className="flex h-screen md:min-h-mobile flex-col md:overflow-visible">
       <AuthGuard>
         <GridAlertApp initialOutageType="planned" />
       </AuthGuard>

@@ -105,22 +105,22 @@ function MultiSelect({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-between rounded-none border-0 border-b-2 border-gray-200 bg-white px-2 py-3 text-sm text-slate-900 shadow-none hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="w-full justify-between rounded-none border-0 border-b-2 border-gray-600 md:border-gray-200 bg-black md:bg-white px-2 py-3 text-sm text-white md:text-slate-900 shadow-none hover:bg-gray-900 md:hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
         >
-          <span className="truncate">{display}</span>
-          <ChevronsUpDown className="h-4 w-4 opacity-60" />
+          <span className="truncate text-white md:text-slate-900">{display}</span>
+          <ChevronsUpDown className="h-4 w-4 opacity-60 text-white md:text-slate-900" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[320px]">
+      <PopoverContent className="p-0 w-[320px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))]">
         <Command>
-          <CommandEmpty>No results.</CommandEmpty>
+          <CommandEmpty className="text-gray-400 md:text-muted-foreground">No results.</CommandEmpty>
           <CommandList>
             <CommandGroup>
               {options.map((opt) => (
                 <CommandItem
                   key={opt.value}
                   onSelect={() => toggle(opt.value)}
-                  className="flex items-center gap-2 bg-white text-foreground hover:!bg-muted/70 data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-foreground data-[selected]:bg-white data-[selected]:text-foreground"
+                  className="flex items-center gap-2 bg-black md:bg-white text-white md:text-foreground hover:!bg-gray-700 md:hover:!bg-muted/70 data-[highlighted]:!bg-gray-700 md:data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-white md:data-[highlighted]:!text-foreground data-[selected]:bg-gray-700 md:data-[selected]:bg-white data-[selected]:text-white md:data-[selected]:text-foreground"
                 >
                   <div
                     className={cn(
@@ -427,7 +427,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                     <TableRow 
                       key={member.user_id}
                       data-member-id={member.user_id}
-                      className={`border-gray-900 md:border-[hsl(var(--border))] ${isSelected ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-black md:bg-transparent hover:!bg-black md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
+                      className={`border-gray-900 md:border-[hsl(var(--border))] ${isSelected ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
                       style={{
                         WebkitTapHighlightColor: 'transparent',
                         userSelect: 'none',
@@ -639,32 +639,32 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editMember} onOpenChange={(open) => !open && setEditMember(null)}>
-        <DialogContent className="max-w-2xl p-0 gap-0 border-0">
+        <DialogContent className="max-w-2xl p-0 gap-0 border-0 bg-black md:bg-white">
         <DialogTitle className="sr-only">Edit Member Permissions</DialogTitle>
-          <div className="relative bg-white rounded-lg max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between">
+          <div className="relative bg-black md:bg-white rounded-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-black md:bg-white z-10 border-b border-gray-800 md:border-[hsl(var(--border))] px-8 py-6 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold text-white md:text-foreground">
                   {isAdmin && editMember && editMember.user_id !== currentUserId
                     ? "Edit Member Permissions"
                     : "Edit Your Preferences"}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-gray-400 md:text-muted-foreground mt-1">
                   {isAdmin && editMember && editMember.user_id !== currentUserId
                     ? `Manage ${editMember && getMemberName(editMember)}'s access and notification settings`
                     : "Manage your access and notification settings"}
                 </p>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setEditMember(null)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white md:text-foreground hover:bg-gray-800 md:hover:bg-gray-100" onClick={() => setEditMember(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
             {editMember && (
-              <div className="px-8 py-6 space-y-6">
+              <div className="px-8 py-6 space-y-6 bg-black md:bg-white">
                 {isAdmin && editMember.user_id !== currentUserId && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900">Role</Label>
+                    <Label className="text-sm font-medium text-gray-300 md:text-slate-900">Role</Label>
                     <MultiSelect
                       value={[editMember.role]}
                       options={[
@@ -680,7 +680,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900">Region Access</Label>
+                    <Label className="text-sm font-medium text-gray-300 md:text-slate-900">Region Access</Label>
                     <MultiSelect
                       value={editMember.region_access}
                       options={regionOptions.map((r) => ({ value: r, label: r }))}
@@ -690,18 +690,18 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900">Energy Providers</Label>
+                    <Label className="text-sm font-medium text-gray-300 md:text-slate-900">Energy Providers</Label>
                     <MultiSelect
                       value={editMember.notify_providers}
                       options={providerOptions.map((p) => ({ value: p.value, label: p.label }))}
                       onChange={(vals) => setEditMember({ ...editMember, notify_providers: vals as ProviderChoice[] })}
                       placeholder="Select providers"
                       renderDisplay={(value, options) => {
-                        if (value.length === 0) return "Select providers"
+                        if (value.length === 0) return <span className="text-white md:text-slate-900">Select providers</span>
                         if (value.length === options.length) {
                           return (
                               <div className="flex items-center gap-2">
-                              <span>All</span>
+                              <span className="text-white md:text-slate-900">All</span>
                               <div className="flex gap-1">
                                 {providerOptions.slice().sort((a, b) => a.value.localeCompare(b.value)).map((provider) => (
                                   <div
@@ -716,11 +716,11 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                             </div>
                           )
                         }
-                        return options
+                        return <span className="text-white md:text-slate-900">{options
                           .filter((o) => value.includes(o.value))
                           .sort((a, b) => a.label.localeCompare(b.label))
                           .map((o) => o.label)
-                          .join(", ")
+                          .join(", ")}</span>
                       }}
                     />
                   </div>
@@ -744,7 +744,11 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                 </Button>
               )}
               <div className="flex gap-3 ml-auto">
-                <Button variant="outline" onClick={() => setEditMember(null)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEditMember(null)}
+                  className="bg-[#FF8E32] hover:bg-[#FFAA5B] text-black border-0"
+                >
                   Cancel
                 </Button>
                 <Button

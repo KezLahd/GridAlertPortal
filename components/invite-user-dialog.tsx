@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button, Input } from "@/components/ui/heroui"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
-import { Check, ChevronsUpDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/heroui"
+import { DesktopDropdownSelect } from "@/components/desktop-dropdown-select"
+import { MobileDropdownSelect } from "@/components/mobile-dropdown-select"
+import { DesktopDropdownMultiselect } from "@/components/desktop-dropdown-multiselect"
+import { MobileDropdownMultiselect } from "@/components/mobile-dropdown-multiselect"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
 
 const REGIONS = ["NSW", "QLD", "VIC", "SA", "WA", "NT", "ACT", "TAS"]
 const PROVIDERS = [
@@ -34,140 +36,6 @@ const PROVIDERS = [
   { value: "TasNetworks", label: "TasNetworks", color: "bg-purple-500" },
 ]
 
-function SingleSelect({
-  value,
-  options,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (val: string) => void
-  placeholder: string
-}) {
-  const [open, setOpen] = useState(false)
-  const selectedOption = options.find((opt) => opt.value === value)
-
-  const display = selectedOption ? selectedOption.label : placeholder
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="bordered"
-          className="w-full justify-between rounded-none border-0 border-b-2 border-gray-700 md:border-gray-200 bg-black md:bg-white px-2 py-2 md:py-3 text-xs md:text-sm text-white md:text-slate-900 shadow-none hover:bg-gray-900 md:hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-        >
-          <span className="truncate text-white md:text-slate-900">{display}</span>
-          <ChevronsUpDown className="h-3 w-3 md:h-4 md:w-4 opacity-60 text-white md:text-slate-900" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[280px] md:w-[320px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))]">
-        <Command>
-          <CommandEmpty className="text-gray-400 md:text-muted-foreground">No results.</CommandEmpty>
-          <CommandList>
-            <CommandGroup>
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  onSelect={() => {
-                    onChange(opt.value)
-                    setOpen(false)
-                  }}
-                  className="flex items-center gap-2 bg-black md:bg-white text-gray-300 md:text-foreground hover:!bg-gray-800 md:hover:!bg-muted/70 data-[highlighted]:!bg-gray-800 md:data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-gray-300 md:data-[highlighted]:!text-foreground data-[selected]:bg-gray-800 md:data-[selected]:bg-white data-[selected]:text-gray-300 md:data-[selected]:text-foreground"
-                >
-                  <div
-                    className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
-                      value === opt.value
-                        ? "border-orange-500 bg-orange-500 text-white"
-                        : "border-muted-foreground/30 text-transparent",
-                    )}
-                  >
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </div>
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-function MultiSelect({
-  value,
-  options,
-  onChange,
-  placeholder,
-  renderDisplay,
-}: {
-  value: string[]
-  options: { value: string; label: string; color?: string }[]
-  onChange: (vals: string[]) => void
-  placeholder: string
-  renderDisplay?: (value: string[], options: { value: string; label: string; color?: string }[]) => React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-  const toggle = (v: string) => {
-    const next = value.includes(v) ? value.filter((i) => i !== v) : [...value, v]
-    onChange(next)
-  }
-
-  const display = renderDisplay
-    ? renderDisplay(value, options)
-    : value.length === 0
-      ? placeholder
-      : value.length === options.length
-        ? "All"
-        : options
-            .filter((o) => value.includes(o.value))
-            .map((o) => o.label)
-            .join(", ")
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="bordered"
-          className="w-full justify-between rounded-none border-0 border-b-2 border-gray-700 md:border-gray-200 bg-black md:bg-white px-2 py-2 md:py-3 text-xs md:text-sm text-white md:text-slate-900 shadow-none hover:bg-gray-900 md:hover:bg-white focus:border-orange-500 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-        >
-          <span className="truncate flex items-center gap-2 text-white md:text-slate-900">{display}</span>
-          <ChevronsUpDown className="h-3 w-3 md:h-4 md:w-4 opacity-60 text-white md:text-slate-900" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[280px] md:w-[320px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))]">
-        <Command>
-          <CommandEmpty className="text-gray-400 md:text-muted-foreground">No results.</CommandEmpty>
-          <CommandList>
-            <CommandGroup>
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  onSelect={() => toggle(opt.value)}
-                  className="flex items-center gap-2 bg-black md:bg-white text-gray-300 md:text-foreground hover:!bg-gray-800 md:hover:!bg-muted/70 data-[highlighted]:!bg-gray-800 md:data-[highlighted]:!bg-muted/70 data-[highlighted]:!text-gray-300 md:data-[highlighted]:!text-foreground data-[selected]:bg-gray-800 md:data-[selected]:bg-white data-[selected]:text-gray-300 md:data-[selected]:text-foreground"
-                >
-                  <div
-                    className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
-                      value.includes(opt.value)
-                        ? opt.color || "border-orange-500 bg-orange-500 text-white"
-                        : "border-muted-foreground/30 text-transparent",
-                    )}
-                  >
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </div>
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 interface InviteUserDialogProps {
   open: boolean
@@ -186,6 +54,7 @@ interface InviteUserDialogProps {
 }
 
 export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, adminId }: InviteUserDialogProps) {
+  const dialogContentRef = useRef<HTMLDivElement>(null)
   const [formData, setFormData] = useState({
     email: "",
     first_name: "",
@@ -197,15 +66,30 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState({
+    email: false,
+    first_name: false,
+    last_name: false,
+  })
 
   const handleSubmit = async () => {
-    if (!formData.email || !formData.first_name || !formData.last_name) {
+    // Prevent submission if button should be disabled
+    if (!formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()) {
+      // Check required fields and set validation errors
+      const errors = {
+        email: !formData.email.trim(),
+        first_name: !formData.first_name.trim(),
+        last_name: !formData.last_name.trim(),
+      }
+      
+      setValidationErrors(errors)
       setError("Please fill in all required fields")
       return
     }
 
     setLoading(true)
     setError(null)
+    setValidationErrors({ email: false, first_name: false, last_name: false })
 
     try {
       await onInvite(formData)
@@ -218,6 +102,7 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
         notify_providers: PROVIDERS.map((p) => p.value),
         notify_outage_types: [],
       })
+      setValidationErrors({ email: false, first_name: false, last_name: false })
       onOpenChange(false)
     } catch (err: any) {
       setError(err.message || "Failed to send invitation")
@@ -228,7 +113,7 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
+      <DialogContent ref={dialogContentRef} className="max-w-[95vw] sm:max-w-[500px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6">
         <DialogHeader>
           <DialogTitle className="text-base md:text-lg text-white md:text-foreground">Invite User</DialogTitle>
           <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Add a new team member to your company</DialogDescription>
@@ -244,74 +129,113 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
           {/* Name Fields */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Input
+              <div className="md:hidden">
+                <MobileInput
+                  label="First Name"
+                  value={formData.first_name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, first_name: e.target.value })
+                    setValidationErrors({ ...validationErrors, first_name: false })
+                  }}
+                  isRequired
+                  isInvalid={validationErrors.first_name}
+                  errorMessage={validationErrors.first_name ? "You must fill out this field" : undefined}
+                />
+              </div>
+              <div className="hidden md:block">
+                <DesktopInput
                 label="First Name"
                 value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                placeholder=""
-                variant="underlined"
-                labelPlacement="inside"
-                isRequired
-                className="w-full"
-                classNames={{
-                  base: "bg-transparent",
-                  mainWrapper: "bg-transparent",
-                  inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
-                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
+                onChange={(e) => {
+                  setFormData({ ...formData, first_name: e.target.value })
+                  setValidationErrors({ ...validationErrors, first_name: false })
                 }}
+                isRequired
+                isInvalid={validationErrors.first_name}
+                errorMessage={validationErrors.first_name ? "You must fill out this field" : undefined}
               />
+              </div>
             </div>
             <div className="space-y-2">
-              <Input
+              <div className="md:hidden">
+                <MobileInput
+                  label="Last Name"
+                  value={formData.last_name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, last_name: e.target.value })
+                    setValidationErrors({ ...validationErrors, last_name: false })
+                  }}
+                  isRequired
+                  isInvalid={validationErrors.last_name}
+                  errorMessage={validationErrors.last_name ? "You must fill out this field" : undefined}
+                />
+              </div>
+              <div className="hidden md:block">
+                <DesktopInput
                 label="Last Name"
                 value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                placeholder=""
-                variant="underlined"
-                labelPlacement="inside"
-                isRequired
-                className="w-full"
-                classNames={{
-                  base: "bg-transparent",
-                  mainWrapper: "bg-transparent",
-                  inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
-                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
+                onChange={(e) => {
+                  setFormData({ ...formData, last_name: e.target.value })
+                  setValidationErrors({ ...validationErrors, last_name: false })
                 }}
+                isRequired
+                isInvalid={validationErrors.last_name}
+                errorMessage={validationErrors.last_name ? "You must fill out this field" : undefined}
               />
+              </div>
             </div>
           </div>
 
           {/* Email */}
           <div className="space-y-2">
-            <Input
+            <div className="md:hidden">
+              <MobileInput
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value })
+                  setValidationErrors({ ...validationErrors, email: false })
+                }}
+                isRequired
+                isInvalid={validationErrors.email}
+                errorMessage={validationErrors.email ? "You must fill out this field" : undefined}
+              />
+            </div>
+            <div className="hidden md:block">
+              <DesktopInput
               label="Email Address"
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder=""
-              variant="underlined"
-              labelPlacement="inside"
+              onChange={(e) => {
+                setFormData({ ...formData, email: e.target.value })
+                setValidationErrors({ ...validationErrors, email: false })
+              }}
               isRequired
-              className="w-full"
-                classNames={{
-                  base: "bg-transparent",
-                  mainWrapper: "bg-transparent",
-                  inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-gray-500 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0",
-                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500",
-                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                }}
+              isInvalid={validationErrors.email}
+              errorMessage={validationErrors.email ? "You must fill out this field" : undefined}
               />
+            </div>
           </div>
 
           {/* Role */}
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-semibold text-gray-300 md:text-slate-700">Role</label>
-            <SingleSelect
+            <div className="md:hidden">
+              <MobileDropdownSelect
+                value={formData.role}
+                options={[
+                  { value: "admin", label: "Admin" },
+                  { value: "manager", label: "Manager" },
+                  { value: "member", label: "Member" },
+                ]}
+                onChange={(val) => setFormData({ ...formData, role: val })}
+                placeholder="Select role"
+                portalContainer={dialogContentRef.current}
+              />
+            </div>
+            <div className="hidden md:block">
+              <DesktopDropdownSelect
               value={formData.role}
               options={[
                 { value: "admin", label: "Admin" },
@@ -320,34 +244,85 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
               ]}
               onChange={(val) => setFormData({ ...formData, role: val })}
               placeholder="Select role"
+              portalContainer={dialogContentRef.current}
             />
+            </div>
           </div>
 
           {/* Region Access and Providers */}
           <div className="grid grid-cols-2 gap-2 md:gap-4">
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-semibold text-gray-300 md:text-slate-700">Region Access</label>
-              <MultiSelect
+              <div className="md:hidden">
+                <MobileDropdownMultiselect
+                  value={formData.region_access}
+                  options={REGIONS.map((r) => ({ value: r, label: r }))}
+                  onChange={(vals) => setFormData({ ...formData, region_access: vals })}
+                  placeholder="Select regions"
+                  portalContainer={dialogContentRef.current}
+                />
+              </div>
+              <div className="hidden md:block">
+                <DesktopDropdownMultiselect
                 value={formData.region_access}
                 options={REGIONS.map((r) => ({ value: r, label: r }))}
                 onChange={(vals) => setFormData({ ...formData, region_access: vals })}
                 placeholder="Select regions"
+                portalContainer={dialogContentRef.current}
               />
+              </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-semibold text-gray-300 md:text-slate-700">Energy Providers</label>
-              <MultiSelect
+              <div className="md:hidden">
+                <MobileDropdownMultiselect
+                  value={formData.notify_providers}
+                  options={PROVIDERS}
+                  onChange={(vals) => setFormData({ ...formData, notify_providers: vals })}
+                  placeholder="Select providers"
+                  portalContainer={dialogContentRef.current}
+                  renderDisplay={(value, options) => {
+                    if (value.length === 0) return <span className="text-gray-400">Select providers</span>
+                    if (value.length === options.length) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className="text-white">All</span>
+                          <div className="flex gap-1">
+                            {PROVIDERS.map((provider) => (
+                              <div
+                                key={provider.value}
+                                className={`h-5 w-5 rounded-full ${provider.color} flex items-center justify-center text-white text-[10px] font-bold`}
+                                title={provider.label}
+                              >
+                                {provider.value[0]}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    }
+                    return <span className="text-white">{options
+                      .filter((o) => value.includes(o.value))
+                      .map((o) => o.label)
+                      .join(", ")}</span>
+                  }}
+                />
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <DesktopDropdownMultiselect
                 value={formData.notify_providers}
                 options={PROVIDERS}
                 onChange={(vals) => setFormData({ ...formData, notify_providers: vals })}
                 placeholder="Select providers"
+                portalContainer={dialogContentRef.current}
                 renderDisplay={(value, options) => {
-                  if (value.length === 0) return "Select providers"
+                    if (value.length === 0) return <span className="text-slate-500">Select providers</span>
                   if (value.length === options.length) {
                     return (
                       <div className="flex items-center gap-2">
-                        <span className="text-white md:text-foreground">All</span>
+                          <span className="text-foreground">All</span>
                         <div className="flex gap-1">
                           {PROVIDERS.map((provider) => (
                             <div
@@ -362,7 +337,7 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
                       </div>
                     )
                   }
-                  return <span className="text-white md:text-foreground">{options
+                    return <span className="text-foreground">{options
                     .filter((o) => value.includes(o.value))
                     .map((o) => o.label)
                     .join(", ")}</span>
@@ -372,14 +347,14 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
           </div>
         </div>
 
-        <DialogFooter className="gap-2 md:gap-0">
+        <DialogFooter className="gap-2 md:gap-2">
           <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={loading} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !formData.email || !formData.first_name || !formData.last_name}
-            className="text-xs md:text-sm text-white md:text-foreground"
+            disabled={loading || !formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()}
+            className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Sending..." : "Send Invitation"}
           </Button>

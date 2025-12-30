@@ -690,7 +690,7 @@ export function PoiLocationsTable({
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={(e) => {
                         setTimeout(() => {
-                          e.target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
                         }, 100)
                       }}
                       className="bg-black border-gray-600 text-white placeholder:text-gray-500 h-8"
@@ -819,7 +819,7 @@ export function PoiLocationsTable({
                         <TableRow 
                           key={location.id}
                           data-location-id={location.id}
-                          className={`border-gray-900 md:border-[hsl(var(--border))] ${selectedRows.has(location.id) ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-black md:bg-transparent hover:!bg-black md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
+                          className={`border-gray-900 md:border-[hsl(var(--border))] ${selectedRows.has(location.id) ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
                           style={{
                             WebkitTapHighlightColor: 'transparent',
                             userSelect: 'none',

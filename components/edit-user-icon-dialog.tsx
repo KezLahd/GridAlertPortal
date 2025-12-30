@@ -80,7 +80,7 @@ export function EditUserIconDialog({
   }
 
   return (
-    <Modal isOpen={open} onOpenChange={onOpenChange} classNames={{
+    <Modal isOpen={open} onOpenChange={onOpenChange} placement="center" classNames={{
       base: "bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))]",
       header: "text-white md:text-foreground text-base md:text-lg",
       body: "text-gray-300 md:text-foreground",
@@ -105,7 +105,7 @@ export function EditUserIconDialog({
 
             {/* Letters Input */}
             <div className="space-y-1.5 md:space-y-2">
-              <label htmlFor="letters" className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">
+              <label htmlFor="letters" className="text-xs md:text-sm font-medium text-white md:text-foreground">
                 Icon Letters (1-2 characters)
               </label>
               <Input
@@ -120,7 +120,7 @@ export function EditUserIconDialog({
 
             {/* Background Color */}
             <div className="space-y-1.5 md:space-y-2">
-              <label htmlFor="bgColor" className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">
+              <label htmlFor="bgColor" className="text-xs md:text-sm font-medium text-white md:text-foreground">
                 Background Color
               </label>
               <div className="flex gap-2">
@@ -129,20 +129,21 @@ export function EditUserIconDialog({
                   type="color"
                   value={bgColor}
                   onChange={(e) => setBgColor(e.target.value)}
-                  className="h-8 w-16 md:h-10 md:w-20 cursor-pointer"
+                  className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
+                  style={{ backgroundColor: bgColor }}
                 />
                 <Input
                   value={bgColor}
                   onChange={(e) => setBgColor(e.target.value)}
                   placeholder="#3b82f6"
-                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
+                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
                 />
               </div>
             </div>
 
             {/* Text Color */}
             <div className="space-y-1.5 md:space-y-2">
-              <label htmlFor="textColor" className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">
+              <label htmlFor="textColor" className="text-xs md:text-sm font-medium text-white md:text-foreground">
                 Text Color
               </label>
               <div className="flex gap-2">
@@ -151,20 +152,21 @@ export function EditUserIconDialog({
                   type="color"
                   value={textColor}
                   onChange={(e) => setTextColor(e.target.value)}
-                  className="h-8 w-16 md:h-10 md:w-20 cursor-pointer"
+                  className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
+                  style={{ backgroundColor: textColor }}
                 />
                 <Input
                   value={textColor}
                   onChange={(e) => setTextColor(e.target.value)}
                   placeholder="#ffffff"
-                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
+                  className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
                 />
               </div>
             </div>
 
             {/* Color Presets */}
             <div className="space-y-1.5 md:space-y-2">
-              <label className="text-xs md:text-sm font-medium text-gray-300 md:text-foreground">Quick Presets</label>
+              <label className="text-xs md:text-sm font-medium text-white md:text-foreground">Quick Presets</label>
               <div className="grid grid-cols-3 gap-1.5 md:gap-2">
                 {COLOR_PRESETS.map((preset) => (
                   <Button
@@ -176,7 +178,7 @@ export function EditUserIconDialog({
                       setBgColor(preset.bg)
                       setTextColor(preset.text)
                     }}
-                    className="justify-start gap-2 text-white md:text-foreground border-gray-600 md:border-gray-200"
+                    className="justify-start gap-2 bg-black md:bg-white text-white md:text-foreground border-gray-600 md:border-gray-200 hover:bg-gray-800 md:hover:bg-gray-50"
                   >
                     <div className="h-4 w-4 rounded" style={{ backgroundColor: preset.bg }} />
                     {preset.name}
@@ -186,11 +188,11 @@ export function EditUserIconDialog({
             </div>
           </div>
         </ModalBody>
-        <ModalFooter className="gap-2 md:gap-0">
+        <ModalFooter className="flex flex-row justify-end gap-2">
           <Button variant="light" onPress={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground">
             Cancel
           </Button>
-          <Button onPress={handleSave} disabled={saving || !letters} color="primary" className="text-xs md:text-sm text-white md:text-foreground">
+          <Button onPress={handleSave} disabled={saving || !letters} color="primary" className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </ModalFooter>

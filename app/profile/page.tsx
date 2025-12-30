@@ -241,6 +241,7 @@ export default function ProfilePage() {
   const [editCompanyDetailsOpen, setEditCompanyDetailsOpen] = useState(false)
   const [editUserDetailsOpen, setEditUserDetailsOpen] = useState(false)
   const [addPoiOpen, setAddPoiOpen] = useState(false)
+  const [editPoiLocation, setEditPoiLocation] = useState<PoiLocation | null>(null)
   const [importCsvOpen, setImportCsvOpen] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [inviteState, setInviteState] = useState({
@@ -289,6 +290,17 @@ export default function ProfilePage() {
       showToast("You must be an administrator to add POIs")
       return
     }
+    setEditPoiLocation(null)
+    setAddPoiOpen(true)
+  }
+
+  // Handle editing POI
+  const handleEditPoi = (location: PoiLocation) => {
+    if (!isAdmin) {
+      showToast("You must be an administrator to edit POIs")
+      return
+    }
+    setEditPoiLocation(location)
     setAddPoiOpen(true)
   }
 
@@ -452,7 +464,7 @@ export default function ProfilePage() {
     // Fetch all locations (not just ACTIVE) so status filter can work
     const { data, error: locationsError } = await supabase
       .from("locations")
-      .select("id, institutioncode, institutionname, institutionemail, institutionphoneno, addresslatitude, addresslongitude, addressline1, addresssuburb, addressstate, addresspostcode, created_at, institutionstatus, provider")
+      .select("id, institutioncode, institutionname, institutionnickname, pharmacyid, institutionemail, institutionmappedstate, institutionstatus, sitekeyaccess, institutionphoneno, addressline1, addressline2, addressline3, addresssuburb, addressstate, addresspostcode, addresslatitude, addresslongitude, created_at, provider")
       .eq("company_id", companyId)
 
     if (locationsError) {
@@ -473,7 +485,7 @@ export default function ProfilePage() {
       state: row.addressstate,
       postcode: row.addresspostcode,
       country: "Australia",
-      contact_name: null,
+      contact_name: null, // This field doesn't exist in the database schema
       contact_email: row.institutionemail,
       contact_phone: row.institutionphoneno,
       latitude: row.addresslatitude,
@@ -481,7 +493,14 @@ export default function ProfilePage() {
       created_at: row.created_at,
       institutionstatus: row.institutionstatus || null,
       provider: row.provider || null,
-    }))
+      // Store additional fields in a way that can be accessed
+      institutionnickname: row.institutionnickname || null,
+      pharmacyid: row.pharmacyid || null,
+      institutionmappedstate: row.institutionmappedstate || null,
+      sitekeyaccess: row.sitekeyaccess || null,
+      addressline2: row.addressline2 || null,
+      addressline3: row.addressline3 || null,
+    } as PoiLocation & { institutionnickname?: string | null; pharmacyid?: string | null; institutionmappedstate?: string | null; sitekeyaccess?: string | null; addressline2?: string | null; addressline3?: string | null }))
 
     // Sort numerically by institution code
     normalizedLocations.sort((a, b) => {
@@ -500,57 +519,119 @@ export default function ProfilePage() {
     setPoiLocations(normalizedLocations)
   }
 
-  const handleAddPoi = async (
-    poiName: string,
-    location: string,
-    latitude: number,
-    longitude: number,
-    contactName?: string,
-    contactEmail?: string,
-    contactPhone?: string,
-    state?: string,
+  const handleAddPoi = async (data: {
+    poiName: string
+    location: string
+    latitude: number
+    longitude: number
+    contactEmail?: string
+    contactPhone?: string
+    state?: string
     postcode?: string
-  ) => {
+    institutionCode?: string
+    institutionNickname?: string
+    pharmacyId?: string
+    institutionStatus?: string
+    siteKeyAccess?: number | null
+    addressLine1?: string
+    addressLine2?: string
+    addressLine3?: string
+    addressSuburb?: string
+    country?: string
+  }) => {
     if (!profile?.company?.id) return
 
     setSaving(true)
     setError(null)
 
+    const isEdit = !!editPoiLocation
+
     // Determine provider based on location
     let provider: string | null = null
     try {
       const { determineProviderForLocation } = await import("@/lib/provider-assignment")
-      provider = await determineProviderForLocation(latitude, longitude, postcode || null, state || null)
+      provider = await determineProviderForLocation(data.latitude, data.longitude, data.postcode || null, data.state || null)
     } catch (error) {
       console.error("Error determining provider for location:", error)
       // Continue without provider if determination fails
     }
 
-    // Map to new schema: poi_name -> institutionname, street_address -> addressline1, etc.
-    const { error: insertError } = await supabase
-      .from("locations")
-      .insert({
-        company_id: profile.company.id,
-        institutionname: poiName,
-        addressline1: location,
-        addresslatitude: latitude,
-        addresslongitude: longitude,
-        addressstate: state || null,
-        addresspostcode: postcode || null,
-        institutionemail: contactEmail || null,
-        institutionphoneno: contactPhone || null,
-        provider: provider || null,
+    // Institution code is stored as text in backend (no "C" prefix)
+    const institutionCodeValue = data.institutionCode ? data.institutionCode : null
+
+    // Map to database schema - poiName becomes institutionName
+    const locationData: any = {
+      institutionname: data.poiName,
+      addressline1: data.addressLine1 || data.location,
+      addresslatitude: data.latitude,
+      addresslongitude: data.longitude,
+      addressstate: data.state || null,
+      addresspostcode: data.postcode || null,
+      addresssuburb: data.addressSuburb || null,
+      institutionemail: data.contactEmail || null,
+      institutionphoneno: data.contactPhone || null,
+      provider: provider || null,
+      institutioncode: institutionCodeValue || null,
+      institutionnickname: data.institutionNickname || null,
+      institutionmappedstate: data.state || null, // Same as address state
+      addressline2: data.addressLine2 || null,
+      addressline3: data.addressLine3 || null,
+    }
+
+    if (isEdit && editPoiLocation) {
+      // Update existing location - always include all fields that can be edited
+      // Always include pharmacyid, sitekeyaccess, and institutionstatus in edit mode
+      locationData.pharmacyid = data.pharmacyId !== undefined ? (data.pharmacyId.trim() || null) : null
+      locationData.sitekeyaccess = data.siteKeyAccess !== undefined ? (data.siteKeyAccess ? 1 : null) : null
+      locationData.institutionstatus = data.institutionStatus || "ACTIVE"
+      
+      // Use API route to update POI (bypasses RLS)
+      console.log("Calling update-poi API with:", { locationId: editPoiLocation.id, companyId: profile.company.id, locationData })
+      
+      const response = await fetch("/api/update-poi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId: editPoiLocation.id,
+          companyId: profile.company.id,
+          locationData,
+        }),
       })
 
-    if (insertError) {
-      setError(insertError.message)
-      setSaving(false)
-      throw insertError
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("API update error:", result.error)
+        setError(result.error || "Failed to update POI")
+        setSaving(false)
+        throw new Error(result.error || "Failed to update POI")
+      }
+
+      console.log("Update successful - updated location:", result.updatedLocation)
+      
+      showToast("POI updated successfully", "success")
+    } else {
+      // Insert new location - always set status to ACTIVE
+      locationData.institutionstatus = "ACTIVE"
+      locationData.pharmacyid = data.pharmacyId || null
+      locationData.sitekeyaccess = data.siteKeyAccess !== undefined ? (data.siteKeyAccess ? 1 : null) : null
+      locationData.company_id = profile.company.id
+      const { error: insertError } = await supabase
+        .from("locations")
+        .insert(locationData)
+
+      if (insertError) {
+        setError(insertError.message)
+        setSaving(false)
+        throw insertError
+      }
+      showToast("POI added successfully", "success")
     }
 
     // Refresh the POI locations and count
     await fetchPoiLocations(profile.company.id)
     await fetchPoiCount(profile.company.id)
+    setEditPoiLocation(null)
     setSaving(false)
   }
 
@@ -1810,6 +1891,7 @@ export default function ProfilePage() {
               <PoiLocationsTable
                 locations={poiLocations}
                 onAddPoi={handleOpenAddPoi}
+                onEditPoi={isAdmin ? handleEditPoi : undefined}
                 onImportCsv={handleOpenImportCsv}
                 onDeletePoi={isAdmin ? handleDeletePoi : undefined}
                 loading={saving}
@@ -1923,13 +2005,20 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Add POI Dialog */}
+      {/* Add/Edit POI Dialog */}
       {profile?.company && (
         <AddPoiDialog
           open={addPoiOpen}
-          onOpenChange={setAddPoiOpen}
+          onOpenChange={(open) => {
+            setAddPoiOpen(open)
+            if (!open) {
+              setEditPoiLocation(null)
+            }
+          }}
           onSave={handleAddPoi}
           saving={saving}
+          location={editPoiLocation}
+          companyId={profile.company.id}
         />
       )}
 

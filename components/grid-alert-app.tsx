@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
-import { addDays, format } from "date-fns"
+import { addDays, format, differenceInMinutes } from "date-fns"
 import { parseDate, CalendarDate } from "@internationalized/date"
 import type { RangeValue } from "@react-types/shared"
 import dynamic from "next/dynamic"
@@ -371,7 +371,21 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const [mapsApiError, setMapsApiError] = useState<string | null>(null)
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false)
   const [selectedProviders, setSelectedProviders] = useState<EnergyProvider[]>([])
-  const [viewMode, setViewMode] = useState<"map" | "report">("map")
+  // Restore viewMode from localStorage on mount, default to "map"
+  const [viewMode, setViewMode] = useState<"map" | "report">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("gridalert-viewMode")
+      return (saved === "map" || saved === "report") ? saved : "map"
+    }
+    return "map"
+  })
+
+  // Persist viewMode to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gridalert-viewMode", viewMode)
+    }
+  }, [viewMode])
   const [sortField, setSortField] = useState<SortField>("incident")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [reportSearch, setReportSearch] = useState("")
@@ -383,6 +397,22 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [isReportSearchExpanded, setIsReportSearchExpanded] = useState(false)
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [isMapControlsBarVisible, setIsMapControlsBarVisible] = useState(true)
+
+  // Helper function to get color based on time since last refresh
+  const getRefreshTimeColor = (lastRefreshedDate: Date | null): string => {
+    if (!lastRefreshedDate) return '#84f184' // Bright green highlighter for "Just now" (very recent)
+    
+    const minutesAgo = differenceInMinutes(new Date(), lastRefreshedDate)
+    
+    if (minutesAgo <= 15) {
+      return '#84f184' // Bright green highlighter - within 15 minutes
+    } else if (minutesAgo <= 60) {
+      return '#FFEB3B' // Bright yellow highlighter - between 15 minutes and 1 hour
+    } else {
+      return '#FF6B6B' // Bright red/coral highlighter - over 1 hour
+    }
+  }
 
   // Fetch provider status data from consolidated table
   const fetchProviderStatus = async () => {
@@ -1932,7 +1962,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     ]
 
      return (
-       <div className="absolute bottom-16 md:fixed md:bottom-6 right-6 z-[9999]">
+       <div className="fixed bottom-6 right-6 z-[9999]">
          <Popover>
            <PopoverTrigger asChild>
              <Button
@@ -1965,32 +1995,74 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
     )
   }
 
-  // Set black background on mobile
+  // Set black background on mobile and set viewMode data attribute for CSS
   useEffect(() => {
-    const isMobile = window.innerWidth < 768
-    if (isMobile) {
-      const originalBodyBg = document.body.style.backgroundColor
-      const originalHtmlBg = document.documentElement.style.backgroundColor
-      document.body.style.backgroundColor = "#000000"
-      document.documentElement.style.backgroundColor = "#000000"
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        const originalBodyBg = document.body.style.backgroundColor
+        const originalHtmlBg = document.documentElement.style.backgroundColor
+        document.body.style.backgroundColor = "#000000"
+        document.documentElement.style.backgroundColor = "#000000"
+        return () => {
+          document.body.style.backgroundColor = originalBodyBg
+          document.documentElement.style.backgroundColor = originalHtmlBg
+        }
+      }
+      // Set data attribute for CSS to control pull-to-refresh
+      document.body.setAttribute('data-view-mode', viewMode)
+      document.documentElement.setAttribute('data-view-mode', viewMode)
       return () => {
-        document.body.style.backgroundColor = originalBodyBg
-        document.documentElement.style.backgroundColor = originalHtmlBg
+        document.body.removeAttribute('data-view-mode')
+        document.documentElement.removeAttribute('data-view-mode')
       }
     }
-  }, [])
+  }, [viewMode])
 
 
   return (
-    <div className="flex min-h-mobile bg-black md:bg-[#f2f2f4] text-[#1f1f22]">
+    <div className="flex h-full md:h-screen md:overflow-hidden bg-black md:bg-[#f2f2f4] text-[#1f1f22]">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <AppSidebar />
       </div>
 
       {/* Mobile Header Navigation */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
-        <div className="flex items-center justify-between px-4 py-3">
+      <div 
+        className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" 
+        style={{ 
+          boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)', 
+          touchAction: 'none', 
+          overscrollBehavior: 'none',
+          overscrollBehaviorY: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0
+        }}
+        onTouchStart={(e) => {
+          // Only prevent if not clicking a button
+          if (!(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('[role="button"]')))) {
+            e.preventDefault()
+          }
+        }}
+        onTouchMove={(e) => {
+          // Always prevent scrolling on header
+          e.preventDefault()
+        }}
+      >
+        <div 
+          className="flex items-center justify-between px-4 py-3" 
+          style={{ 
+            touchAction: 'none',
+            overscrollBehavior: 'none',
+            overscrollBehaviorY: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none'
+          }}
+        >
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
             <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
@@ -2036,11 +2108,11 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   <User className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-48 p-2" align="end">
+              <PopoverContent className="w-48 p-2 bg-black md:bg-popover border-gray-800 md:border-[hsl(var(--border))]" align="end">
                 <div className="flex flex-col gap-1">
                   <Button
                     variant="light"
-                    className="w-full justify-start text-left"
+                    className="w-full justify-start text-left bg-black md:bg-transparent text-white md:text-foreground hover:bg-gray-800 md:hover:bg-muted/70"
                     onPress={() => {
                       window.location.href = "/profile"
                     }}
@@ -2050,7 +2122,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   </Button>
                   <Button
                     variant="light"
-                    className="w-full justify-start text-left text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="w-full justify-start text-left text-red-400 md:text-red-600 hover:text-red-300 md:hover:text-red-700 hover:bg-gray-800 md:hover:bg-red-50 bg-black md:bg-transparent"
                     onPress={async () => {
                       await supabase.auth.signOut()
                       window.location.href = "/login"
@@ -2066,7 +2138,15 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
         </div>
       </div>
 
-      <div className="flex w-full flex-col md:mt-0 mt-14 md:h-auto">
+      <div className={cn(
+        "flex w-full flex-col md:mt-0 mt-14 md:overflow-y-auto md:flex-1",
+        viewMode === "map" 
+          ? "h-[100dvh] md:h-auto" 
+          : "min-h-screen md:min-h-0"
+      )} style={viewMode === "map" && typeof window !== 'undefined' && window.innerWidth < 768 ? {
+        height: '100dvh',
+        maxHeight: '100dvh'
+      } : {}}>
         <div className="bg-gray-900 w-full px-4 md:px-8 py-4 hidden md:block">
           <div className="mx-auto flex w-full min-w-0 md:min-w-[900px] max-w-[1800px]">
             <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:items-center w-full">
@@ -2082,7 +2162,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   Refresh
                 </Button>
                 <div className="flex flex-col text-xs leading-tight" style={{ color: '#f3f4f6' }}>
-                  <span style={{ color: '#f3f4f6' }}>
+                  <span style={{ color: getRefreshTimeColor(lastRefreshed) }}>
                     Last refreshed: {lastRefreshed ? format(lastRefreshed, "dd/MM HH:mm") : "Just now"}
                   </span>
                 </div>
@@ -2171,7 +2251,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
             </div>
           </div>
         </div>
-        <div className="relative mx-auto flex w-full min-w-0 md:min-w-[900px] max-w-[1800px] flex-1 flex-col gap-4 px-0 md:px-8 py-0 md:py-6 h-full md:h-auto">
+        <div className={cn(
+          "relative mx-auto flex w-full min-w-0 md:min-w-[900px] max-w-[1800px] flex-1 flex-col",
+          viewMode === "map" 
+            ? "gap-0 md:gap-4 px-0 md:px-8 py-0 md:py-6 overflow-visible md:overflow-visible h-full md:h-auto" 
+            : "gap-4 px-0 md:px-8 py-0 md:py-6"
+        )}>
           {mapsApiError && (
             <MapsError message="The Google Maps API is not activated for your API key. Please check your Google Cloud Console to enable the necessary APIs." />
           )}
@@ -2183,8 +2268,79 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
             </Alert>
           )}
 
-          {/* Mobile: Controls above map (refresh, last refreshed, view toggle, date picker) */}
-          <div className="md:hidden px-4 pt-3 pb-0.5">
+          {/* Mobile: Collapsible controls bar above map for all map pages */}
+          {viewMode === "map" && (
+            <div 
+              className={cn(
+                "md:hidden relative transition-all duration-300 ease-in-out flex-shrink-0",
+                isMapControlsBarVisible ? "h-[56px]" : "h-0"
+              )}
+              style={{
+                touchAction: 'none',
+                overscrollBehavior: 'none'
+              }}
+              onTouchStart={(e) => {
+                // Only prevent if not clicking a button
+                if (!(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('[role="button"]')))) {
+                  e.preventDefault()
+                }
+              }}
+              onTouchMove={(e) => {
+                // Always prevent scrolling on bar
+                e.preventDefault()
+              }}
+            >
+              {/* Chevron tab - positioned at bottom center of bar container, fixed to bar */}
+              <div className="md:hidden absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 z-50" style={{ 
+                pointerEvents: 'auto'
+              }}>
+                <Button
+                  isIconOnly
+                  variant="light"
+                  size="sm"
+                  className="bg-black/40 text-white hover:bg-black/50 rounded-full border border-orange-500/30"
+                  style={{ 
+                    width: '32px', 
+                    height: '24px', 
+                    paddingTop: 0,
+                    paddingBottom: 0,
+                    paddingLeft: '4px',
+                    paddingRight: '4px',
+                    marginTop: 0,
+                    marginBottom: 0,
+                    marginLeft: 0,
+                    marginRight: 0,
+                    minWidth: '32px',
+                    minHeight: '24px',
+                    boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)'
+                  }}
+                  onPress={() => setIsMapControlsBarVisible(!isMapControlsBarVisible)}
+                >
+                  {isMapControlsBarVisible ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+              <div 
+                className={cn(
+                  "bg-black/90 backdrop-blur-sm border-b border-gray-700 transition-all duration-300 ease-in-out overflow-hidden h-full",
+                  isMapControlsBarVisible ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                  touchAction: 'none',
+                  overscrollBehavior: 'none'
+                }}
+              >
+                <div 
+                  className="px-4 pt-2"
+                  style={{
+                    touchAction: 'none',
+                    overscrollBehavior: 'none',
+                    paddingBottom: '12px'
+                  }}
+                >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Button
@@ -2192,18 +2348,18 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   variant="bordered"
                   size="sm"
                   className="bg-black text-white border-[1px] border-gray-600 hover:bg-gray-900"
-                  style={{ height: '36px' }}
+                  style={{ height: '36px', marginBottom: 0 }}
                   onPress={handleRefresh}
                   isDisabled={loading}
                 >
                   <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                 </Button>
                 <div className="flex flex-col text-xs leading-tight" style={{ color: '#f3f4f6' }}>
-                  <span style={{ color: '#f3f4f6' }}>Last: {lastRefreshed ? format(lastRefreshed, "dd/MM HH:mm") : "Just now"}</span>
+                  <span style={{ color: getRefreshTimeColor(lastRefreshed) }}>Last: {lastRefreshed ? format(lastRefreshed, "dd/MM HH:mm") : "Just now"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-1 justify-end">
-                {/* Mobile: Date picker for future outages - in same row */}
+                      {/* Mobile: Date picker for future outages */}
                 {outageType === "future" && (
                   <div suppressHydrationWarning className="flex items-center gap-1">
                     <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -2212,7 +2368,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                           variant="bordered"
                           size="sm"
                           className="bg-black text-white border-[1px] border-gray-600 hover:bg-gray-900 flex items-center gap-1.5"
-                          style={{ height: '36px' }}
+                          style={{ height: '36px', marginBottom: 0 }}
                           onPress={() => setIsDatePickerOpen(true)}
                         >
                           <CalendarClock className="h-4 w-4 text-white" />
@@ -2257,16 +2413,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     </Popover>
                   </div>
                 )}
-                <div className="flex items-center gap-1 bg-black rounded-md px-1 py-1 border border-gray-600" style={{ height: '36px' }}>
+                <div className="flex items-center gap-1 bg-black rounded-md px-1 py-1 border border-gray-600" style={{ height: '36px', marginBottom: 0 }}>
                   <Button
                     isIconOnly
-                    variant={viewMode === "map" ? "solid" : "light"}
+                          variant="solid"
                     size="sm"
                     className={cn(
                       "flex items-center justify-center rounded-md transition-colors",
-                      viewMode === "map" 
-                        ? "bg-[#FF8E32] text-white hover:opacity-90" 
-                        : "bg-transparent text-white hover:bg-gray-800"
+                            "bg-[#FF8E32] text-white hover:opacity-90"
                     )}
                     style={{ height: '100%' }}
                     onPress={() => setViewMode("map")}
@@ -2275,13 +2429,11 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   </Button>
                   <Button
                     isIconOnly
-                    variant={viewMode === "report" ? "solid" : "light"}
+                          variant="light"
                     size="sm"
                     className={cn(
                       "flex items-center justify-center rounded-md transition-colors",
-                      viewMode === "report" 
-                        ? "bg-[#FF8E32] text-white hover:opacity-90" 
-                        : "bg-transparent text-white hover:bg-gray-800"
+                            "bg-transparent text-white hover:bg-gray-800"
                     )}
                     style={{ height: '100%' }}
                     onPress={() => setViewMode("report")}
@@ -2292,6 +2444,9 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
               </div>
             </div>
           </div>
+              </div>
+            </div>
+          )}
 
           {searchQuery && (
             <Alert>
@@ -2321,10 +2476,36 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           </div>
 
           {viewMode === "map" ? (
-            <div className="flex flex-col gap-4 md:flex-row">
-              <div className="flex-1 min-w-0">
-                <Card className="rounded-none md:rounded-xl overflow-hidden border-0 md:border bg-transparent md:bg-[hsl(var(--card))]">
-                  <CardContent className="relative p-0 bg-transparent md:bg-[hsl(var(--card))]">
+            <div className={cn(
+              "flex flex-col gap-0 md:gap-4 md:flex-row flex-1 min-h-0 md:flex-initial"
+            )} style={{
+              ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+                height: 'calc(100dvh - 56px)',
+                maxHeight: 'calc(100dvh - 56px)',
+                overflow: 'hidden',
+                touchAction: 'none',
+                overscrollBehavior: 'none'
+              } : {})
+            }}>
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col" style={{
+                ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+                  overflow: 'visible',
+                  touchAction: 'none'
+                } : {})
+              }}>
+                <Card className="rounded-none md:rounded-xl overflow-visible md:overflow-hidden border-0 md:border bg-transparent md:bg-[hsl(var(--card))] flex-1 min-h-0 flex flex-col" style={{
+                  ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+                    overflow: 'visible',
+                    touchAction: 'none'
+                  } : {})
+                }}>
+                  <CardContent className="relative p-0 bg-transparent md:bg-[hsl(var(--card))] flex-1 min-h-0 flex flex-col overflow-visible md:overflow-hidden" style={{
+                    ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+                      touchAction: 'none',
+                      overscrollBehavior: 'none',
+                      overflow: 'visible'
+                    } : {})
+                  }}>
                     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/60 via-black/35 to-transparent px-4 py-3">
                       {/* Mobile: Collapsible search with toggles */}
                       <div className="pointer-events-auto flex items-center gap-2 w-full">
@@ -2395,8 +2576,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                         </div>
                       </div>
                     </div>
-                    <div className="overflow-hidden rounded-none md:rounded-xl">
-                      <div className="h-[calc(100dvh-56px)] md:h-[70vh]">
+                    <div className="rounded-none md:rounded-xl flex-1 min-h-0 relative overflow-hidden" style={{ 
+                      touchAction: 'none',
+                      overscrollBehavior: 'none'
+                    }}>
+                      <div className="absolute inset-0 md:relative md:h-[70vh]" style={{
+                        touchAction: 'none',
+                        overscrollBehavior: 'none'
+                      }}>
                         <Map
                           outages={getCurrentOutages()}
                           outageType={outageType}
@@ -2443,7 +2630,56 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
               </div>
             </div>
           ) : (
-            <Card className="bg-black border-gray-800 md:bg-[hsl(var(--card))] md:border-[hsl(var(--border))]">
+            <Card className="bg-transparent border-gray-800 md:bg-[hsl(var(--card))] md:border-[hsl(var(--border))]">
+              {/* Mobile: Simple non-collapsible controls bar for report view */}
+              <div className="md:hidden px-4 py-2 flex-shrink-0 bg-black/90 backdrop-blur-sm border-b border-gray-700">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      isIconOnly
+                      variant="bordered"
+                      size="sm"
+                      className="bg-black text-white border-[1px] border-gray-600 hover:bg-gray-900"
+                      style={{ height: '36px' }}
+                      onPress={handleRefresh}
+                      isDisabled={loading}
+                    >
+                      <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                    </Button>
+                    <div className="flex flex-col text-xs leading-tight" style={{ color: '#f3f4f6' }}>
+                      <span style={{ color: getRefreshTimeColor(lastRefreshed) }}>Last: {lastRefreshed ? format(lastRefreshed, "dd/MM HH:mm") : "Just now"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 bg-black rounded-md px-1 py-1 border border-gray-600" style={{ height: '36px' }}>
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      size="sm"
+                      className={cn(
+                        "flex items-center justify-center rounded-md transition-colors",
+                        "bg-transparent text-white hover:bg-gray-800"
+                      )}
+                      style={{ height: '100%' }}
+                      onPress={() => setViewMode("map")}
+                    >
+                      <MapIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      variant="solid"
+                      size="sm"
+                      className={cn(
+                        "flex items-center justify-center rounded-md transition-colors",
+                        "bg-[#FF8E32] text-white hover:opacity-90"
+                      )}
+                      style={{ height: '100%' }}
+                      onPress={() => setViewMode("report")}
+                    >
+                      <TableIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
               <CardHeader className="pb-2">
                 <div className="flex flex-wrap items-start gap-3 justify-between">
                   <div className="hidden md:block">
@@ -2536,7 +2772,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="overflow-x-auto bg-black md:bg-[hsl(var(--card))]">
+              <CardContent className="overflow-x-auto bg-transparent md:bg-[hsl(var(--card))]">
                 {loading ? (
                   <TableSkeleton />
                 ) : (
@@ -2608,7 +2844,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     {pagedReportRows.map((row, idx) => (
                       <TableRow
                         key={`${row.incident}-${row.suburb}-${row.provider}-${idx}`}
-                        className="hover:bg-gray-900 border-gray-800 md:hover:bg-secondary/60 md:border-[hsl(var(--border))]"
+                        className="bg-gray-800 hover:bg-gray-900 border-gray-800 md:bg-transparent md:hover:bg-secondary/60 md:border-[hsl(var(--border))]"
                       >
                         {/* Provider */}
                         <TableCell className="text-center">
@@ -2682,14 +2918,14 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative hidden md:block md:mt-auto">
           {/* Info Button for Data Source Status - Only show on map view */}
           {viewMode === "map" && <InfoButton />}
           
           <footer className={cn(
             "w-full px-4 md:px-8 py-3 md:py-4",
-            "md:mt-auto md:border-t md:border-[#e0d9cf] md:bg-[#f2f2f4]",
-            "bg-black border-0"
+            "md:border-t md:border-[#e0d9cf] md:bg-[#f2f2f4]",
+            "bg-transparent border-0"
           )}>
             <div className="mx-auto max-w-screen-2xl text-center text-sm">
               <p className="text-white md:text-[#1f1f22]">
@@ -2698,6 +2934,9 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
             </div>
           </footer>
         </div>
+        
+        {/* Mobile: Info Button for Data Source Status - Only show on map view - Fixed position */}
+        {viewMode === "map" && <InfoButton />}
       </div>
     </div>
   )

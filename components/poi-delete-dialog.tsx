@@ -10,8 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/heroui"
 import { AlertCircle } from "lucide-react"
 
 interface PoiDeleteDialogProps {
@@ -72,21 +71,32 @@ export function PoiDeleteDialog({ open, onOpenChange, count, onConfirm }: PoiDel
           </DialogDescription>
         </DialogHeader>
         <div className="py-2 md:py-4">
-          <Label htmlFor="confirm-text" className="sr-only">
-            Confirmation text
-          </Label>
           <Input
-            id="confirm-text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="Type 'delete locations' to confirm"
-            className="border-red-700 md:border-red-300 bg-black md:bg-white text-gray-300 md:text-foreground focus-visible:ring-red-500 text-xs md:text-sm"
+            variant="underlined"
+            labelPlacement="inside"
+            className="w-full"
             disabled={isDeleting}
             autoComplete="off"
+            classNames={{
+              base: "bg-transparent group",
+              mainWrapper: "bg-transparent",
+              inputWrapper:
+                "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-red-300 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-red-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
+              input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-red-500 outline-none focus:outline-none focus-visible:outline-none",
+              label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
+            }}
           />
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isDeleting} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
+          <Button 
+            variant="outline" 
+            onClick={handleClose} 
+            disabled={isDeleting} 
+            className="text-xs md:text-sm bg-[#FF8E32] hover:bg-[#FFAA5B] text-black border-0"
+          >
             Cancel
           </Button>
           <Button
