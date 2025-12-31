@@ -26,6 +26,9 @@ export async function POST(request: Request) {
       .single()
 
     const invitationToken = crypto.randomUUID()
+    // Set expiration to 7 days from now
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
 
     let invitation
 
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
           invitation_token: invitationToken,
           invited_by,
           status: "pending",
+          expires_at: expiresAt.toISOString(),
           created_at: new Date().toISOString(),
         })
         .eq("id", existingInvitation.id)
@@ -70,6 +74,7 @@ export async function POST(request: Request) {
           invitation_token: invitationToken,
           invited_by,
           status: "pending",
+          expires_at: expiresAt.toISOString(),
         })
         .select()
         .single()

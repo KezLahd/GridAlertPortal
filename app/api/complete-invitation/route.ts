@@ -19,8 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired invitation token" }, { status: 400 })
     }
 
-    // Check if invitation has expired
-    if (new Date(invitation.expires_at) < new Date()) {
+    // Check if invitation has expired (only if expires_at is set)
+    if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
       return NextResponse.json({ error: "This invitation has expired" }, { status: 400 })
     }
 
