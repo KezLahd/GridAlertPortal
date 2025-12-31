@@ -1844,14 +1844,14 @@ export default function ProfilePage() {
                         
                         {/* Invite User Button - Inside Company Card */}
                         {isAdmin && (
-                          <div className="mt-auto pt-2">
+                          <div className="mt-auto pt-2 space-y-2">
                             <Button 
                               onClick={handleInviteUserClick} 
                               disabled={saving || !isAdmin}
                               className="w-full h-auto py-2 text-white bg-[#FF8E32] hover:bg-[#FF8E32]/90"
                             >
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Invite User
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Invite User
                             </Button>
                           </div>
                         )}
