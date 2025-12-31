@@ -9,7 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button, Input } from "@/components/ui/heroui"
+import { Button } from "@/components/ui/heroui"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
 import { MapPin, Check } from "lucide-react"
 
 
@@ -180,30 +182,30 @@ export function EditCompanyDetailsDialog({
         <div className="grid gap-3 md:gap-6 py-2 md:py-4 bg-black md:bg-white">
           {/* Company Name */}
           <div className="space-y-2">
-            <Input
+            <div className="md:hidden">
+              <MobileInput
+                label="Company Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder=""
+              />
+            </div>
+            <div className="hidden md:block">
+              <DesktopInput
               label="Company Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder=""
-              variant="underlined"
-              labelPlacement="inside"
-              className="w-full"
-              classNames={{
-                base: "bg-transparent group",
-                mainWrapper: "bg-transparent",
-                inputWrapper:
-                  "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent outline-none focus:outline-none focus-visible:outline-none",
-                label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-              }}
-            />
+              />
+            </div>
           </div>
 
           {/* Company Location */}
           <div className="space-y-2 relative">
             <div className="relative">
-              <MapPin className="absolute left-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
-              <Input
+              <MapPin className="absolute left-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 md:text-gray-500 z-10 pointer-events-none" />
+              <div className="md:hidden">
+                <MobileInput
                 ref={inputRef}
                 label="Location"
                 value={searchValue}
@@ -225,22 +227,39 @@ export function EditCompanyDetailsDialog({
                     e.preventDefault()
                   }
                 }}
-                placeholder={autocompleteReady ? "Start typing your company address..." : "Loading autocomplete..."}
-                disabled={!autocompleteReady}
-                variant="underlined"
-                labelPlacement="inside"
-                className="w-full pl-8"
-                classNames={{
-                  base: "bg-transparent group",
-                  mainWrapper: "bg-transparent",
-                  inputWrapper:
-                    "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                  input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 outline-none focus:outline-none focus-visible:outline-none",
-                  label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                }}
-              />
+                  placeholder=""
+                  className="pl-8"
+                />
+              </div>
+              <div className="hidden md:block">
+                <DesktopInput
+                  ref={inputRef}
+                  label="Location"
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value)
+                    if (latitude !== null || longitude !== null) {
+                      setLatitude(null)
+                      setLongitude(null)
+                      setLocation("")
+                    }
+                  }}
+                  onFocus={() => {
+                    if (predictions.length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder=""
+                  className="pl-8"
+                />
+              </div>
               {latitude && longitude && (
-                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10" />
+                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10 pointer-events-none" />
               )}
             </div>
             {showSuggestions && predictions.length > 0 && (
@@ -272,11 +291,15 @@ export function EditCompanyDetailsDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 md:gap-0">
+        <DialogFooter className="gap-2 md:gap-2">
           <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim()} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving || !name.trim() || !searchValue.trim() || latitude === null || longitude === null} 
+            className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#FF8E32] md:disabled:hover:bg-[hsl(var(--primary))]"
+          >
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

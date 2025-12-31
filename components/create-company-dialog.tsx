@@ -7,6 +7,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
 import {
   Dialog,
   DialogContent,
@@ -243,49 +245,90 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
         </DialogHeader>
         <div className="space-y-3 md:space-y-4 py-2 md:py-4">
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="companyName" className="text-xs md:text-sm text-gray-300 md:text-foreground">Company Name *</Label>
-            <Input
-              id="companyName"
-              value={companyName}
-              onChange={(e) => {
-                setCompanyName(e.target.value)
-                setError("")
-              }}
-              placeholder="Acme Corporation"
-              className="bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-            />
+            <div className="md:hidden">
+              <MobileInput
+                label="Company Name"
+                value={companyName}
+                onChange={(e) => {
+                  setCompanyName(e.target.value)
+                  setError("")
+                }}
+                placeholder=""
+                isRequired
+              />
+            </div>
+            <div className="hidden md:block">
+              <DesktopInput
+                label="Company Name"
+                value={companyName}
+                onChange={(e) => {
+                  setCompanyName(e.target.value)
+                  setError("")
+                }}
+                placeholder=""
+                isRequired
+              />
+            </div>
           </div>
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="location" className="text-xs md:text-sm text-gray-300 md:text-foreground">Company Address *</Label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
-              <Input
-                id="location"
-                value={searchValue}
-                onChange={(e) => {
-                  setSearchValue(e.target.value)
-                  if (latitude !== null || longitude !== null) {
-                    setLatitude(null)
-                    setLongitude(null)
-                    setLocation("")
-                  }
-                }}
-                onFocus={() => {
-                  if (predictions.length > 0) {
-                    setShowSuggestions(true)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                  }
-                }}
-                placeholder={autocompleteReady ? "Start typing your company address..." : "Loading autocomplete..."}
-                disabled={!mapsLoaded || !autocompleteReady}
-                className="pl-10 bg-black md:bg-white text-white md:text-foreground placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-              />
+              <MapPin className="absolute left-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 md:text-gray-500 z-10 pointer-events-none" />
+              <div className="md:hidden">
+                <MobileInput
+                  label="Company Address"
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value)
+                    if (latitude !== null || longitude !== null) {
+                      setLatitude(null)
+                      setLongitude(null)
+                      setLocation("")
+                    }
+                  }}
+                  onFocus={() => {
+                    if (predictions.length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder=""
+                  isRequired
+                  className="pl-8"
+                />
+              </div>
+              <div className="hidden md:block">
+                <DesktopInput
+                  label="Company Address"
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value)
+                    if (latitude !== null || longitude !== null) {
+                      setLatitude(null)
+                      setLongitude(null)
+                      setLocation("")
+                    }
+                  }}
+                  onFocus={() => {
+                    if (predictions.length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder=""
+                  isRequired
+                  className="pl-8"
+                />
+              </div>
               {latitude && longitude && (
-                <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600" />
+                <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10 pointer-events-none" />
               )}
             </div>
             {showSuggestions && predictions.length > 0 && (
@@ -337,19 +380,34 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
 
               <div className="flex-1 space-y-2 md:space-y-3">
                 <div className="space-y-1.5 md:space-y-2">
-                  <Label htmlFor="logoLetters" className="text-xs md:text-sm text-gray-300 md:text-foreground">Icon Letters (1-2 characters) *</Label>
-                  <Input
-                    id="logoLetters"
-                    value={logoLetters}
-                    onChange={(e) => {
-                      const value = e.target.value.toUpperCase().slice(0, 2)
-                      setLogoLetters(value)
-                      setError("")
-                    }}
-                    placeholder="AB"
-                    maxLength={2}
-                    className="uppercase bg-black md:bg-white text-white md:text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-                  />
+                  <div className="md:hidden">
+                    <MobileInput
+                      label="Icon Letters (1-2 characters)"
+                      value={logoLetters}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase().slice(0, 2)
+                        setLogoLetters(value)
+                        setError("")
+                      }}
+                      placeholder=""
+                      isRequired
+                      className="uppercase"
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopInput
+                      label="Icon Letters (1-2 characters)"
+                      value={logoLetters}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase().slice(0, 2)
+                        setLogoLetters(value)
+                        setError("")
+                      }}
+                      placeholder=""
+                      isRequired
+                      className="uppercase"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:gap-3">

@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Button, Input } from "@/components/ui/heroui"
+import { Button } from "@/components/ui/heroui"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 
@@ -13,6 +15,93 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  // Detect autofilled values on page load and handle input events
+  useEffect(() => {
+    const findInputElement = (ref: React.RefObject<HTMLInputElement | null>): HTMLInputElement | null => {
+      if (!ref.current) return null
+      // If ref.current is the input itself, return it
+      if (ref.current.tagName === 'INPUT') return ref.current as HTMLInputElement
+      // Otherwise, try to find the input inside (HeroUI wraps inputs)
+      const input = ref.current.querySelector('input')
+      return input as HTMLInputElement | null
+    }
+
+    const checkAutofill = () => {
+      const emailInput = findInputElement(emailRef)
+      const passwordInput = findInputElement(passwordRef)
+
+      if (emailInput && emailInput.value && emailInput.value !== email) {
+        setEmail(emailInput.value)
+      }
+
+      if (passwordInput && passwordInput.value && passwordInput.value !== password) {
+        setPassword(passwordInput.value)
+      }
+    }
+
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLInputElement
+      if (target.type === 'email' && target.value !== email) {
+        setEmail(target.value)
+      } else if (target.type === 'password' && target.value !== password) {
+        setPassword(target.value)
+      }
+    }
+
+    // Wait a bit for refs to be set, then check
+    const setupInterval = setInterval(() => {
+      const emailInput = findInputElement(emailRef)
+      const passwordInput = findInputElement(passwordRef)
+      
+      if (emailInput && passwordInput) {
+        clearInterval(setupInterval)
+        
+        // Check immediately
+        checkAutofill()
+        
+        // Add event listeners
+        emailInput.addEventListener('input', handleInput)
+        emailInput.addEventListener('change', handleInput)
+        passwordInput.addEventListener('input', handleInput)
+        passwordInput.addEventListener('change', handleInput)
+        
+        // Check on focus (autofill often triggers on focus)
+        emailInput.addEventListener('focus', checkAutofill)
+        passwordInput.addEventListener('focus', checkAutofill)
+      }
+    }, 50)
+
+    // Also check multiple times as autofill can happen at various delays
+    const timeoutIds = [
+      setTimeout(checkAutofill, 100),
+      setTimeout(checkAutofill, 200),
+      setTimeout(checkAutofill, 500),
+      setTimeout(checkAutofill, 1000),
+      setTimeout(checkAutofill, 1500),
+    ]
+    
+    return () => {
+      clearInterval(setupInterval)
+      timeoutIds.forEach(id => clearTimeout(id))
+      
+      const emailInput = findInputElement(emailRef)
+      const passwordInput = findInputElement(passwordRef)
+      
+      if (emailInput) {
+        emailInput.removeEventListener('input', handleInput)
+        emailInput.removeEventListener('change', handleInput)
+        emailInput.removeEventListener('focus', checkAutofill)
+      }
+      if (passwordInput) {
+        passwordInput.removeEventListener('input', handleInput)
+        passwordInput.removeEventListener('change', handleInput)
+        passwordInput.removeEventListener('focus', checkAutofill)
+      }
+    }
+  }, [email, password])
 
   const ensureProfileRow = async (userId: string, userEmail: string) => {
     const { data: existing, error: fetchError } = await supabase
@@ -67,67 +156,80 @@ export function LoginForm() {
       await ensureProfileRow(userId, email)
     }
 
+    // Scroll login page to top before navigation to prevent scroll position transfer
+    // This is critical for mobile where keyboard can cause scrolling
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    
+    // Small delay to ensure scroll completes before navigation
+    await new Promise(resolve => setTimeout(resolve, 50))
+
     router.push("/unplanned")
   }
 
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-lg backdrop-blur">
+    <div className="rounded-xl border bg-black/40 md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-6 shadow-lg backdrop-blur">
       <div className="mb-6 space-y-2 text-center">
-        <p className="text-3xl font-semibold tracking-tight text-black">GridAlert</p>
-        <h1 className="text-2xl font-semibold text-neutral-900">Sign in</h1>
-        <p className="text-sm text-neutral-600">Use your company email and password.</p>
+        <p className="text-3xl font-semibold tracking-tight text-white md:text-black">GridAlert</p>
+        <h1 className="text-2xl font-semibold text-white md:text-neutral-900">Sign in</h1>
+        <p className="text-sm text-gray-400 md:text-neutral-600">Use your company email and password.</p>
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+        <Alert variant="destructive" className="mb-4 bg-red-900/50 border-red-700 md:bg-red-50 md:border-red-200">
+          <AlertDescription className="text-red-300 md:text-red-800">{error}</AlertDescription>
         </Alert>
       )}
 
       <form className="space-y-4" onSubmit={handleLogin}>
-        <Input
-          label="Email"
-          placeholder=""
-          id="email"
-          type="email"
-          isRequired
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          variant="underlined"
-          labelPlacement="inside"
-          autoComplete="username"
-          className="w-full"
-          classNames={{
-            base: "bg-transparent",
-            mainWrapper: "bg-transparent",
-            inputWrapper:
-              "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
-            input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-            label: "text-slate-700 data-[inside=true]:text-slate-500",
-          }}
-        />
-        <Input
-          label="Password"
-          placeholder=""
-          id="password"
-          type="password"
-          isRequired
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          variant="underlined"
-          labelPlacement="inside"
-          autoComplete="current-password"
-          className="w-full"
-          classNames={{
-            base: "bg-transparent",
-            mainWrapper: "bg-transparent",
-            inputWrapper:
-              "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-orange-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-0 data-[focus-visible=true]:ring-offset-0 data-[invalid=true]:border-b-danger-500",
-            input: "bg-transparent text-base text-slate-900 placeholder:text-slate-500 caret-orange-500",
-            label: "text-slate-700 data-[inside=true]:text-slate-500",
-          }}
-        />
-        <Button type="submit" className="w-full" isDisabled={loading} color="primary" variant="solid">
+        <div className="md:hidden">
+          <MobileInput
+            ref={emailRef}
+            label="Email"
+            placeholder=""
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="hidden md:block">
+          <DesktopInput
+            ref={emailRef}
+            label="Email"
+            placeholder=""
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="md:hidden">
+          <MobileInput
+            ref={passwordRef}
+            label="Password"
+            placeholder=""
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div className="hidden md:block">
+          <DesktopInput
+            ref={passwordRef}
+            label="Password"
+            placeholder=""
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <Button 
+          type="submit" 
+          className="w-full text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed" 
+          isDisabled={loading || !email.trim() || !password.trim()} 
+          color="primary" 
+          variant="solid"
+        >
           {loading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Signing in...

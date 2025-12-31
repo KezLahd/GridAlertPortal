@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/heroui"
-import { AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/heroui"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
+import { AlertCircle, Copy, Check } from "lucide-react"
 
 interface DeleteUserConfirmationDialogProps {
   open: boolean
@@ -32,14 +33,123 @@ export function DeleteUserConfirmationDialog({
 }: DeleteUserConfirmationDialogProps) {
   const [emailInput, setEmailInput] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Reset form when dialog opens
+  // Reset form when dialog opens and prevent auto-focus on mobile
   useEffect(() => {
     if (open) {
       setEmailInput("")
       setError(null)
+      // Prevent auto-focus on mobile - blur any focused input elements
+      if (window.innerWidth < 768) {
+        // Use multiple timeouts to catch any auto-focus attempts
+        const blurInput = () => {
+          const activeElement = document.activeElement as HTMLElement
+          if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            activeElement.blur()
+          }
+          if (inputRef.current) {
+            inputRef.current.blur()
+          }
+        }
+        // Blur immediately and after a short delay to catch delayed focus
+        blurInput()
+        const timeout1 = setTimeout(blurInput, 50)
+        const timeout2 = setTimeout(blurInput, 150)
+        const timeout3 = setTimeout(blurInput, 300)
+        return () => {
+          clearTimeout(timeout1)
+          clearTimeout(timeout2)
+          clearTimeout(timeout3)
+        }
+      }
     }
   }, [open])
+
+  const handleCopyEmail = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const text = userEmail
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    
+    // For iOS Safari, select the visible email text element instead
+    if (isIOS) {
+      const emailElement = document.getElementById('email-to-copy')
+      if (emailElement) {
+        // Select the text in the visible element
+        const range = document.createRange()
+        range.selectNodeContents(emailElement)
+        const selection = window.getSelection()
+        if (selection) {
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+        
+        // Try to copy
+        try {
+          const successful = document.execCommand('copy')
+          if (successful) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+            // Clear selection after a moment
+            setTimeout(() => {
+              if (selection) {
+                selection.removeAllRanges()
+              }
+            }, 500)
+          } else {
+            // If execCommand fails, show the text is selected so user can manually copy
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+          }
+        } catch (err) {
+          // Show selection so user can manually copy
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }
+      }
+    } else {
+      // For non-iOS, try clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }).catch(() => {
+          // Fallback to execCommand
+          execCommandCopy(text)
+        })
+      } else {
+        execCommandCopy(text)
+      }
+    }
+  }
+
+  const execCommandCopy = (text: string) => {
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '0'
+    textArea.setAttribute('readonly', '')
+    
+    document.body.appendChild(textArea)
+    textArea.select()
+    textArea.setSelectionRange(0, text.length)
+    
+    try {
+      const successful = document.execCommand('copy')
+      if (successful) {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch (err) {
+      console.error("Copy failed:", err)
+    }
+    
+    document.body.removeChild(textArea)
+  }
 
   const handleConfirm = async () => {
     if (emailInput.trim().toLowerCase() !== userEmail.toLowerCase()) {
@@ -65,53 +175,81 @@ export function DeleteUserConfirmationDialog({
             Delete User?
           </DialogTitle>
           <DialogDescription asChild>
-            <div className="pt-2 md:pt-3 space-y-2 md:space-y-3">
+            <div className="pt-1 md:pt-2 space-y-1 md:space-y-2">
               <span className="block text-gray-300 md:text-foreground font-medium text-xs md:text-sm">This action cannot be undone.</span>
               <span className="block text-xs md:text-sm text-gray-400 md:text-muted-foreground">
                 You are about to permanently delete <span className="font-semibold text-gray-300 md:text-foreground">{userName}</span> ({userEmail}). This will remove all their data and cannot be undone.
               </span>
               <span className="block text-xs md:text-sm text-gray-400 md:text-muted-foreground">
-                To confirm deletion, please type the email address: <span className="font-mono font-semibold bg-gray-800 md:bg-muted px-1.5 py-0.5 rounded text-gray-300 md:text-foreground">{userEmail}</span>
+                To confirm deletion, please type the email address: 
+                <span className="inline-flex items-center gap-1.5 ml-1.5">
+                  <span 
+                    id="email-to-copy"
+                    className="font-mono font-semibold bg-gray-800 md:bg-muted px-1.5 py-0.5 rounded text-gray-300 md:text-foreground select-all cursor-text"
+                    style={{ userSelect: 'all', WebkitUserSelect: 'all' }}
+                  >
+                    {userEmail}
+                  </span>
+                  <button
+                    onClick={handleCopyEmail}
+                    className="inline-flex items-center justify-center h-5 w-5 rounded hover:bg-gray-700 md:hover:bg-gray-200 transition-colors"
+                    title="Copy email address"
+                    type="button"
+                  >
+                    {copied ? (
+                      <Check className="h-3 w-3 text-green-400 md:text-green-600" />
+                    ) : (
+                      <Copy className="h-3 w-3 text-gray-400 md:text-muted-foreground" />
+                    )}
+                  </button>
+                </span>
               </span>
             </div>
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2 md:py-4">
-            <Input
+        <div className="py-1 md:py-2">
+          <div className="md:hidden">
+            <MobileInput
+              ref={inputRef}
+              label="Type email address to confirm"
               value={emailInput}
               onChange={(e) => {
                 setEmailInput(e.target.value)
                 setError(null)
               }}
-              placeholder="Type email address to confirm"
-            variant="underlined"
-            labelPlacement="inside"
-            className="w-full"
-            classNames={{
-              base: "bg-transparent group",
-              mainWrapper: "bg-transparent",
-              inputWrapper:
-                "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-red-300 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-red-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-              input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-red-500 outline-none focus:outline-none focus-visible:outline-none",
-              label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-            }}
+              placeholder=""
+              isInvalid={!!error}
+              errorMessage={error || undefined}
+              autoFocus={false}
+            />
+          </div>
+          <div className="hidden md:block">
+            <DesktopInput
+              label="Type email address to confirm"
+              value={emailInput}
+              onChange={(e) => {
+                setEmailInput(e.target.value)
+                setError(null)
+              }}
+              placeholder=""
             isInvalid={!!error}
             errorMessage={error || undefined}
           />
           </div>
+          </div>
         <DialogFooter className="gap-2">
           <Button 
-            variant="outline" 
+            variant="bordered" 
             onClick={() => onOpenChange(false)} 
             disabled={deleting} 
-            className="text-xs md:text-sm bg-[#FF8E32] hover:bg-[#FFAA5B] text-black border-0"
+            className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200 bg-black md:bg-transparent hover:bg-gray-800 md:hover:bg-gray-50"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={deleting || emailInput.trim().toLowerCase() !== userEmail.toLowerCase()}
-            className="bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm"
+            className="bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
           >
             {deleting ? "Deleting..." : "Delete User"}
           </Button>

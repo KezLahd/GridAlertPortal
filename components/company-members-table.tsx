@@ -152,7 +152,6 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
   const [isMobile, setIsMobile] = useState(false)
   const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; memberId: string } | null>(null)
   const [popoverCoords, setPopoverCoords] = useState<{ top: number; left: number } | null>(null)
-  const [selectionOrder, setSelectionOrder] = useState<string[]>([]) // Track selection order
   const isAdmin = currentUserRole === "admin"
 
   useEffect(() => {
@@ -263,36 +262,15 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
   }
 
   const handleSelectRow = (memberId: string) => {
-    const newSelected = new Set(selectedRows)
-    const wasSelected = newSelected.has(memberId)
+    const wasSelected = selectedRows.has(memberId)
     
     if (wasSelected) {
-      // Deselecting
-      newSelected.delete(memberId)
-      // Remove from selection order
-      const newSelectionOrder = selectionOrder.filter(id => id !== memberId)
-      setSelectionOrder(newSelectionOrder)
-      
-      // If this was the popover row, move popover to the previously most recently selected row
-      if (popoverPosition?.memberId === memberId) {
-        if (newSelectionOrder.length > 0 && isMobile) {
-          // Show popover on the last item in selection order (most recently selected remaining row)
-          const newPopoverRowId = newSelectionOrder[newSelectionOrder.length - 1]
-          setPopoverPosition({
-            top: 0,
-            left: 0,
-            memberId: newPopoverRowId
-          })
-        } else {
-          setPopoverPosition(null)
-        }
-      }
+      // Deselecting - clear selection
+      setSelectedRows(new Set())
+      setPopoverPosition(null)
     } else {
-      // Selecting
-      newSelected.add(memberId)
-      // Add to selection order (append to end)
-      const newSelectionOrder = [...selectionOrder, memberId]
-      setSelectionOrder(newSelectionOrder)
+      // Selecting - only allow one selection at a time
+      setSelectedRows(new Set([memberId]))
       
       // Set popover position when selecting on mobile
       if (isMobile) {
@@ -303,33 +281,15 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
         })
       }
     }
-    setSelectedRows(newSelected)
   }
-  
-  // Clean up selectionOrder to only include IDs that are still selected
-  useEffect(() => {
-    const validSelectionOrder = selectionOrder.filter(id => selectedRows.has(id))
-    if (validSelectionOrder.length !== selectionOrder.length) {
-      setSelectionOrder(validSelectionOrder)
-    }
-  }, [selectedRows, selectionOrder])
 
   const handleDeleteSelected = async () => {
     if (!onDeleteMember || selectedRows.size === 0) return
     const idsToDelete = Array.from(selectedRows)
-    if (idsToDelete.length === 1) {
-      const member = members.find((m) => m.user_id === idsToDelete[0])
-      if (member) {
-        setMemberToDelete(member)
-        setDeleteConfirmOpen(true)
-      }
-    } else {
-      // For multiple, show confirmation for first one as representative
-      const member = members.find((m) => m.user_id === idsToDelete[0])
-      if (member) {
-        setMemberToDelete(member)
-        setDeleteConfirmOpen(true)
-      }
+    const member = members.find((m) => m.user_id === idsToDelete[0])
+    if (member) {
+      setMemberToDelete(member)
+      setDeleteConfirmOpen(true)
     }
   }
 
@@ -340,17 +300,14 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
 
     setDeleting(true)
     try {
-      // Delete all selected members
-      for (const id of idsToDelete) {
-        await onDeleteMember(id)
-      }
+      // Delete the selected member (only one at a time)
+      await onDeleteMember(idsToDelete[0])
       setSelectedRows(new Set())
-      setSelectionOrder([])
       setDeleteConfirmOpen(false)
       setMemberToDelete(null)
       setPopoverPosition(null)
     } catch (error) {
-      console.error("Failed to delete member(s):", error)
+      console.error("Failed to delete member:", error)
       throw error
     } finally {
       setDeleting(false)
@@ -396,8 +353,8 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                     className="text-xs md:text-sm h-8 md:h-10 border-red-500 text-red-400 md:text-red-600 hover:bg-red-900/20 md:hover:bg-red-50 hover:text-red-300 md:hover:text-red-700 bg-transparent"
                   >
                     <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Delete ({selectedRows.size})</span>
-                    <span className="sm:hidden">({selectedRows.size})</span>
+                    <span className="hidden sm:inline">Delete</span>
+                    <span className="sm:hidden">Delete</span>
                   </Button>
                 )}
               </div>
@@ -626,7 +583,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                           setPopoverPosition(null)
                         }}
                       >
-                        {selectedRows.size > 1 ? `Delete ${selectedRows.size} members` : 'Delete'}
+                        Delete
                       </Button>
                     </div>
                   </div>

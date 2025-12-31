@@ -29,6 +29,33 @@ export default function Page() {
     }
   }, [])
 
+  // Ensure page is at top and prevent scrolling on mobile
+  useEffect(() => {
+    // Scroll to top immediately
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    
+    // Prevent body scrolling on mobile
+    const originalOverflow = document.body.style.overflow
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalPosition = document.body.style.position
+    
+    // Prevent scrolling
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    
+    return () => {
+      // Restore original styles
+      document.body.style.overflow = originalOverflow
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.body.style.position = originalPosition
+      document.body.style.width = ''
+    }
+  }, [])
+
   return (
     <div className="relative flex h-mobile w-full items-center justify-center bg-[#000000] p-6 md:p-10 overflow-hidden fixed inset-0">
 

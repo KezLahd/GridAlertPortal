@@ -9,11 +9,175 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button, Input, Accordion, AccordionItem, Select, SelectItem } from "@/components/ui/heroui"
-import { MapPin, Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Button } from "@/components/ui/heroui"
+import { Select, SelectItem, Checkbox } from "@heroui/react"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
+import { MapPin, Check, ChevronDown, ChevronUp, Pencil, X } from "lucide-react"
 import type { PoiLocation } from "@/components/poi-locations-table"
 import { getSupabaseClient } from "@/lib/supabase"
 import { determineProviderForLocation } from "@/lib/provider-assignment"
+
+const PROVIDERS = [
+  { value: "Ausgrid", label: "Ausgrid" },
+  { value: "Endeavour", label: "Endeavour" },
+  { value: "Energex", label: "Energex" },
+  { value: "Ergon", label: "Ergon" },
+  { value: "SA Power", label: "SA Power" },
+  { value: "Horizon Power", label: "Horizon Power" },
+  { value: "WPower", label: "WPower" },
+  { value: "AusNet", label: "AusNet" },
+  { value: "CitiPowerCor", label: "CitiPowerCor" },
+  { value: "Essential Energy", label: "Essential Energy" },
+  { value: "Jemena", label: "Jemena" },
+  { value: "UnitedEnergy", label: "UnitedEnergy" },
+  { value: "TasNetworks", label: "TasNetworks" },
+]
+
+// Mobile Dropdown Select Component
+function MobileDropdownSelect({
+  value,
+  options,
+  onChange,
+  placeholder,
+  portalContainer,
+  onOpenChange,
+}: {
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (val: string) => void
+  placeholder: string
+  portalContainer?: HTMLElement | null
+  onOpenChange?: (open: boolean) => void
+}) {
+  return (
+    <Select
+      variant="underlined"
+      fullWidth
+      className="w-full"
+      label={placeholder}
+      labelPlacement="inside"
+      placeholder=""
+      selectedKeys={value ? new Set([value]) : new Set()}
+      onSelectionChange={(keys) => {
+        const selectedKey = Array.from(keys)[0] as string
+        if (selectedKey) {
+          onChange(selectedKey)
+        }
+      }}
+      onOpenChange={onOpenChange}
+      popoverProps={{
+        portalContainer: portalContainer ?? undefined,
+        shouldBlockScroll: true,
+        placement: "top",
+        classNames: {
+          base: "!z-[9999] !pointer-events-auto !bg-black !border-gray-700",
+          content: "!z-[9999] !pointer-events-auto !bg-black !border !border-gray-700 !rounded-md",
+        },
+      }}
+      classNames={{
+        base: "bg-transparent group",
+        mainWrapper: "bg-transparent",
+        trigger: "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 border-x-0 border-t-0 group-data-[focus-within=true]:border-b-orange-500 transition-[border-color] duration-200 ease-in-out [&::after]:!bg-white group-data-[focus-within=true]:[&::after]:!bg-white [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
+        value: "bg-transparent text-base !text-white",
+        label: "text-gray-300 data-[inside=true]:text-gray-400 group-data-[filled=true]:text-white group-data-[focus-within=true]:text-white",
+        selectorIcon: "!text-white",
+        listbox: "!bg-black !z-[9999] !pointer-events-auto",
+        popoverContent: "!bg-black !z-[9999] !pointer-events-auto !border !border-gray-700 !rounded-md",
+      }}
+      listboxProps={{
+        classNames: {
+          base: "!bg-black !z-[9999] !pointer-events-auto",
+          list: "p-1 max-h-[200px] overflow-y-auto overflow-x-hidden overscroll-contain !pointer-events-auto touch-pan-y -webkit-overflow-scrolling-touch",
+        },
+      }}
+    >
+      {options.map((opt) => (
+        <SelectItem
+          key={opt.value}
+          textValue={opt.label}
+          classNames={{
+            base: "!bg-black !text-white data-[hover=true]:!bg-gray-800 [&[data-selected=true]]:!bg-gray-900 [&[data-selected=true]]:!border [&[data-selected=true]]:!border-gray-700 !pointer-events-auto [&>span]:!text-white [&>svg]:!text-orange-500 transition-colors duration-200 ease-in-out",
+          }}
+        >
+          {opt.label}
+        </SelectItem>
+      ))}
+    </Select>
+  )
+}
+
+// Desktop Dropdown Select Component
+function DesktopDropdownSelect({
+  value,
+  options,
+  onChange,
+  placeholder,
+  portalContainer,
+  onOpenChange,
+}: {
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (val: string) => void
+  placeholder: string
+  portalContainer?: HTMLElement | null
+  onOpenChange?: (open: boolean) => void
+}) {
+  return (
+    <Select
+      variant="underlined"
+      fullWidth
+      className="w-full"
+      label={placeholder}
+      labelPlacement="inside"
+      placeholder=""
+      selectedKeys={value ? new Set([value]) : new Set()}
+      onSelectionChange={(keys) => {
+        const selectedKey = Array.from(keys)[0] as string
+        if (selectedKey) {
+          onChange(selectedKey)
+        }
+      }}
+      onOpenChange={onOpenChange}
+      popoverProps={{
+        portalContainer: portalContainer ?? undefined,
+        shouldBlockScroll: true,
+        placement: "top",
+        classNames: {
+          base: "!z-[9999] !pointer-events-auto",
+          content: "!z-[9999] !pointer-events-auto",
+        },
+      }}
+      classNames={{
+        base: "bg-transparent group",
+        mainWrapper: "bg-transparent",
+        trigger: "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out",
+        value: "bg-transparent text-base !text-slate-900",
+        label: "text-slate-700 data-[inside=true]:text-slate-500 group-data-[filled=true]:text-slate-700 group-data-[focus-within=true]:text-slate-700",
+        listbox: "!bg-white !z-[9999] !pointer-events-auto",
+        popoverContent: "!bg-white !z-[9999] !pointer-events-auto",
+      }}
+      listboxProps={{
+        classNames: {
+          base: "!bg-white !z-[9999] !pointer-events-auto",
+          list: "p-1 max-h-[200px] overflow-y-auto overflow-x-hidden overscroll-contain !pointer-events-auto touch-pan-y -webkit-overflow-scrolling-touch",
+        },
+      }}
+    >
+      {options.map((opt) => (
+        <SelectItem
+          key={opt.value}
+          textValue={opt.label}
+          classNames={{
+            base: "!bg-white !text-black data-[hover=true]:!bg-gray-100 [&[data-selected=true]]:!bg-gray-100 !pointer-events-auto [&>svg]:!text-black transition-colors duration-200 ease-in-out",
+          }}
+        >
+          {opt.label}
+        </SelectItem>
+      ))}
+    </Select>
+  )
+}
 
 interface PlacePrediction {
   description: string
@@ -41,7 +205,6 @@ interface AddPoiDialogProps {
     addressLine2?: string
     addressLine3?: string
     addressSuburb?: string
-    country?: string
   }) => Promise<void>
   saving?: boolean
   location?: PoiLocation | null // For edit mode
@@ -57,6 +220,20 @@ export function AddPoiDialog({
   companyId,
 }: AddPoiDialogProps) {
   const isEditMode = !!location
+  const dialogContentRef = useRef<HTMLDivElement>(null)
+  const [isSelectOpen, setIsSelectOpen] = useState(false)
+  
+  // Prevent body scroll when select popover is open
+  useEffect(() => {
+    if (isSelectOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [isSelectOpen])
   
   // Required fields
   const [poiName, setPoiName] = useState("")
@@ -83,11 +260,14 @@ export function AddPoiDialog({
   const [addressSuburb, setAddressSuburb] = useState("")
   const [state, setState] = useState("")
   const [postcode, setPostcode] = useState("")
-  const [country, setCountry] = useState("")
   const [provider, setProvider] = useState<string | null>(null)
   
   // Address details visibility
   const [showAddressDetails, setShowAddressDetails] = useState(false)
+  
+  // Address field editing state
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<Record<string, string | undefined>>({})
   
   // Pharmacy ID options
   const [pharmacyIdOptions, setPharmacyIdOptions] = useState<string[]>([])
@@ -304,7 +484,6 @@ export function AddPoiDialog({
           let extractedState = ""
           let extractedPostcode = ""
           let extractedSuburb = ""
-          let extractedCountry = ""
           let streetNumber = ""
           let route = ""
           
@@ -340,9 +519,6 @@ export function AddPoiDialog({
                 // Only use LGA if we haven't found a suburb
                 extractedSuburb = component.long_name || component.short_name
               }
-              if (component.types.includes("country")) {
-                extractedCountry = component.long_name || component.short_name
-              }
             }
           }
           
@@ -356,7 +532,6 @@ export function AddPoiDialog({
           setState(extractedState)
           setPostcode(extractedPostcode)
           setAddressSuburb(extractedSuburb)
-          setCountry(extractedCountry || "Australia")
           setShowSuggestions(false)
           
           // Auto-detect provider based on lat/long
@@ -412,7 +587,6 @@ export function AddPoiDialog({
         setAddressSuburb(location.city || "")
         setState(location.state || "")
         setPostcode(location.postcode || "")
-        setCountry(location.country || "Australia")
         setProvider(loc.provider || null)
       } else {
         // Reset for new POI
@@ -434,7 +608,6 @@ export function AddPoiDialog({
         setAddressSuburb("")
         setState("")
         setPostcode("")
-        setCountry("")
         setProvider(null)
       }
       setShowSuggestions(false)
@@ -546,7 +719,6 @@ export function AddPoiDialog({
         addressLine2: addressLine2.trim() || undefined,
         addressLine3: addressLine3.trim() || undefined,
         addressSuburb: addressSuburb.trim() || undefined,
-        country: country.trim() || undefined,
       })
       onOpenChange(false)
     } catch (error) {
@@ -556,7 +728,7 @@ export function AddPoiDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[600px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6 max-h-[90vh] overflow-y-auto">
+      <DialogContent ref={dialogContentRef} className="max-w-[95vw] sm:max-w-[600px] bg-black md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-3 md:p-6 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base md:text-lg text-white md:text-foreground">
             {isEditMode ? "Edit POI" : "Add POI"}
@@ -572,54 +744,60 @@ export function AddPoiDialog({
                 <div className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_120px] gap-3 md:gap-4">
                   {/* POI Name */}
                   <div className="space-y-2 min-w-0">
-                    <Input
-                      label="POI Name *"
+                    <div className="md:hidden">
+                      <MobileInput
+                        label="POI Name"
                       value={poiName}
                       onChange={(e) => {
                         setPoiName(e.target.value)
                         setFieldErrors(prev => ({ ...prev, poiName: "" }))
                       }}
-                      placeholder=""
-                      variant="underlined"
-                      labelPlacement="inside"
-                      className="w-full min-w-0"
+                        isRequired
                       isInvalid={!!fieldErrors.poiName}
                       errorMessage={fieldErrors.poiName}
-                      classNames={{
-                        base: "bg-transparent min-w-0",
-                        mainWrapper: "bg-transparent min-w-0",
-                        inputWrapper:
-                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out min-w-0",
-                        input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 min-w-0 autofill:!text-white autofill:!bg-transparent outline-none focus:outline-none focus-visible:outline-none",
-                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                        errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                      }}
-                    />
+                        className="min-w-0"
+                      />
+                    </div>
+                    <div className="hidden md:block">
+                      <DesktopInput
+                        label="POI Name"
+                        value={poiName}
+                        onChange={(e) => {
+                          setPoiName(e.target.value)
+                          setFieldErrors(prev => ({ ...prev, poiName: "" }))
+                        }}
+                        isRequired
+                        isInvalid={!!fieldErrors.poiName}
+                        errorMessage={fieldErrors.poiName}
+                        className="min-w-0"
+                      />
+                    </div>
                   </div>
 
                   {/* Institution Code */}
                   <div className="space-y-2 w-20 md:w-auto">
-                    <Input
-                      label="Code *"
+                    <div className="md:hidden">
+                      <MobileInput
+                        label="Code"
                       value={institutionCode}
                       onChange={handleInstitutionCodeChange}
-                      placeholder=""
-                      variant="underlined"
-                      labelPlacement="inside"
-                      className="w-full"
-                      maxLength={3}
+                        type="text"
+                        isRequired
                       isInvalid={!!fieldErrors.institutionCode || !!institutionCodeError}
                       errorMessage={fieldErrors.institutionCode || institutionCodeError}
-                      classNames={{
-                        base: "bg-transparent group",
-                        mainWrapper: "bg-transparent",
-                        inputWrapper:
-                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                        input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent outline-none focus:outline-none focus-visible:outline-none",
-                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                        errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                      }}
+                      />
+                    </div>
+                    <div className="hidden md:block">
+                      <DesktopInput
+                        label="Code"
+                        value={institutionCode}
+                        onChange={handleInstitutionCodeChange}
+                        type="text"
+                        isRequired
+                        isInvalid={!!fieldErrors.institutionCode || !!institutionCodeError}
+                        errorMessage={fieldErrors.institutionCode || institutionCodeError}
                     />
+                    </div>
                   </div>
                 </div>
 
@@ -627,9 +805,9 @@ export function AddPoiDialog({
                 <div className="space-y-2 relative">
                   <div className="relative">
                     <MapPin className="absolute left-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
-                    <Input
-                      ref={inputRef}
-                      label="Location *"
+                    <div className="md:hidden">
+                      <MobileInput
+                        label="Location"
                       value={searchValue}
                       onChange={(e) => {
                         setSearchValue(e.target.value)
@@ -646,28 +824,49 @@ export function AddPoiDialog({
                           setShowSuggestions(true)
                         }
                       }}
-                      onKeyDown={(e) => {
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                         if (e.key === "Enter") {
                           e.preventDefault()
                         }
                       }}
                       placeholder={autocompleteReady ? "Start typing the address..." : "Loading autocomplete..."}
-                      disabled={!autocompleteReady}
-                      variant="underlined"
-                      labelPlacement="inside"
-                      className="w-full pl-8"
+                        isRequired
                       isInvalid={!!fieldErrors.location}
                       errorMessage={fieldErrors.location}
-                      classNames={{
-                        base: "bg-transparent group",
-                        mainWrapper: "bg-transparent",
-                        inputWrapper:
-                          "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                        input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent outline-none focus:outline-none focus-visible:outline-none",
-                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                        errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                      }}
-                    />
+                        className="pl-8"
+                      />
+                    </div>
+                    <div className="hidden md:block">
+                      <DesktopInput
+                        label="Location"
+                        value={searchValue}
+                        onChange={(e) => {
+                          setSearchValue(e.target.value)
+                          setFieldErrors(prev => ({ ...prev, location: "" }))
+                          if (latitude !== null || longitude !== null) {
+                            setLatitude(null)
+                            setLongitude(null)
+                            setLocationAddress("")
+                            setProvider(null)
+                          }
+                        }}
+                        onFocus={() => {
+                          if (predictions.length > 0) {
+                            setShowSuggestions(true)
+                          }
+                        }}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
+                        placeholder={autocompleteReady ? "Start typing the address..." : "Loading autocomplete..."}
+                        isRequired
+                        isInvalid={!!fieldErrors.location}
+                        errorMessage={fieldErrors.location}
+                        className="pl-8"
+                      />
+                    </div>
                     {latitude && longitude && (
                       <Check className="absolute right-1 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-400 md:text-green-600 z-10" />
                     )}
@@ -712,45 +911,589 @@ export function AddPoiDialog({
                       {showAddressDetails && (
                         <div className="mt-2 space-y-2 p-3 bg-gray-900 md:bg-gray-50 rounded-md border border-gray-700 md:border-gray-200">
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Address Line 1:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{addressLine1 || "N/A"}</span>
+                            {/* Address Line 1 */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Address Line 1:</span>
+                                {editingField === "addressLine1" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.addressLine1 ?? addressLine1}
+                                      onChange={(e) => setEditValues({ ...editValues, addressLine1: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setAddressLine1(editValues.addressLine1 ?? addressLine1)
+                                          setEditingField(null)
+                                          const { addressLine1: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { addressLine1: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setAddressLine1(editValues.addressLine1 ?? addressLine1)
+                                        setEditingField(null)
+                                        const { addressLine1: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { addressLine1: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{addressLine1 || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("addressLine1")
+                                        setEditValues({ ...editValues, addressLine1: addressLine1 })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Address Line 2:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{addressLine2 || "N/A"}</span>
+
+                            {/* Address Line 2 */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Address Line 2:</span>
+                                {editingField === "addressLine2" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.addressLine2 ?? addressLine2}
+                                      onChange={(e) => setEditValues({ ...editValues, addressLine2: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setAddressLine2(editValues.addressLine2 ?? addressLine2)
+                                          setEditingField(null)
+                                          const { addressLine2: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { addressLine2: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setAddressLine2(editValues.addressLine2 ?? addressLine2)
+                                        setEditingField(null)
+                                        const { addressLine2: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { addressLine2: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{addressLine2 || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("addressLine2")
+                                        setEditValues({ ...editValues, addressLine2: addressLine2 })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Address Line 3:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{addressLine3 || "N/A"}</span>
+
+                            {/* Address Line 3 */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Address Line 3:</span>
+                                {editingField === "addressLine3" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.addressLine3 ?? addressLine3}
+                                      onChange={(e) => setEditValues({ ...editValues, addressLine3: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setAddressLine3(editValues.addressLine3 ?? addressLine3)
+                                          setEditingField(null)
+                                          const { addressLine3: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { addressLine3: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setAddressLine3(editValues.addressLine3 ?? addressLine3)
+                                        setEditingField(null)
+                                        const { addressLine3: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { addressLine3: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{addressLine3 || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("addressLine3")
+                                        setEditValues({ ...editValues, addressLine3: addressLine3 })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Suburb:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{addressSuburb || "N/A"}</span>
+
+                            {/* Suburb */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Suburb:</span>
+                                {editingField === "addressSuburb" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.addressSuburb ?? addressSuburb}
+                                      onChange={(e) => setEditValues({ ...editValues, addressSuburb: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setAddressSuburb(editValues.addressSuburb ?? addressSuburb)
+                                          setEditingField(null)
+                                          const { addressSuburb: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { addressSuburb: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setAddressSuburb(editValues.addressSuburb ?? addressSuburb)
+                                        setEditingField(null)
+                                        const { addressSuburb: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { addressSuburb: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{addressSuburb || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("addressSuburb")
+                                        setEditValues({ ...editValues, addressSuburb: addressSuburb })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">State:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{state || "N/A"}</span>
+
+                            {/* State */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">State:</span>
+                                {editingField === "state" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.state ?? state}
+                                      onChange={(e) => setEditValues({ ...editValues, state: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setState(editValues.state ?? state)
+                                          setEditingField(null)
+                                          const { state: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { state: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setState(editValues.state ?? state)
+                                        setEditingField(null)
+                                        const { state: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { state: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{state || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("state")
+                                        setEditValues({ ...editValues, state: state })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Postcode:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{postcode || "N/A"}</span>
+
+                            {/* Postcode */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Postcode:</span>
+                                {editingField === "postcode" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editValues.postcode ?? postcode}
+                                      onChange={(e) => setEditValues({ ...editValues, postcode: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          setPostcode(editValues.postcode ?? postcode)
+                                          setEditingField(null)
+                                          const { postcode: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { postcode: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setPostcode(editValues.postcode ?? postcode)
+                                        setEditingField(null)
+                                        const { postcode: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { postcode: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{postcode || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("postcode")
+                                        setEditValues({ ...editValues, postcode: postcode })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Country:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{country || "N/A"}</span>
+
+                            {/* Latitude */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Latitude:</span>
+                                {editingField === "latitude" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={editValues.latitude ?? (latitude?.toString() ?? "")}
+                                      onChange={(e) => setEditValues({ ...editValues, latitude: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          const newLat = editValues.latitude ? parseFloat(editValues.latitude) : latitude
+                                          setLatitude(newLat)
+                                          setEditingField(null)
+                                          const { latitude: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { latitude: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        const newLat = editValues.latitude ? parseFloat(editValues.latitude) : latitude
+                                        setLatitude(newLat)
+                                        setEditingField(null)
+                                        const { latitude: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { latitude: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{latitude?.toFixed(6) || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("latitude")
+                                        setEditValues({ ...editValues, latitude: latitude?.toString() ?? "" })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Latitude:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{latitude?.toFixed(6) || "N/A"}</span>
+
+                            {/* Longitude */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Longitude:</span>
+                                {editingField === "longitude" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={editValues.longitude ?? (longitude?.toString() ?? "")}
+                                      onChange={(e) => setEditValues({ ...editValues, longitude: e.target.value })}
+                                      className="flex-1 px-2 py-1 bg-gray-800 md:bg-white text-white md:text-slate-900 border border-gray-600 md:border-gray-300 rounded text-xs"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          const newLng = editValues.longitude ? parseFloat(editValues.longitude) : longitude
+                                          setLongitude(newLng)
+                                          setEditingField(null)
+                                          const { longitude: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        } else if (e.key === "Escape") {
+                                          setEditingField(null)
+                                          const { longitude: _, ...rest } = editValues
+                                          setEditValues(rest)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        const newLng = editValues.longitude ? parseFloat(editValues.longitude) : longitude
+                                        setLongitude(newLng)
+                                        setEditingField(null)
+                                        const { longitude: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { longitude: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{longitude?.toFixed(6) || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("longitude")
+                                        setEditValues({ ...editValues, longitude: longitude?.toString() ?? "" })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Longitude:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{longitude?.toFixed(6) || "N/A"}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 md:text-slate-600">Provider:</span>
-                              <span className="ml-2 text-white md:text-slate-900">{provider || "N/A"}</span>
+
+                            {/* Provider */}
+                            <div className="group relative flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-400 md:text-slate-600">Provider:</span>
+                                {editingField === "provider" ? (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="md:hidden">
+                                        <MobileDropdownSelect
+                                          value={editValues.provider ?? provider ?? ""}
+                                          options={PROVIDERS}
+                                          onChange={(val) => setEditValues({ ...editValues, provider: val })}
+                                          placeholder="Select Provider"
+                                          portalContainer={dialogContentRef.current}
+                                          onOpenChange={setIsSelectOpen}
+                                        />
+                                      </div>
+                                      <div className="hidden md:block">
+                                        <DesktopDropdownSelect
+                                          value={editValues.provider ?? provider ?? ""}
+                                          options={PROVIDERS}
+                                          onChange={(val) => setEditValues({ ...editValues, provider: val })}
+                                          placeholder="Select Provider"
+                                          portalContainer={dialogContentRef.current}
+                                          onOpenChange={setIsSelectOpen}
+                                        />
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setProvider(editValues.provider ?? provider ?? null)
+                                        setEditingField(null)
+                                        const { provider: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-green-400 hover:text-green-300"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField(null)
+                                        const { provider: _, ...rest } = editValues
+                                        setEditValues(rest)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-white md:text-slate-900">{provider || "N/A"}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingField("provider")
+                                        setEditValues({ ...editValues, provider: provider ?? "" })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-white md:hover:text-slate-900"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -761,267 +1504,196 @@ export function AddPoiDialog({
 
                 {/* Contact Email */}
                 <div className="space-y-2">
-                  <Input
-                    label="Contact Email *"
+                  <div className="md:hidden">
+                    <MobileInput
+                      label="Contact Email"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => {
                       setContactEmail(e.target.value)
                       setFieldErrors(prev => ({ ...prev, contactEmail: "" }))
                     }}
-                    placeholder=""
-                    variant="underlined"
-                    labelPlacement="inside"
-                    className="w-full"
+                      isRequired
                     isInvalid={!!fieldErrors.contactEmail}
                     errorMessage={fieldErrors.contactEmail}
-                    classNames={{
-                      base: "bg-transparent",
-                      mainWrapper: "bg-transparent",
-                      inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent",
-                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                      errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                    }}
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopInput
+                      label="Contact Email"
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => {
+                        setContactEmail(e.target.value)
+                        setFieldErrors(prev => ({ ...prev, contactEmail: "" }))
+                      }}
+                      isRequired
+                      isInvalid={!!fieldErrors.contactEmail}
+                      errorMessage={fieldErrors.contactEmail}
                   />
+                  </div>
                 </div>
 
                 {/* Contact Phone */}
                 <div className="space-y-2">
-                  <Input
-                    label="Contact Phone *"
+                  <div className="md:hidden">
+                    <MobileInput
+                      label="Contact Phone"
                     type="tel"
                     value={contactPhone}
                     onChange={(e) => {
                       setContactPhone(e.target.value)
                       setFieldErrors(prev => ({ ...prev, contactPhone: "" }))
                     }}
-                    placeholder=""
-                    variant="underlined"
-                    labelPlacement="inside"
-                    className="w-full"
+                      isRequired
                     isInvalid={!!fieldErrors.contactPhone}
                     errorMessage={fieldErrors.contactPhone}
-                    classNames={{
-                      base: "bg-transparent",
-                      mainWrapper: "bg-transparent",
-                      inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent",
-                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                      errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                    }}
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopInput
+                      label="Contact Phone"
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(e) => {
+                        setContactPhone(e.target.value)
+                        setFieldErrors(prev => ({ ...prev, contactPhone: "" }))
+                      }}
+                      isRequired
+                      isInvalid={!!fieldErrors.contactPhone}
+                      errorMessage={fieldErrors.contactPhone}
                   />
+                  </div>
                 </div>
 
                 {/* Pharmacy ID */}
-                <div className="space-y-2 relative">
-                  <Select
-                    label="Pharmacy ID *"
-                    selectedKeys={pharmacyId ? [pharmacyId] : []}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as string
-                      setPharmacyId(selected || "")
+                <div className="space-y-2">
+                  <div className="md:hidden">
+                    <MobileDropdownSelect
+                      value={pharmacyId}
+                      options={pharmacyIdOptions.map((id) => ({ value: id, label: id }))}
+                      onChange={(val) => {
+                        setPharmacyId(val)
                       setFieldErrors(prev => ({ ...prev, pharmacyId: "" }))
                     }}
-                    selectionMode="single"
-                    variant="underlined"
-                    labelPlacement="inside"
-                    placeholder="Select Pharmacy ID"
-                    isInvalid={!!fieldErrors.pharmacyId}
-                    errorMessage={fieldErrors.pharmacyId}
-                    classNames={{
-                      base: "bg-transparent",
-                      trigger:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 pr-6 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                      value: "!text-white md:!text-slate-900 text-base font-normal data-[placeholder=true]:!text-gray-500 md:data-[placeholder=true]:!text-slate-500",
-                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                      popoverContent: "bg-black md:bg-white border-gray-700 md:border-gray-200",
-                      mainWrapper: "[&>span]:!text-white md:[&>span]:!text-slate-900",
-                      errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                    }}
-                    isLoading={loadingPharmacyIds}
-                    popoverProps={{
-                      classNames: {
-                        content: "bg-black md:bg-white border-gray-700 md:border-gray-200 !z-[10000] pointer-events-auto",
-                        base: "!z-[10000]"
-                      },
-                      placement: "bottom-start",
-                      shouldBlockScroll: true,
-                      shouldCloseOnBlur: true,
-                    }}
-                    listboxProps={{
-                      classNames: {
-                        base: "max-h-60 overflow-y-auto pointer-events-auto overscroll-contain",
-                        list: "bg-black md:bg-white pointer-events-auto"
-                      },
-                      onWheel: (e) => {
-                        e.stopPropagation()
-                      }
-                    }}
-                  >
-                    {pharmacyIdOptions.map((id) => (
-                      <SelectItem 
-                        key={id} 
-                        className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                        textValue={id}
-                      >
-                        <span className="!text-white md:!text-foreground">{id}</span>
-                      </SelectItem>
-                    ))}
-                  </Select>
-                  <ChevronDown className="absolute right-1 bottom-2 h-4 w-4 text-gray-400 md:text-gray-500 pointer-events-none z-10" />
+                      placeholder="Select Pharmacy ID *"
+                      portalContainer={dialogContentRef.current}
+                      onOpenChange={setIsSelectOpen}
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopDropdownSelect
+                      value={pharmacyId}
+                      options={pharmacyIdOptions.map((id) => ({ value: id, label: id }))}
+                      onChange={(val) => {
+                        setPharmacyId(val)
+                        setFieldErrors(prev => ({ ...prev, pharmacyId: "" }))
+                      }}
+                      placeholder="Select Pharmacy ID *"
+                      portalContainer={dialogContentRef.current}
+                      onOpenChange={setIsSelectOpen}
+                    />
+                  </div>
+                  {fieldErrors.pharmacyId && (
+                    <div className="text-red-400 md:text-red-600 text-xs mt-1">{fieldErrors.pharmacyId}</div>
+                  )}
                 </div>
 
 
                 {/* Site Key Access */}
-                <div className="space-y-2 relative">
-                  <Select
-                    label="Site Key Access *"
-                    selectedKeys={siteKeyAccess ? ["true"] : ["false"]}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as string
-                      setSiteKeyAccess(selected === "true")
+                <div className="space-y-2">
+                  <div className="md:hidden">
+                    <MobileDropdownSelect
+                      value={siteKeyAccess ? "true" : "false"}
+                      options={[
+                        { value: "true", label: "True" },
+                        { value: "false", label: "False" },
+                      ]}
+                      onChange={(val) => {
+                        setSiteKeyAccess(val === "true")
                       setFieldErrors(prev => ({ ...prev, siteKeyAccess: "" }))
                     }}
-                    selectionMode="single"
-                    variant="underlined"
-                    labelPlacement="inside"
-                    placeholder="Select Site Key Access"
-                    isInvalid={!!fieldErrors.siteKeyAccess}
-                    errorMessage={fieldErrors.siteKeyAccess}
-                    classNames={{
-                      base: "bg-transparent",
-                      trigger:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 pr-6 rounded-none border-b-2 border-b-gray-600 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-500 md:data-[hover=true]:border-b-orange-400 group-data-[focus-within=true]:border-b-orange-500 md:group-data-[focus-within=true]:!border-b-black transition-[border-color] duration-200 ease-in-out group-data-[focus-within=true]:outline group-data-[focus-within=true]:outline-2 group-data-[focus-within=true]:outline-black md:group-data-[focus-within=true]:outline-0 data-[invalid=true]:border-b-red-500 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0 [&::after]:!bg-orange-500 group-data-[focus-within=true]:[&::after]:!bg-white md:[&::after]:!bg-black [&::after]:!transition-all [&::after]:!duration-300 [&::after]:!ease-in-out",
-                      value: "!text-white md:!text-slate-900 text-base font-normal data-[placeholder=true]:!text-gray-500 md:data-[placeholder=true]:!text-slate-500",
-                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                      popoverContent: "bg-black md:bg-white border-gray-700 md:border-gray-200",
-                      mainWrapper: "[&>span]:!text-white md:[&>span]:!text-slate-900",
-                      errorMessage: "text-red-400 md:text-red-600 text-xs mt-1",
-                    }}
-                    popoverProps={{
-                      classNames: {
-                        content: "bg-black md:bg-white border-gray-700 md:border-gray-200 !z-[10000] pointer-events-auto",
-                        base: "!z-[10000]"
-                      },
-                      placement: "bottom-start",
-                      shouldBlockScroll: true,
-                      shouldCloseOnBlur: true,
-                    }}
-                    listboxProps={{
-                      classNames: {
-                        base: "max-h-60 overflow-auto pointer-events-auto",
-                        list: "bg-black md:bg-white pointer-events-auto"
-                      }
-                    }}
-                  >
-                    <SelectItem 
-                      key="true" 
-                      className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                      textValue="True"
-                    >
-                      <span className="!text-white md:!text-foreground">True</span>
-                    </SelectItem>
-                    <SelectItem 
-                      key="false" 
-                      className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                      textValue="False"
-                    >
-                      <span className="!text-white md:!text-foreground">False</span>
-                    </SelectItem>
-                  </Select>
-                  <ChevronDown className="absolute right-1 bottom-2 h-4 w-4 text-gray-400 md:text-gray-500 pointer-events-none z-10" />
+                      placeholder="Select Site Key Access *"
+                      portalContainer={dialogContentRef.current}
+                      onOpenChange={setIsSelectOpen}
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopDropdownSelect
+                      value={siteKeyAccess ? "true" : "false"}
+                      options={[
+                        { value: "true", label: "True" },
+                        { value: "false", label: "False" },
+                      ]}
+                      onChange={(val) => {
+                        setSiteKeyAccess(val === "true")
+                        setFieldErrors(prev => ({ ...prev, siteKeyAccess: "" }))
+                      }}
+                      placeholder="Select Site Key Access *"
+                      portalContainer={dialogContentRef.current}
+                      onOpenChange={setIsSelectOpen}
+                    />
+                  </div>
+                  {fieldErrors.siteKeyAccess && (
+                    <div className="text-red-400 md:text-red-600 text-xs mt-1">{fieldErrors.siteKeyAccess}</div>
+                  )}
                 </div>
 
                 {/* Institution Status - only show for edit mode */}
                 {isEditMode && (
-                  <div className="space-y-2 relative">
-                    <Select
-                      label="Institution Status *"
-                      selectedKeys={[institutionStatus]}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string
-                        setInstitutionStatus(selected || "ACTIVE")
-                      }}
-                      selectionMode="single"
-                      variant="underlined"
-                      labelPlacement="inside"
-                      classNames={{
-                        base: "bg-transparent group",
-                      trigger:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 pr-6 rounded-none border-b-2 border-b-orange-500 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-white md:data-[focus=true]:border-b-black data-[focus=true]:outline data-[focus=true]:outline-2 data-[focus=true]:outline-black md:data-[focus=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0",
-                        value: "!text-white md:!text-slate-900 text-base font-normal",
-                        label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                        popoverContent: "bg-black md:bg-white border-gray-700 md:border-gray-200",
-                      }}
-                      popoverProps={{
-                        classNames: {
-                          content: "bg-black md:bg-white border-gray-700 md:border-gray-200 !z-[10000] pointer-events-auto",
-                          base: "!z-[10000]"
-                        },
-                        placement: "bottom-start",
-                        shouldBlockScroll: true,
-                        shouldCloseOnBlur: true,
-                      }}
-                      listboxProps={{
-                        classNames: {
-                          base: "max-h-60 overflow-auto pointer-events-auto",
-                          list: "bg-black md:bg-white pointer-events-auto"
-                        }
-                      }}
-                    >
-                      <SelectItem 
-                        key="ACTIVE" 
-                        className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                        textValue="ACTIVE"
-                      >
-                        <span className="!text-white md:!text-foreground">ACTIVE</span>
-                      </SelectItem>
-                      <SelectItem 
-                        key="RETIRED" 
-                        className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                        textValue="RETIRED"
-                      >
-                        <span className="!text-white md:!text-foreground">RETIRED</span>
-                      </SelectItem>
-                      <SelectItem 
-                        key="RESERVED" 
-                        className="bg-black md:bg-white !text-white md:!text-foreground hover:!bg-gray-700 md:hover:!bg-gray-100 data-[selected=true]:!bg-gray-700 md:data-[selected=true]:!bg-gray-100 pointer-events-auto cursor-pointer"
-                        textValue="RESERVED"
-                      >
-                        <span className="!text-white md:!text-foreground">RESERVED</span>
-                      </SelectItem>
-                    </Select>
-                    <ChevronDown className="absolute right-1 bottom-2 h-4 w-4 text-gray-400 md:text-gray-500 pointer-events-none z-10" />
+                  <div className="space-y-2">
+                    <div className="md:hidden">
+                      <MobileDropdownSelect
+                        value={institutionStatus}
+                        options={[
+                          { value: "ACTIVE", label: "ACTIVE" },
+                          { value: "RETIRED", label: "RETIRED" },
+                          { value: "RESERVED", label: "RESERVED" },
+                        ]}
+                        onChange={(val) => setInstitutionStatus(val || "ACTIVE")}
+                        placeholder="Institution Status"
+                        portalContainer={dialogContentRef.current}
+                        onOpenChange={setIsSelectOpen}
+                      />
+                    </div>
+                    <div className="hidden md:block">
+                      <DesktopDropdownSelect
+                        value={institutionStatus}
+                        options={[
+                          { value: "ACTIVE", label: "ACTIVE" },
+                          { value: "RETIRED", label: "RETIRED" },
+                          { value: "RESERVED", label: "RESERVED" },
+                        ]}
+                        onChange={(val) => setInstitutionStatus(val || "ACTIVE")}
+                        placeholder="Institution Status"
+                        portalContainer={dialogContentRef.current}
+                        onOpenChange={setIsSelectOpen}
+                      />
+                    </div>
                   </div>
                 )}
 
                 {/* Institution Nickname - Optional Field */}
                 <div className="space-y-2">
-                  <Input
+                  <div className="md:hidden">
+                    <MobileInput
                     label="Institution Nickname"
                     value={institutionNickname}
                     onChange={(e) => setInstitutionNickname(e.target.value)}
-                    placeholder=""
-                    variant="underlined"
-                    labelPlacement="inside"
-                    className="w-full"
-                    classNames={{
-                      base: "bg-transparent",
-                      mainWrapper: "bg-transparent",
-                      inputWrapper:
-                        "bg-transparent shadow-none data-[hover=true]:shadow-none data-[focus=true]:shadow-none px-1 rounded-none border-b-2 border-b-orange-500 md:border-b-orange-200 border-x-0 border-t-0 data-[hover=true]:border-b-orange-400 md:data-[hover=true]:border-b-orange-400 data-[focus=true]:border-b-white md:data-[focus=true]:border-b-black data-[focus=true]:outline data-[focus=true]:outline-2 data-[focus=true]:outline-black md:data-[focus=true]:outline-0 data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-offset-0",
-                      input: "bg-transparent text-base !text-white md:!text-slate-900 placeholder:text-gray-400 md:placeholder:text-slate-500 caret-orange-500 autofill:!text-white autofill:!bg-transparent",
-                      label: "text-gray-300 md:text-slate-700 data-[inside=true]:text-gray-400 md:data-[inside=true]:text-slate-500",
-                    }}
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <DesktopInput
+                      label="Institution Nickname"
+                      value={institutionNickname}
+                      onChange={(e) => setInstitutionNickname(e.target.value)}
                   />
+                  </div>
                 </div>
               </div>
         </div>
 
-        <DialogFooter className="gap-2 md:gap-0">
+        <DialogFooter className="gap-2 md:gap-2">
           <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200 bg-black md:bg-transparent hover:bg-gray-800 md:hover:bg-gray-50">
             Cancel
           </Button>

@@ -9,9 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/heroui"
+import { Input } from "@/components/ui/heroui"
+import { DesktopInput } from "@/components/desktop-input"
+import { MobileInput } from "@/components/mobile-input"
 
 interface EditCompanyIconDialogProps {
   open: boolean
@@ -22,15 +23,6 @@ interface EditCompanyIconDialogProps {
   companyName: string
   onSave: (letters: string, bgColor: string, textColor: string) => Promise<void>
 }
-
-const COLOR_PRESETS = [
-  { name: "Blue", bg: "#3b82f6", text: "#ffffff" },
-  { name: "Green", bg: "#10b981", text: "#ffffff" },
-  { name: "Orange", bg: "#f97316", text: "#ffffff" },
-  { name: "Purple", bg: "#a855f7", text: "#ffffff" },
-  { name: "Red", bg: "#ef4444", text: "#ffffff" },
-  { name: "Teal", bg: "#14b8a6", text: "#ffffff" },
-]
 
 export function EditCompanyIconDialog({
   open,
@@ -45,6 +37,7 @@ export function EditCompanyIconDialog({
   const [bgColor, setBgColor] = useState(currentBgColor)
   const [textColor, setTextColor] = useState(currentTextColor)
   const [saving, setSaving] = useState(false)
+  const [lettersError, setLettersError] = useState("")
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -52,16 +45,24 @@ export function EditCompanyIconDialog({
       setLetters(currentLetters)
       setBgColor(currentBgColor)
       setTextColor(currentTextColor)
+      setLettersError("")
     }
   }, [open, currentLetters, currentBgColor, currentTextColor])
 
   const handleLettersChange = (value: string) => {
-    // Only allow uppercase letters, max 2 characters
+    // Only allow uppercase letters
     const formatted = value
       .toUpperCase()
       .replace(/[^A-Z]/g, "")
-      .slice(0, 2)
-    setLetters(formatted)
+    
+    // Show error if more than 2 characters
+    if (formatted.length > 2) {
+      setLettersError("1-2 characters only")
+      setLetters(formatted.slice(0, 2))
+    } else {
+      setLettersError("")
+      setLetters(formatted)
+    }
   }
 
   const handleSave = async () => {
@@ -88,104 +89,197 @@ export function EditCompanyIconDialog({
           <DialogDescription className="text-xs md:text-sm text-gray-400 md:text-muted-foreground">Personalize your company's icon with custom letters and colors</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3 md:gap-6 py-2 md:py-4">
-          {/* Icon Preview */}
-          <div className="flex justify-center">
-            <div
-              className="h-16 w-16 md:h-24 md:w-24 rounded-lg flex items-center justify-center text-2xl md:text-3xl font-bold shadow-md"
-              style={{
-                backgroundColor: bgColor,
-                color: textColor,
-              }}
-            >
-              {letters || "?"}
+        <div className="py-2 md:py-4">
+          {/* Desktop: 2x2 Grid Layout */}
+          <div className="hidden md:grid grid-cols-2 gap-4">
+            {/* Left Column: Icon spanning all rows */}
+            <div className="row-span-3 flex items-center justify-center">
+              <div
+                className="h-28 w-28 rounded-lg flex items-center justify-center text-3xl font-bold shadow-md"
+                style={{
+                  backgroundColor: bgColor,
+                  color: textColor,
+                }}
+              >
+                {letters || "?"}
+              </div>
             </div>
-          </div>
 
-          {/* Letters Input */}
-          <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="letters" className="text-xs md:text-sm text-white md:text-foreground">Icon Letters (1-2 characters)</Label>
-            <Input
-              id="letters"
-              value={letters}
-              onChange={(e) => handleLettersChange(e.target.value)}
-              placeholder="AB"
-              maxLength={2}
-              className="text-center text-xl md:text-2xl font-bold uppercase bg-black md:bg-white !text-white md:!text-foreground placeholder:text-gray-400 md:placeholder:text-muted-foreground"
-            />
-          </div>
+            {/* Top Right: Initials Input */}
+            <div className="flex items-center">
+              <div className="w-full">
+                <DesktopInput
+                  label="Initials"
+                  value={letters}
+                  onChange={(e) => handleLettersChange(e.target.value)}
+                  placeholder=""
+                  className="text-center text-2xl font-bold uppercase"
+                />
+                {lettersError && (
+                  <p className="text-xs text-red-500 mt-1">{lettersError}</p>
+                )}
+              </div>
+            </div>
 
-          {/* Background Color */}
-          <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="bgColor" className="text-xs md:text-sm text-white md:text-foreground">Background Color</Label>
-            <div className="flex gap-2">
-              <Input
+            {/* Middle Row Right: Background */}
+            <div className="flex gap-2 items-end">
+              <input
                 id="bgColor"
                 type="color"
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
-                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
-                style={{ backgroundColor: bgColor }}
+                className="h-10 w-20 cursor-pointer"
+                style={{ 
+                  backgroundColor: bgColor,
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  borderRadius: '0.25rem',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
               />
-              <Input
-                value={bgColor}
-                onChange={(e) => setBgColor(e.target.value)}
-                placeholder="#3b82f6"
-                className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
-              />
+              <div className="flex-1">
+                <DesktopInput
+                  label="Background"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  placeholder=""
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Text Color */}
-          <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="textColor" className="text-xs md:text-sm text-white md:text-foreground">Text Color</Label>
-            <div className="flex gap-2">
-              <Input
+            {/* Bottom Right: Text */}
+            <div className="flex gap-2 items-end">
+              <input
                 id="textColor"
                 type="color"
                 value={textColor}
                 onChange={(e) => setTextColor(e.target.value)}
-                className="h-8 w-16 md:h-10 md:w-20 cursor-pointer rounded border-0 p-0"
-                style={{ backgroundColor: textColor }}
+                className="h-10 w-20 cursor-pointer"
+                style={{ 
+                  backgroundColor: textColor,
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  borderRadius: '0.25rem',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
               />
-              <Input
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                placeholder="#ffffff"
-                className="flex-1 bg-black md:bg-white !text-white md:!text-foreground text-xs md:text-sm placeholder:text-gray-400 md:placeholder:text-muted-foreground border-gray-600 md:border-gray-200"
-              />
+              <div className="flex-1">
+                <DesktopInput
+                  label="Text"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  placeholder=""
+                />
+              </div>
             </div>
           </div>
 
-          {/* Color Presets */}
-          <div className="space-y-1.5 md:space-y-2">
-            <Label className="text-xs md:text-sm text-white md:text-foreground">Quick Presets</Label>
-            <div className="grid grid-cols-3 gap-1.5 md:gap-2">
-              {COLOR_PRESETS.map((preset) => (
-                <Button
-                  key={preset.name}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setBgColor(preset.bg)
-                    setTextColor(preset.text)
-                  }}
-                  className="justify-start gap-2 bg-black md:bg-white text-white md:text-foreground border-gray-600 md:border-gray-200 hover:bg-gray-800 md:hover:bg-gray-50"
-                >
-                  <div className="h-4 w-4 rounded" style={{ backgroundColor: preset.bg }} />
-                  {preset.name}
-                </Button>
-              ))}
+          {/* Mobile: 2x2 Grid Layout */}
+          <div className="md:hidden grid grid-cols-2 gap-3">
+            {/* Top Left: Icon Preview */}
+            <div className="flex items-center justify-center">
+              <div
+                className="h-16 w-16 rounded-lg flex items-center justify-center text-2xl font-bold shadow-md"
+                style={{
+                  backgroundColor: bgColor,
+                  color: textColor,
+                }}
+              >
+                {letters || "?"}
+              </div>
+            </div>
+
+            {/* Top Right: Initials Input */}
+            <div className="flex items-center">
+              <div className="w-full [&_input]:!text-center [&_input]:text-center">
+                <MobileInput
+                  label="Initials"
+                  value={letters}
+                  onChange={(e) => handleLettersChange(e.target.value)}
+                  placeholder=""
+                  className="text-center text-xl font-bold uppercase"
+                />
+                {lettersError && (
+                  <p className="text-xs text-red-500 mt-1 text-center">{lettersError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Left: Background */}
+            <div className="flex gap-2 items-end">
+              <input
+                id="bgColor"
+                type="color"
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+                className="h-8 w-16 cursor-pointer"
+                style={{ 
+                  backgroundColor: bgColor,
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  borderRadius: '0.25rem',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div className="flex-1">
+                <MobileInput
+                  label="Background"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  placeholder=""
+                />
+              </div>
+            </div>
+
+            {/* Bottom Right: Text */}
+            <div className="flex gap-2 items-end">
+              <input
+                id="textColor"
+                type="color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                className="h-8 w-16 cursor-pointer"
+                style={{ 
+                  backgroundColor: textColor,
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  borderRadius: '0.25rem',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div className="flex-1">
+                <MobileInput
+                  label="Text"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  placeholder=""
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="gap-2 md:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200 bg-black md:bg-transparent hover:bg-gray-800 md:hover:bg-gray-50">
+        <DialogFooter className="gap-2 md:gap-2">
+          <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200 bg-black md:bg-transparent hover:bg-gray-800 md:hover:bg-gray-50">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !letters} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving || !letters} 
+            className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#FF8E32] md:disabled:hover:bg-[hsl(var(--primary))]"
+          >
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

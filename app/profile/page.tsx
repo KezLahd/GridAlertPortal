@@ -27,6 +27,7 @@ import { EditUserIconDialog } from "@/components/edit-user-icon-dialog"
 import { EditCompanyDetailsDialog } from "@/components/edit-company-details-dialog"
 import { EditUserDetailsDialog } from "@/components/edit-user-details-dialog"
 import { AddPoiDialog } from "@/components/add-poi-dialog"
+import { PoiEditDialog } from "@/components/poi-edit-dialog"
 import { PoiLocationsTable, type PoiLocation } from "@/components/poi-locations-table"
 import { ImportCsvDialog } from "@/components/import-csv-dialog"
 import { ProfilePageSkeleton } from "@/components/skeleton-components"
@@ -241,6 +242,7 @@ export default function ProfilePage() {
   const [editCompanyDetailsOpen, setEditCompanyDetailsOpen] = useState(false)
   const [editUserDetailsOpen, setEditUserDetailsOpen] = useState(false)
   const [addPoiOpen, setAddPoiOpen] = useState(false)
+  const [editPoiDialogOpen, setEditPoiDialogOpen] = useState(false)
   const [editPoiLocation, setEditPoiLocation] = useState<PoiLocation | null>(null)
   const [importCsvOpen, setImportCsvOpen] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -301,7 +303,7 @@ export default function ProfilePage() {
       return
     }
     setEditPoiLocation(location)
-    setAddPoiOpen(true)
+    setEditPoiDialogOpen(true)
   }
 
   // Handle opening CSV import dialog with admin check
@@ -633,6 +635,91 @@ export default function ProfilePage() {
     await fetchPoiCount(profile.company.id)
     setEditPoiLocation(null)
     setSaving(false)
+  }
+
+  // Handle editing POI (for PoiEditDialog)
+  const handleEditPoiSave = async (locationId: string, updates: Partial<PoiLocation>) => {
+    if (!profile?.company?.id) return
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      // Determine provider based on location if coordinates changed
+      let provider: string | null = null
+      if (updates.latitude !== undefined && updates.longitude !== undefined) {
+        try {
+          const { determineProviderForLocation } = await import("@/lib/provider-assignment")
+          provider = await determineProviderForLocation(
+            updates.latitude || 0,
+            updates.longitude || 0,
+            updates.postcode || null,
+            updates.state || null
+          )
+        } catch (error) {
+          console.error("Error determining provider for location:", error)
+        }
+      }
+
+      // Map PoiLocation fields to database schema
+      const locationData: any = {}
+      
+      if (updates.poi_name !== undefined) locationData.institutionname = updates.poi_name
+      if (updates.institution_code !== undefined) locationData.institutioncode = updates.institution_code
+      if (updates.street_address !== undefined) locationData.addressline1 = updates.street_address
+      if (updates.city !== undefined) locationData.addresssuburb = updates.city
+      if (updates.state !== undefined) locationData.addressstate = updates.state
+      if (updates.postcode !== undefined) locationData.addresspostcode = updates.postcode
+      if (updates.country !== undefined) locationData.addresscountry = updates.country
+      if (updates.contact_email !== undefined) locationData.institutionemail = updates.contact_email
+      if (updates.contact_phone !== undefined) locationData.institutionphoneno = updates.contact_phone
+      if (updates.latitude !== undefined) locationData.addresslatitude = updates.latitude
+      if (updates.longitude !== undefined) locationData.addresslongitude = updates.longitude
+      if (provider !== null) locationData.provider = provider
+
+      // Handle additional fields that might be in updates
+      const updatesAny = updates as any
+      if (updatesAny.institutionNickname !== undefined) locationData.institutionnickname = updatesAny.institutionNickname
+      if (updatesAny.pharmacy_id !== undefined) locationData.pharmacyid = updatesAny.pharmacy_id || null
+      if (updatesAny.institutionStatus !== undefined) locationData.institutionstatus = updatesAny.institutionStatus || "ACTIVE"
+      if (updatesAny.siteKeyAccess !== undefined) locationData.sitekeyaccess = updatesAny.siteKeyAccess ? 1 : null
+      if (updatesAny.institutionstatus !== undefined) locationData.institutionstatus = updatesAny.institutionstatus || "ACTIVE"
+
+      // Use API route to update POI (bypasses RLS)
+      const response = await fetch("/api/update-poi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId,
+          companyId: profile.company.id,
+          locationData,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("API update error:", result.error)
+        setError(result.error || "Failed to update POI")
+        setSaving(false)
+        throw new Error(result.error || "Failed to update POI")
+      }
+
+      console.log("Update successful - updated location:", result.updatedLocation)
+      showToast("POI updated successfully", "success")
+
+      // Refresh the POI locations and count
+      await fetchPoiLocations(profile.company.id)
+      await fetchPoiCount(profile.company.id)
+      setEditPoiDialogOpen(false)
+      setEditPoiLocation(null)
+    } catch (error: any) {
+      console.error("Error updating POI:", error)
+      setError(error.message || "Failed to update POI")
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleImportCsv = () => {
@@ -2005,19 +2092,30 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Add/Edit POI Dialog */}
+      {/* Add POI Dialog */}
       {profile?.company && (
         <AddPoiDialog
           open={addPoiOpen}
+          onOpenChange={setAddPoiOpen}
+          onSave={handleAddPoi}
+          saving={saving}
+          location={null}
+          companyId={profile.company.id}
+        />
+      )}
+
+      {/* Edit POI Dialog */}
+      {profile?.company && (
+        <PoiEditDialog
+          open={editPoiDialogOpen}
           onOpenChange={(open) => {
-            setAddPoiOpen(open)
+            setEditPoiDialogOpen(open)
             if (!open) {
               setEditPoiLocation(null)
             }
           }}
-          onSave={handleAddPoi}
-          saving={saving}
           location={editPoiLocation}
+          onSave={handleEditPoiSave}
           companyId={profile.company.id}
         />
       )}
