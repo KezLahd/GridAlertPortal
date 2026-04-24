@@ -401,6 +401,13 @@
 
 .footer a:hover { color: var(--amber); }
 
+.kezLink {
+  color: var(--ink-2);
+  font-weight: 500;
+  transition: color 0.18s ease;
+}
+.kezLink:hover { color: var(--amber); }
+
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; gap: 40px; padding: 40px 0 80px; }
   .heroRight { order: -1; }

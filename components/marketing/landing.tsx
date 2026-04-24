@@ -78,8 +78,9 @@ export default function Landing() {
           <div className={styles.heroRight}>
             <svg
               className={styles.bolt}
-              viewBox="-10 -10 220 300"
+              viewBox="-40 -40 280 360"
               xmlns="http://www.w3.org/2000/svg"
+              style={{ overflow: "visible" }}
               aria-hidden
             >
               <defs>
@@ -90,7 +91,7 @@ export default function Landing() {
                 </linearGradient>
               </defs>
               <path
-                d="M 120 0 L 30 150 L 90 150 L 60 280 L 200 110 L 100 110 L 140 0 Z"
+                d="M 120 10 L 30 160 L 90 160 L 60 280 L 200 120 L 100 120 L 140 10 Z"
                 fill="url(#glBolt)"
                 stroke="#FFD500"
                 strokeWidth="2"
@@ -255,8 +256,18 @@ export default function Landing() {
 
         {/* ─── Footer ─────────────────────────────── */}
         <footer className={styles.footer}>
-          <span>© 2026 Arctiq Services · GridAlert</span>
-          <span>Sydney, Australia</span>
+          <span>© 2026 Arctiq Services · GridAlert · Sydney</span>
+          <span>
+            Another{" "}
+            <a
+              href="https://instagram.com/kieranjxn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.kezLink}
+            >
+              Kez Curation ↗
+            </a>
+          </span>
         </footer>
       </div>
     </main>
