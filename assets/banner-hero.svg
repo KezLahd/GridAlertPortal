@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="GridAlert">
+  <defs>
+    <linearGradient id="bolt" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFD500"/>
+      <stop offset="50%" stop-color="#FF9A00"/>
+      <stop offset="100%" stop-color="#FF6A00"/>
+    </linearGradient>
+    <linearGradient id="boltGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFD500" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FF6A00" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="nameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6A00"/>
+      <stop offset="100%" stop-color="#FFD500"/>
+    </linearGradient>
+    <pattern id="gridLines" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="spot" cx="78%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#FF6A00" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#0F0F10" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="400" fill="#0F0F10"/>
+  <rect width="1200" height="400" fill="url(#gridLines)"/>
+  <rect width="1200" height="400" fill="url(#spot)"/>
+
+  <g transform="translate(80, 54)">
+    <rect width="212" height="28" rx="14" fill="#FF6A00" fill-opacity="0.1" stroke="#FF6A00" stroke-opacity="0.4"/>
+    <circle cx="18" cy="14" r="4" fill="#FFD500"/>
+    <text x="112" y="18.5" text-anchor="middle" fill="#FFD500" font-family="'DM Sans','Inter',system-ui,sans-serif" font-size="11" font-weight="600" letter-spacing="2.2">POWER · GRID · MONITOR</text>
+  </g>
+
+  <text x="80" y="240" fill="url(#nameGrad)" font-family="'Instrument Serif','Georgia',serif" font-size="176" letter-spacing="-5">GridAlert<tspan fill="#FFD500">.</tspan></text>
+
+  <text x="82" y="288" fill="#f5f5f0" fill-opacity="0.6" font-family="'DM Sans','Inter',system-ui,sans-serif" font-size="18" font-weight="300">Real-time Australian electricity outage alerts. Know before the grid tells you.</text>
+
+  <g transform="translate(80, 324)" font-family="'DM Sans','Inter',system-ui,sans-serif" font-size="11" font-weight="600" letter-spacing="1.6">
+    <g>
+      <rect width="90" height="26" rx="13" fill="#1a1a1c" stroke="#FF6A00" stroke-opacity="0.3"/>
+      <text x="45" y="17" text-anchor="middle" fill="#FFD500">NEXT.JS</text>
+    </g>
+    <g transform="translate(98, 0)">
+      <rect width="96" height="26" rx="13" fill="#1a1a1c" stroke="#FF6A00" stroke-opacity="0.3"/>
+      <text x="48" y="17" text-anchor="middle" fill="#FFD500">SUPABASE</text>
+    </g>
+    <g transform="translate(202, 0)">
+      <rect width="92" height="26" rx="13" fill="#1a1a1c" stroke="#FF6A00" stroke-opacity="0.3"/>
+      <text x="46" y="17" text-anchor="middle" fill="#FFD500">POSTGIS</text>
+    </g>
+    <g transform="translate(302, 0)">
+      <rect width="102" height="26" rx="13" fill="#1a1a1c" stroke="#FF6A00" stroke-opacity="0.3"/>
+      <text x="51" y="17" text-anchor="middle" fill="#FFD500">SHADCN / UI</text>
+    </g>
+    <g transform="translate(412, 0)">
+      <rect width="110" height="26" rx="13" fill="#1a1a1c" stroke="#FF6A00" stroke-opacity="0.3"/>
+      <text x="55" y="17" text-anchor="middle" fill="#FFD500">MULTI-TENANT</text>
+    </g>
+  </g>
+
+  <g transform="translate(980, 200)">
+    <ellipse cx="0" cy="0" rx="180" ry="160" fill="url(#boltGlow)"/>
+    <path d="M 20 -140 L -60 10 L -10 10 L -40 130 L 70 -30 L 10 -30 L 50 -140 Z" fill="url(#bolt)" stroke="#FFD500" stroke-width="1.5" stroke-linejoin="round" stroke-opacity="0.8"/>
+  </g>
+</svg>
