@@ -5,7 +5,7 @@
   --bg: #0F0F10;
   --bg-2: #18181a;
   --ink: #F5F5F0;
-  --ink-2: rgba(245, 245, 240, 0.65);
+  --ink-2: rgba(245, 245, 240, 0.78);
   --muted: rgba(245, 245, 240, 0.4);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -15,9 +15,9 @@
 
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
   background: var(--bg);
-  color: var(--ink);
+  color: #F5F5F0;
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 300;
   line-height: 1.55;
@@ -163,6 +163,7 @@
   line-height: 0.95;
   letter-spacing: -0.03em;
   margin-bottom: 24px;
+  color: #F5F5F0;
 }
 
 .gradientText {
@@ -174,7 +175,7 @@
 
 .heroTag {
   font-size: 18px;
-  color: var(--ink-2);
+  color: rgba(245, 245, 240, 0.78);
   margin-bottom: 40px;
   max-width: 520px;
 }

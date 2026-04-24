@@ -78,7 +78,7 @@ export default function Landing() {
           <div className={styles.heroRight}>
             <svg
               className={styles.bolt}
-              viewBox="0 0 200 280"
+              viewBox="-10 -10 220 300"
               xmlns="http://www.w3.org/2000/svg"
               aria-hidden
             >
