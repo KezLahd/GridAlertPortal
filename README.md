@@ -116,5 +116,5 @@ No license granted. Source is visible here as part of my portfolio — **all rig
 ---
 
 <p align="center">
-  <sub>Built by <a href="https://github.com/KezLahd">Kieran Jackson</a> · An <a href="https://arctiqservices.com.au">Arctiq</a> product · 2026</sub>
+  <sub>Built by <a href="https://github.com/KezLahd">Kieran Jackson</a> · An <a href="https://arctiqservices.com.au">Arctiq</a> product · 2026 · Another <a href="https://instagram.com/kieranjxn">Kez Curation ↗</a></sub>
 </p>
