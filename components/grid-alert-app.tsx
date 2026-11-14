@@ -17,6 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@
 import { Input } from "@/components/ui/input"
 import { AlertCircle, Info, PieChart, TableIcon, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Search, X, Rss, Check, ChevronsUpDown, CloudLightning, ClipboardList, CalendarClock, Zap, User, LogOut, Map as MapIcon } from "lucide-react"
 import { exportToCSV, exportToPDF } from "@/lib/export-utils"
+import { SitesExportMenu } from "@/components/sites-export-menu"
 import { cn } from "@/lib/utils"
 import OutageList, { aggregateOutages } from "@/components/outage-list"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -2708,6 +2709,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                             <FileText className="w-4 h-4 mr-2" />
                             <span className="text-white">Export PDF</span>
                           </Button>
+                          <SitesExportMenu className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-600 bg-black px-3 text-sm text-white" />
                         </div>
                       </>
                     ) : (
@@ -2769,6 +2771,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                         <Download className="w-4 h-4 mr-2" />
                         Export CSV
                       </Button>
+                      <SitesExportMenu />
                     </div>
                   </div>
                 </div>

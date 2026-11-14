@@ -31,6 +31,7 @@ import { EditUserDetailsDialog } from "@/components/edit-user-details-dialog"
 import { AddPoiDialog } from "@/components/add-poi-dialog"
 import { PoiEditDialog } from "@/components/poi-edit-dialog"
 import { PoiLocationsTable, type PoiLocation } from "@/components/poi-locations-table"
+import { ConnectionsPanel } from "@/components/connections-panel"
 import { ImportCsvDialog } from "@/components/import-csv-dialog"
 import { ProfilePageSkeleton } from "@/components/skeleton-components"
 
@@ -2000,6 +2001,9 @@ export default function ProfilePage() {
                 companyTextColor={profile?.company?.logoTextColor}
               />
             )}
+
+            {/* Read-only keys for Claude and other systems */}
+            {isAdmin && companyId && <ConnectionsPanel />}
           </div>
           
           {/* Mobile Footer */}
