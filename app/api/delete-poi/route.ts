@@ -1,18 +1,18 @@
-import { createServiceClient } from "@/lib/supabase"
+import { adminsOnly, caller, isAdmin } from "@/lib/session-auth"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const dbClient = createServiceClient() // Use service client to bypass RLS
+    // admins of the sites' own company only; the company comes from the caller, not the request
+    const me = await caller(request)
+    if (!isAdmin(me)) return adminsOnly()
+    const dbClient = me.db
+    const companyId = me.companyId
 
-    const { poiIds, companyId } = await request.json()
+    const { poiIds } = await request.json()
 
     if (!poiIds || !Array.isArray(poiIds) || poiIds.length === 0) {
       return NextResponse.json({ error: "No POI IDs provided" }, { status: 400 })
-    }
-
-    if (!companyId) {
-      return NextResponse.json({ error: "Company ID is required" }, { status: 400 })
     }
 
     // Delete POIs with company_id check for security

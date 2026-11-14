@@ -1,10 +1,14 @@
-import { createClient, createServiceClient } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
+import { adminsOnly, caller, isAdmin } from "@/lib/session-auth"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
     const supabase = createClient() // For email sending
-    const dbClient = createServiceClient() // For admin database operations
+    // only an admin can invite, and only into their own company, as themselves
+    const me = await caller(request)
+    if (!isAdmin(me)) return adminsOnly()
+    const dbClient = me.db
 
     const {
       email,
@@ -14,9 +18,12 @@ export async function POST(request: Request) {
       region_access,
       notify_providers,
       notify_outage_types,
-      company_id,
-      invited_by,
     } = await request.json()
+    const company_id = me.companyId
+    const invited_by = me.userId
+    if (!["admin", "manager", "member"].includes(role)) {
+      return NextResponse.json({ error: "Unknown role" }, { status: 400 })
+    }
 
     const { data: existingInvitation } = await dbClient
       .from("user_invitations")

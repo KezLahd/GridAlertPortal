@@ -1,21 +1,23 @@
-import { createServiceClient } from "@/lib/supabase"
+import { adminsOnly, caller, isAdmin } from "@/lib/session-auth"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const dbClient = createServiceClient() // Use service client to bypass RLS
+    // admins of the site's own company only; the company comes from the caller, not the request
+    const me = await caller(request)
+    if (!isAdmin(me)) return adminsOnly()
+    const dbClient = me.db
+    const companyId = me.companyId
 
-    const { locationId, companyId, locationData } = await request.json()
+    const { locationId, locationData: raw } = await request.json()
+    // these say which company and row the site is, so they can't be changed from here
+    const { id: _id, company_id: _c, created_at: _ca, geom: _g, ...locationData } = (raw ?? {}) as Record<string, unknown>
 
     if (!locationId) {
       return NextResponse.json({ error: "Location ID is required" }, { status: 400 })
     }
 
-    if (!companyId) {
-      return NextResponse.json({ error: "Company ID is required" }, { status: 400 })
-    }
-
-    if (!locationData) {
+    if (!raw || Object.keys(locationData).length === 0) {
       return NextResponse.json({ error: "Location data is required" }, { status: 400 })
     }
 

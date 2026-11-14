@@ -6,6 +6,12 @@ export async function POST(request: Request) {
     const supabaseAdmin = createServiceClient()
 
     const { token, password, mobile, notify_channels } = await request.json()
+    if (typeof token !== "string" || token.length < 20) {
+      return NextResponse.json({ error: "Invalid or expired invitation token" }, { status: 400 })
+    }
+    if (typeof password !== "string" || password.length < 8) {
+      return NextResponse.json({ error: "Use a password of at least 8 characters" }, { status: 400 })
+    }
 
     // Read with the service key: invitations aren't readable with the public key (migrations/2026-11-14_rls_lockdown.sql)
     const { data: invitation, error: invitationError } = await supabaseAdmin
@@ -13,7 +19,7 @@ export async function POST(request: Request) {
       .select("*")
       .eq("invitation_token", token)
       .eq("status", "pending")
-      .single()
+      .maybeSingle()
 
     if (invitationError || !invitation) {
       return NextResponse.json({ error: "Invalid or expired invitation token" }, { status: 400 })

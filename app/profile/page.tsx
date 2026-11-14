@@ -214,6 +214,11 @@ export default function ProfilePage() {
 
   const router = useRouter()
   const supabase = getSupabaseClient()
+  // our API routes check who's calling from the session token
+  const apiHeaders = async () => {
+    const { data } = await supabase.auth.getSession()
+    return { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }
+  }
   const [profile, setProfile] = useState<ProfileRecord | null>(null)
 
   // Ensure black background on mobile
@@ -595,7 +600,7 @@ export default function ProfilePage() {
       
       const response = await fetch("/api/update-poi", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           locationId: editPoiLocation.id,
           companyId: profile.company.id,
@@ -691,7 +696,7 @@ export default function ProfilePage() {
       // Use API route to update POI (bypasses RLS)
       const response = await fetch("/api/update-poi", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           locationId,
           companyId: profile.company.id,
@@ -762,7 +767,7 @@ export default function ProfilePage() {
       
       const response = await fetch("/api/delete-poi", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           poiIds,
           companyId: profile.company.id,
@@ -1304,7 +1309,7 @@ export default function ProfilePage() {
 
     const response = await fetch("/api/invite-user", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await apiHeaders(),
       body: JSON.stringify({
         ...data,
         company_id: profile.company.id,
