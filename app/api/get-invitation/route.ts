@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase"
+import { createServiceClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -10,7 +10,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Token is required" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    // Invitations are no longer readable with the public key (migrations/2026-11-14_rls_lockdown.sql);
+    // this server route checks the token itself.
+    const supabase = createServiceClient()
 
     const { data: invitation, error } = await supabase
       .from("user_invitations")

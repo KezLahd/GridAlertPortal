@@ -1,14 +1,14 @@
-import { createClient, createServiceClient } from "@/lib/supabase"
+import { createServiceClient } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
     const supabaseAdmin = createServiceClient()
 
     const { token, password, mobile, notify_channels } = await request.json()
 
-    const { data: invitation, error: invitationError } = await supabase
+    // Read with the service key: invitations aren't readable with the public key (migrations/2026-11-14_rls_lockdown.sql)
+    const { data: invitation, error: invitationError } = await supabaseAdmin
       .from("user_invitations")
       .select("*")
       .eq("invitation_token", token)
