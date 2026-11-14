@@ -1,6 +1,8 @@
 /// <reference path="../types/google-maps.d.ts" />
 "use client"
 
+import { Wordmark } from "@/components/brand/wordmark"
+
 import { useState, useEffect, useMemo, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { addDays, format, differenceInMinutes } from "date-fns"
@@ -1840,7 +1842,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                       className={cn(
                         "flex h-4 w-4 items-center justify-center rounded border",
                         mapViewModes.includes(opt.value)
-                          ? "border-orange-500 bg-orange-500 text-white"
+                          ? "border-orange-500 bg-orange-500 text-[#24211C]"
                           : "border-gray-300 text-transparent",
                       )}
                     >
@@ -1933,7 +1935,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                       className={cn(
                         "flex h-4 w-4 items-center justify-center rounded border",
                         selectedProviders.includes(opt.value)
-                          ? "border-orange-500 bg-orange-500 text-white"
+                          ? "border-orange-500 bg-orange-500 text-[#24211C]"
                           : dark 
                             ? "border-gray-600 text-transparent md:border-gray-300"
                             : "border-gray-300 text-transparent",
@@ -1970,7 +1972,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                size="sm"
                isIconOnly
                className="rounded-full w-10 h-10 p-0 shadow-lg hover:opacity-90 transition-opacity"
-               style={{ backgroundColor: '#FF8E32', color: '#ffffff' }}
+               style={{ backgroundColor: '#F2B300', color: '#ffffff' }}
              >
                <Rss className="h-4 w-4" style={{ color: '#ffffff', transform: 'scaleX(-1)' }} />
              </Button>
@@ -2021,7 +2023,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
 
 
   return (
-    <div className="flex h-full md:h-screen md:overflow-hidden bg-black md:bg-[#f2f2f4] text-[#1f1f22]">
+    <div className="flex h-full md:h-screen md:overflow-hidden bg-black md:bg-[#FBF8F2] text-[#24211C]">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <AppSidebar />
@@ -2029,9 +2031,9 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
 
       {/* Mobile Header Navigation */}
       <div 
-        className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" 
+        className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#2F2A23]" 
         style={{ 
-          boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)', 
+          boxShadow: 'none', 
           touchAction: 'none', 
           overscrollBehavior: 'none',
           overscrollBehaviorY: 'none',
@@ -2064,8 +2066,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           }}
         >
           <div className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
-            <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+            <Wordmark height={22} className="text-[#F3EEE4]" />
           </div>
           <nav className="flex items-center gap-2">
             {[
@@ -2083,7 +2084,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   size="sm"
                   className={cn(
                     "flex items-center justify-center rounded-lg",
-                    active ? "bg-[#FF8E32] text-white" : "text-white hover:bg-white/20"
+                    active ? "bg-[#F2B300] text-[#24211C]" : "text-white hover:bg-white/20"
                   )}
                   onPress={() => {
                     const path = item.href
@@ -2221,7 +2222,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     )}
                     style={{ 
                       color: '#ffffff',
-                      ...(viewMode === "map" ? { backgroundColor: '#FF8E32' } : {}),
+                      ...(viewMode === "map" ? { backgroundColor: '#F2B300' } : {}),
                     }}
                     onPress={() => setViewMode("map")}
                   >
@@ -2239,7 +2240,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     )}
                     style={{ 
                       color: '#ffffff',
-                      ...(viewMode === "report" ? { backgroundColor: '#FF8E32' } : {}),
+                      ...(viewMode === "report" ? { backgroundColor: '#F2B300' } : {}),
                     }}
                     onPress={() => setViewMode("report")}
                   >
@@ -2298,7 +2299,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                   isIconOnly
                   variant="light"
                   size="sm"
-                  className="bg-black/40 text-white hover:bg-black/50 rounded-full border border-orange-500/30"
+                  className="bg-black/40 text-white hover:bg-black/50 rounded-full border border-[#2F2A23]"
                   style={{ 
                     width: '32px', 
                     height: '24px', 
@@ -2312,7 +2313,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     marginRight: 0,
                     minWidth: '32px',
                     minHeight: '24px',
-                    boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)'
+                    boxShadow: 'none'
                   }}
                   onPress={() => setIsMapControlsBarVisible(!isMapControlsBarVisible)}
                 >
@@ -2420,7 +2421,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                     size="sm"
                     className={cn(
                       "flex items-center justify-center rounded-md transition-colors",
-                            "bg-[#FF8E32] text-white hover:opacity-90"
+                            "bg-[#F2B300] text-[#24211C] hover:opacity-90"
                     )}
                     style={{ height: '100%' }}
                     onPress={() => setViewMode("map")}
@@ -2670,7 +2671,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                       size="sm"
                       className={cn(
                         "flex items-center justify-center rounded-md transition-colors",
-                        "bg-[#FF8E32] text-white hover:opacity-90"
+                        "bg-[#F2B300] text-[#24211C] hover:opacity-90"
                       )}
                       style={{ height: '100%' }}
                       onPress={() => setViewMode("report")}
@@ -2895,7 +2896,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                          item: "bg-black text-white data-[hover=true]:bg-gray-800",
                          prev: "bg-black text-white data-[hover=true]:bg-gray-800",
                          next: "bg-black text-white data-[hover=true]:bg-gray-800",
-                         cursor: "bg-orange-500 text-white"
+                         cursor: "bg-orange-500 text-[#24211C]"
                        }}
                      />
                    )}
@@ -2924,12 +2925,12 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
           
           <footer className={cn(
             "w-full px-4 md:px-8 py-3 md:py-4",
-            "md:border-t md:border-[#e0d9cf] md:bg-[#f2f2f4]",
+            "md:border-t md:border-[#e0d9cf] md:bg-[#FBF8F2]",
             "bg-transparent border-0"
           )}>
             <div className="mx-auto max-w-screen-2xl text-center text-sm">
-              <p className="text-white md:text-[#1f1f22]">
-                <span className="text-[#FF8E32] font-semibold">GridAlert</span> <span className="text-white md:text-[#1f1f22]">© {new Date().getFullYear()} - Real-time power outage monitoring</span>
+              <p className="text-white md:text-[#24211C]">
+                <span className="font-rounded font-semibold text-[#F2B300] md:text-[#8A6400]">Wattle</span> <span className="text-[#9C9588] md:text-[#6F685C]">© {new Date().getFullYear()} · Power outages near your clinics</span>
               </p>
             </div>
           </footer>

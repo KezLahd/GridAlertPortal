@@ -1,5 +1,7 @@
 "use client"
 
+import { Wordmark } from "@/components/brand/wordmark"
+
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -40,8 +42,8 @@ export function AppSidebar() {
   // Always start with false to match server render, then update after mount
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [iconLetters, setIconLetters] = useState<string>("")
-  const [iconBgColor, setIconBgColor] = useState<string>("#FF8E32")
-  const [iconTextColor, setIconTextColor] = useState<string>("#1f1f22")
+  const [iconBgColor, setIconBgColor] = useState<string>("#F2B300")
+  const [iconTextColor, setIconTextColor] = useState<string>("#24211C")
 
   // Load collapsed state from localStorage after mount to avoid hydration mismatch
   useEffect(() => {
@@ -137,18 +139,21 @@ export function AppSidebar() {
     <aside
       suppressHydrationWarning
       className={cn(
-        "relative sticky top-0 z-40 flex h-screen flex-none shrink-0 flex-col overflow-hidden bg-gradient-to-b from-orange-500 via-amber-400 to-orange-600 opacity-80 text-[#1f1f22] shadow-lg",
+        "relative sticky top-0 z-40 flex h-screen flex-none shrink-0 flex-col overflow-hidden bg-[#F3EEE3] border-r border-[#E6DFD1] text-[#24211C]",
         // Only apply transition after initial mount to prevent flicker
         "transition-all duration-300",
         isCollapsed ? "w-20" : "w-72",
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.22),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.16),transparent_35%)]" />
       <div className="relative flex flex-col h-full p-5 gap-7">
         <div className="flex items-center justify-between gap-2">
           <div suppressHydrationWarning className={cn("flex items-center gap-2", isCollapsed && "justify-center w-full")}>
-            <Zap className="h-6 w-6 text-black drop-shadow-[0_0_10px_rgba(0,0,0,0.3)] flex-shrink-0" />
-            {!isCollapsed && <span className="text-2xl font-bold text-black drop-shadow">GridAlert</span>}
+            {isCollapsed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/wattle-icon.svg" alt="Wattle" className="h-9 w-9 rounded-[10px]" />
+            ) : (
+              <Wordmark height={26} className="text-[#24211C]" />
+            )}
           </div>
           {!isCollapsed && (
             <Button
@@ -158,7 +163,7 @@ export function AppSidebar() {
                 setIsCollapsed(true)
                 localStorage.setItem("sidebarCollapsed", "true")
               }}
-              className="h-8 w-8 text-black hover:bg-white/30"
+              className="h-8 w-8 text-[#6F685C] hover:bg-[#E6DFD1]"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
@@ -173,13 +178,13 @@ export function AppSidebar() {
               setIsCollapsed(false)
               localStorage.setItem("sidebarCollapsed", "false")
             }}
-            className="h-8 w-8 text-black hover:bg-white/30 -mt-5 mx-auto"
+            className="h-8 w-8 text-[#6F685C] hover:bg-[#E6DFD1] -mt-5 mx-auto"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
         )}
 
-        <div className="h-px w-full bg-black/80 shadow-[0_1px_0_rgba(0,0,0,0.35)]" aria-hidden="true" />
+        <div className="h-px w-full bg-[#E6DFD1]" aria-hidden="true" />
 
         <nav className="space-y-2">
           {navItems.map((item) => {
@@ -192,8 +197,8 @@ export function AppSidebar() {
                 variant={active ? "solid" : "light"}
                 isDisabled={isNavigating}
                 className={cn(
-                  "w-full flex items-center rounded-lg px-3 py-3 text-base font-semibold text-[#1f1f22]",
-                  active ? "bg-black text-white shadow-md" : "hover:bg-white/30",
+                  "w-full flex items-center rounded-full px-4 py-3 text-base font-rounded font-semibold text-[#24211C]",
+                  active ? "bg-[#24211C] text-[#F3EEE4]" : "bg-transparent hover:bg-[#E6DFD1]",
                   isCollapsed ? "justify-center min-w-0" : "justify-start gap-3",
                   isNavigating && "opacity-50 cursor-not-allowed",
                 )}
@@ -205,15 +210,15 @@ export function AppSidebar() {
                 }}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={cn("h-5 w-5 flex-shrink-0", active ? "text-white" : "text-[#1f1f22]")} />
-                {!isCollapsed && <span className={cn(active ? "text-white" : "text-[#1f1f22]")}>{item.label}</span>}
+                <Icon className={cn("h-5 w-5 flex-shrink-0", active ? "text-[#F2B300]" : "text-[#6F685C]")} />
+                {!isCollapsed && <span className={cn(active ? "text-[#F3EEE4]" : "text-[#24211C]")}>{item.label}</span>}
               </Button>
             )
           })}
         </nav>
 
         <div className="mt-auto space-y-3">
-          <div className={cn("rounded-xl bg-white/90 p-3 shadow-md space-y-3", isCollapsed && "p-2")}>
+          <div className={cn("border-t border-[#E6DFD1] pt-4 space-y-3", isCollapsed && "pt-3")}>
             {!isCollapsed ? (
               <>
                 <div className="flex items-center gap-3">
@@ -227,32 +232,32 @@ export function AppSidebar() {
                     {displayInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#1f1f22] truncate">{displayName}</p>
-                    <p className="text-xs text-[#1f1f22] truncate">{userEmail}</p>
+                    <p className="text-sm font-semibold text-[#24211C] truncate">{displayName}</p>
+                    <p className="text-xs text-[#6F685C] truncate">{userEmail}</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button
                     variant={onProfile ? "solid" : "bordered"}
                     className={cn(
-                      "w-full border-orange-300 text-[#1f1f22] bg-white/80 hover:bg-white",
-                      onProfile && "border-transparent bg-[#1f1f22] text-white hover:bg-[#1f1f22]",
+                      "w-full rounded-full font-rounded font-semibold border-[#D3CBBB] text-[#24211C] bg-transparent hover:bg-[#E6DFD1]",
+                      onProfile && "border-transparent bg-[#24211C] text-[#F3EEE4] hover:bg-[#24211C]",
                     )}
                     onPress={() => {
                       setPendingPath("/profile")
                       router.push("/profile")
                     }}
                   >
-                    <User className={cn("h-4 w-4 mr-2", onProfile && "text-white")} />
-                    <span className={cn(onProfile && "text-white")}>Profile</span>
+                    <User className={cn("h-4 w-4 mr-2", onProfile && "text-[#F2B300]")} />
+                    <span className={cn(onProfile && "text-[#F3EEE4]")}>Profile</span>
                   </Button>
                   <Button
                     variant="light"
-                    className="w-full text-[#1f1f22] hover:bg-orange-100/80"
+                    className="w-full rounded-full font-rounded font-semibold text-[#6F685C] hover:bg-[#E6DFD1]"
                     onPress={handleLogout}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                    Sign out
                   </Button>
                 </div>
               </>
@@ -262,8 +267,8 @@ export function AppSidebar() {
                   isIconOnly
                   variant={onProfile ? "solid" : "light"}
                   className={cn(
-                    "h-10 w-10 text-[#1f1f22] hover:bg-orange-100/80",
-                    onProfile && "bg-[#1f1f22] text-white hover:bg-[#1f1f22]",
+                    "h-10 w-10 text-[#24211C] hover:bg-[#E6DFD1]",
+                    onProfile && "bg-[#24211C] text-[#F2B300] hover:bg-[#24211C]",
                   )}
                   onPress={() => {
                     setPendingPath("/profile")
@@ -276,9 +281,9 @@ export function AppSidebar() {
                 <Button
                   isIconOnly
                   variant="light"
-                  className="h-10 w-10 text-[#1f1f22] hover:bg-orange-100/80"
+                  className="h-10 w-10 text-[#6F685C] hover:bg-[#E6DFD1]"
                   onPress={handleLogout}
-                  title="Logout"
+                  title="Sign out"
                 >
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -286,15 +291,15 @@ export function AppSidebar() {
             )}
           </div>
           {!isCollapsed && (
-            <div className="flex items-center gap-2 px-1 py-1 text-xs text-[#1f1f22]">
-              <div className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(190,242,100,0.9)]" />
+            <div className="flex items-center gap-2 px-1 py-1 text-xs text-[#6F685C]">
+              <div className="h-2 w-2 rounded-full bg-[#F2B300]" />
               Live grid status
             </div>
           )}
           {isCollapsed && (
             <div className="flex items-center justify-center">
               <div
-                className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(190,242,100,0.9)]"
+                className="h-2 w-2 rounded-full bg-[#F2B300]"
                 title="Live grid status"
               />
             </div>

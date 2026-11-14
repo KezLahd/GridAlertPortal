@@ -1,4 +1,6 @@
 "use client"
+
+import { Wordmark } from "@/components/brand/wordmark"
 import type { MemberRecord } from "@/components/company-members-table"
 import { googleMapsApiKey } from "@/lib/config"
 import { getSupabaseClient } from "@/lib/supabase"
@@ -337,7 +339,7 @@ export default function ProfilePage() {
   }, [profile])
 
   const profileIconBgColor = useMemo(() => {
-    return profile?.icon_bg_color || "#f97316"
+    return profile?.icon_bg_color || "#F2B300"
   }, [profile])
 
   const profileIconTextColor = useMemo(() => {
@@ -1333,11 +1335,10 @@ export default function ProfilePage() {
           <AppSidebar />
         </div>
         <div className="flex w-full flex-col">
-          <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+          <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#2F2A23]">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
-                <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+                <Wordmark height={22} className="text-[#F3EEE4]" />
               </div>
             </div>
           </div>
@@ -1381,11 +1382,10 @@ export default function ProfilePage() {
           <AppSidebar />
         </div>
         {/* Mobile Header Navigation */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#2F2A23]">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
-              <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+              <Wordmark height={22} className="text-[#F3EEE4]" />
             </div>
             <nav className="flex items-center gap-2">
               {[
@@ -1415,7 +1415,7 @@ export default function ProfilePage() {
                     isIconOnly
                     variant="solid"
                     size="sm"
-                    className="flex items-center justify-center rounded-lg bg-[#FF8E32] text-white"
+                    className="flex items-center justify-center rounded-lg bg-[#F2B300] text-[#24211C]"
                   >
                     <User className="h-5 w-5" />
                   </HeroUIButton>
@@ -1471,7 +1471,7 @@ export default function ProfilePage() {
               <Card className="md:col-span-2 lg:col-span-1 bg-gray-900 md:bg-[hsl(var(--card))] border-gray-800 md:border-[hsl(var(--border))]">
                 <CardHeader className="flex flex-col items-center text-center space-y-3 pb-3">
                   <Avatar className="h-20 w-20">
-                    <AvatarFallback className="bg-orange-500 text-white font-bold text-2xl">
+                    <AvatarFallback className="bg-orange-500 text-[#24211C] font-bold text-2xl">
                       {profileInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -1633,11 +1633,10 @@ export default function ProfilePage() {
           <AppSidebar />
         </div>
         {/* Mobile Header Navigation */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-orange-500/30" style={{ boxShadow: '0 4px 12px -2px rgba(255, 142, 50, 0.3)' }}>
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#2F2A23]">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-[#FF8E32] drop-shadow-[0_0_10px_rgba(255,142,50,0.3)]" />
-              <span className="text-lg font-bold text-[#FF8E32] drop-shadow">GridAlert</span>
+              <Wordmark height={22} className="text-[#F3EEE4]" />
             </div>
             <nav className="flex items-center gap-2">
               {[
@@ -1667,7 +1666,7 @@ export default function ProfilePage() {
                     isIconOnly
                     variant="solid"
                     size="sm"
-                    className="flex items-center justify-center rounded-lg bg-[#FF8E32] text-white"
+                    className="flex items-center justify-center rounded-lg bg-[#F2B300] text-[#24211C]"
                   >
                     <User className="h-5 w-5" />
                   </HeroUIButton>
@@ -1798,7 +1797,7 @@ export default function ProfilePage() {
                           <div
                             className="h-16 w-16 md:h-20 md:w-20 rounded-lg flex items-center justify-center font-bold text-xl md:text-2xl"
                             style={{
-                              backgroundColor: profile.company.logoBgColor || "#f97316",
+                              backgroundColor: profile.company.logoBgColor || "#F2B300",
                               color: profile.company.logoTextColor || "#ffffff",
                             }}
                           >
@@ -1848,7 +1847,7 @@ export default function ProfilePage() {
                             <Button 
                               onClick={handleInviteUserClick} 
                               disabled={saving || !isAdmin}
-                              className="w-full h-auto py-2 text-white bg-[#FF8E32] hover:bg-[#FF8E32]/90"
+                              className="w-full h-auto py-2 text-[#24211C] bg-[#F2B300] hover:bg-[#F2B300]/90"
                             >
                             <UserPlus className="h-4 w-4 mr-2" />
                             Invite User
@@ -1923,7 +1922,7 @@ export default function ProfilePage() {
                           <div
                             className="h-20 w-20 rounded-lg flex items-center justify-center font-bold text-2xl"
                             style={{
-                              backgroundColor: profile.company.logoBgColor || "#f97316",
+                              backgroundColor: profile.company.logoBgColor || "#F2B300",
                               color: profile.company.logoTextColor || "#ffffff",
                             }}
                           >
@@ -2006,12 +2005,12 @@ export default function ProfilePage() {
           {/* Mobile Footer */}
           <footer className={cn(
             "w-full px-4 md:px-8 py-3 md:py-4",
-            "md:mt-auto md:border-t md:border-[#e0d9cf] md:bg-[#f2f2f4]",
+            "md:mt-auto md:border-t md:border-[#e0d9cf] md:bg-[#FBF8F2]",
             "bg-black border-0"
           )}>
             <div className="mx-auto max-w-screen-2xl text-center text-sm">
-              <p className="text-white md:text-[#1f1f22]">
-                <span className="text-[#FF8E32] font-semibold">GridAlert</span> <span className="text-white md:text-[#1f1f22]">© {new Date().getFullYear()} - Real-time power outage monitoring</span>
+              <p className="text-white md:text-[#24211C]">
+                <span className="font-rounded font-semibold text-[#F2B300] md:text-[#8A6400]">Wattle</span> <span className="text-[#9C9588] md:text-[#6F685C]">© {new Date().getFullYear()} · Power outages near your clinics</span>
               </p>
             </div>
           </footer>
@@ -2038,7 +2037,7 @@ export default function ProfilePage() {
           open={editIconOpen}
           onOpenChange={setEditIconOpen}
           currentLetters={profile.company.logoLetters || profile.company.name[0]}
-          currentBgColor={profile.company.logoBgColor || "#f97316"}
+          currentBgColor={profile.company.logoBgColor || "#F2B300"}
           currentTextColor={profile.company.logoTextColor || "#ffffff"}
           companyName={profile.company.name}
           onSave={handleUpdateCompanyIcon}

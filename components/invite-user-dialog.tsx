@@ -711,7 +711,7 @@ export function InviteUserDialog({ open, onOpenChange, onInvite, companyId, admi
           <Button
             onClick={handleSubmit}
             disabled={loading || !formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()}
-            className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs md:text-sm text-[#24211C] md:text-[#24211C] bg-[#F2B300] md:bg-[hsl(var(--primary))] hover:bg-[#F5C023] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Sending..." : "Send Invitation"}
           </Button>

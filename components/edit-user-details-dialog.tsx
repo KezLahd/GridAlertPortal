@@ -625,7 +625,7 @@ export function EditUserDetailsDialog({
           <Button variant="bordered" onClick={() => onOpenChange(false)} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !firstName.trim() || !lastName.trim()} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#FF8E32] md:disabled:hover:bg-[hsl(var(--primary))]">
+          <Button onClick={handleSave} disabled={saving || !firstName.trim() || !lastName.trim()} className="text-xs md:text-sm text-[#24211C] md:text-[#24211C] bg-[#F2B300] md:bg-[hsl(var(--primary))] hover:bg-[#F5C023] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#F2B300] md:disabled:hover:bg-[hsl(var(--primary))]">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

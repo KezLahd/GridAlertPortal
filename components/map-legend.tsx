@@ -18,9 +18,9 @@ export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = fals
             <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id={`multiColorGradient-${outageType}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#EF4444" />
-                  <stop offset="50%" stopColor="#F97316" />
-                  <stop offset="100%" stopColor="#3B82F6" />
+                  <stop offset="0%" stopColor="#F2B300" />
+                  <stop offset="50%" stopColor="#F2B300" />
+                  <stop offset="100%" stopColor="#9C9588" />
                 </linearGradient>
               </defs>
               <path
@@ -53,12 +53,12 @@ export default function MapLegend({ outageType, zoomLevel, showPoiMarkers = fals
             <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M12 2L22 8.5L18 21H6L2 8.5L12 2Z"
-                stroke={outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6"}
+                stroke={outageType === "unplanned" ? "#F2B300" : outageType === "planned" ? "#C98F00" : "#9C9588"}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeOpacity="0.7"
-                fill={outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6"}
+                fill={outageType === "unplanned" ? "#F2B300" : outageType === "planned" ? "#C98F00" : "#9C9588"}
                 fillOpacity="0.25"
               />
             </svg>

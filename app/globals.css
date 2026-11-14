@@ -4,66 +4,65 @@
 
 @layer base {
   :root {
-    /* Light-first palette */
-    --background: 240 5% 94%; /* soft grey */
-    --foreground: 230 10% 15%; /* deep charcoal */
-    --card: 0 0% 100%; /* white */
-    --card-foreground: 230 10% 15%;
+    /* Wattle: cream, ink, one gold (#F2B300). Light first, like the app. */
+    --background: 40 54% 97%;       /* #FBF8F2 */
+    --foreground: 37 13% 13%;       /* #24211C ink */
+    --card: 40 54% 97%;
+    --card-foreground: 37 13% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 10% 15%;
-    --border: 30 12% 80%; /* warm light border */
-    --input: 30 12% 80%;
-    --ring: 27 100% 50%; /* accent ring */
+    --popover-foreground: 37 13% 13%;
+    --border: 40 26% 86%;           /* #E6DFD1 */
+    --input: 40 26% 86%;
+    --ring: 44 100% 47%;
 
-    /* Brand colors */
-    --primary: 27 100% 55%; /* #FF8E32-ish */
-    --primary-foreground: 0 0% 0%;
-    --secondary: 30 6% 92%; /* light neutral */
-    --secondary-foreground: 230 10% 22%;
-    --muted: 30 6% 92%;
-    --muted-foreground: 30 8% 45%;
-    --accent: 27 100% 55%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 0 75% 55%;
+    --primary: 44 100% 47%;         /* gold #F2B300 */
+    --primary-foreground: 37 13% 13%;
+    --secondary: 40 37% 92%;        /* #F3EEE3 */
+    --secondary-foreground: 37 13% 13%;
+    --muted: 40 37% 92%;
+    --muted-foreground: 37 8% 40%;  /* #6F685C */
+    --accent: 44 100% 47%;
+    --accent-foreground: 37 13% 13%;
+    --destructive: 6 62% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Charts */
-    --chart-1: 27 100% 55%;
-    --chart-2: 19 100% 55%;
-    --chart-3: 30 8% 45%;
-    --chart-4: 30 12% 80%;
-    --chart-5: 230 10% 30%;
+    --chart-1: 44 100% 47%;
+    --chart-2: 42 100% 27%;
+    --chart-3: 37 8% 40%;
+    --chart-4: 40 26% 86%;
+    --chart-5: 37 13% 13%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
+    --font-rounded: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+    --font-text: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
   .dark {
-    /* fallback if dark mode forced */
-    --background: 240 8% 6%;
-    --foreground: 32 26% 90%;
-    --card: 240 6% 11%;
-    --card-foreground: 32 26% 90%;
-    --popover: 240 6% 11%;
-    --popover-foreground: 32 26% 90%;
-    --border: 24 22% 18%;
-    --input: 24 22% 18%;
-    --ring: 27 100% 60%;
-    --primary: 27 100% 60%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 240 6% 13%;
-    --secondary-foreground: 28 18% 75%;
-    --muted: 240 6% 13%;
-    --muted-foreground: 28 12% 60%;
-    --accent: 27 100% 60%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 0 80% 62%;
+    --background: 34 17% 6%;        /* #12100D */
+    --foreground: 38 33% 92%;       /* #F3EEE4 */
+    --card: 34 15% 10%;
+    --card-foreground: 38 33% 92%;
+    --popover: 34 15% 10%;
+    --popover-foreground: 38 33% 92%;
+    --border: 35 15% 16%;           /* #2F2A23 */
+    --input: 35 15% 16%;
+    --ring: 44 100% 47%;
+    --primary: 44 100% 47%;
+    --primary-foreground: 37 13% 13%;
+    --secondary: 34 15% 10%;
+    --secondary-foreground: 38 33% 92%;
+    --muted: 34 15% 10%;
+    --muted-foreground: 38 8% 57%;
+    --accent: 44 100% 47%;
+    --accent-foreground: 37 13% 13%;
+    --destructive: 6 70% 58%;
     --destructive-foreground: 0 0% 100%;
-    --chart-1: 27 100% 60%;
-    --chart-2: 19 100% 60%;
-    --chart-3: 28 12% 60%;
-    --chart-4: 24 22% 18%;
-    --chart-5: 0 0% 70%;
-    --radius: 0.75rem;
+    --chart-1: 44 100% 47%;
+    --chart-2: 44 100% 60%;
+    --chart-3: 38 8% 57%;
+    --chart-4: 35 15% 16%;
+    --chart-5: 38 33% 92%;
+    --radius: 0.875rem;
   }
 
   * {
@@ -71,10 +70,11 @@
   }
 
   body {
-    background-color: #f2f2f4;
-    color: #1f1f22;
-    font-family: "Inter", "Satoshi", "Geist", system-ui, -apple-system, sans-serif;
-    letter-spacing: -0.01em;
+    background-color: #FBF8F2;
+    color: #24211C;
+    font-family: var(--font-text);
+    letter-spacing: -0.005em;
+    -webkit-font-smoothing: antialiased;
     line-height: 1.55;
     -webkit-overflow-scrolling: touch;
   }
@@ -92,11 +92,20 @@
 
   /* Prevent scrolling on mobile for map pages only - handled by component */
 
+  /* titles, numbers and things you tap are Rounded; names and sentences are SF Pro */
+  h1,
+  h2,
+  h3,
+  button,
+  .font-rounded {
+    font-family: var(--font-rounded);
+  }
+
   h1,
   h2,
   h3 {
-    font-weight: 600;
-    color: #111113;
+    font-weight: 700;
+    color: #24211C;
     letter-spacing: -0.01em;
   }
 
@@ -104,26 +113,26 @@
   li,
   span {
     font-weight: 400;
-    color: #2b2b2f;
+    color: inherit;
     line-height: 1.55;
   }
 
   small {
-    color: #5e5a55;
+    color: #6F685C;
   }
 
   a {
-    color: #ff8e32;
+    color: #8A6400;
     text-decoration: none;
   }
 
   a:hover {
-    color: #ffaa5b;
+    color: #6B4E00;
   }
 
   ::selection {
-    background: #ff8e32;
-    color: #0e0e10;
+    background: #F2B300;
+    color: #24211C;
   }
 
   /* Make Google Maps InfoWindow padding transparent so header image can extend through */

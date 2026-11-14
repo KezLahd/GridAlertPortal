@@ -44,9 +44,9 @@ export function Calendar05({ value, onChange, defaultMonth, numberOfMonths = 2 }
           "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-outside)]:bg-[#fff3e6] [&:has([aria-selected])]:bg-[#fff3e6] [&:has(.rdp-day_range_start)]:!rounded-l-md [&:has(.rdp-day_range_end)]:!rounded-r-md [&:has(.rdp-day_selected)]:!rounded-md focus-within:relative focus-within:z-20",
         day: "h-9 w-9 p-0 font-medium text-sm rounded-md aria-selected:opacity-100 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
         day_selected:
-          "bg-[#FF8E32] text-white hover:bg-[#ff993f] hover:text-white focus:bg-[#FF8E32] focus:text-white rounded-md focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+          "bg-[#F2B300] text-[#24211C] hover:bg-[#F5C023] hover:text-[#24211C] focus:bg-[#F2B300] focus:text-[#24211C] rounded-md focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
         day_today:
-          "border border-[#FF8E32]/40 text-[#111] rounded-md aria-selected:!bg-[#FF8E32] aria-selected:!text-white focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+          "border border-[#F2B300]/40 text-[#111] rounded-md aria-selected:!bg-[#F2B300] aria-selected:!text-[#24211C] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
         day_range_start: "bg-[#fff3e6] text-[#111] rounded-l-md",
         day_range_end: "bg-[#fff3e6] text-[#111] rounded-r-md",
         day_range_middle: "bg-[#fff3e6] text-[#111] !rounded-none",

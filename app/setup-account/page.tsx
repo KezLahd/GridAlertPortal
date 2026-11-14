@@ -1,5 +1,7 @@
 "use client"
 
+import { Wordmark } from "@/components/brand/wordmark"
+
 import type React from "react"
 
 import { useEffect, useState, Suspense, useRef } from "react"
@@ -12,7 +14,6 @@ import { Card } from "@/components/ui/card"
 import { Select, SelectItem, Checkbox } from "@heroui/react"
 import { Eye, EyeOff, Check } from "lucide-react"
 
-const BACKGROUNDS = ["/animation-1.svg", "/animation-2.svg", "/animation-3.svg", "/animation-4.svg", "/animation-5.svg", "/animation-6.svg"]
 const PROVIDERS = [
   { name: "Ausgrid", color: "bg-blue-500" },
   { name: "Endeavour", color: "bg-green-500" },
@@ -308,8 +309,8 @@ function SetupAccountContent() {
     const originalBodyBg = document.body.style.backgroundColor
     const originalHtmlBg = document.documentElement.style.backgroundColor
     
-    document.body.style.backgroundColor = "#000000"
-    document.documentElement.style.backgroundColor = "#000000"
+    document.body.style.backgroundColor = "#12100D"
+    document.documentElement.style.backgroundColor = "#12100D"
     
     return () => {
       document.body.style.backgroundColor = originalBodyBg
@@ -461,7 +462,7 @@ function SetupAccountContent() {
 
   if (loading) {
     return (
-      <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+      <div className="min-h-mobile flex items-center justify-center bg-[#FBF8F2]">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-gray-600">Loading invitation...</p>
@@ -472,7 +473,7 @@ function SetupAccountContent() {
 
   if (error && !profile) {
     return (
-      <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
+      <div className="min-h-mobile flex items-center justify-center bg-[#FBF8F2]">
         <Card className="max-w-md w-full p-8">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -488,43 +489,17 @@ function SetupAccountContent() {
   }
 
   return (
-    <div className="relative flex h-[100dvh] w-full items-center justify-center bg-[#000000] p-6 md:p-10 overflow-hidden fixed inset-0 md:static md:bg-[#050505]">
-      <div className="pointer-events-none absolute inset-0 hidden md:block">
-        <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/6 to-black/80 mix-blend-screen" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22)_0%,_rgba(255,255,255,0)_40%)] opacity-60" />
-      </div>
-
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {BACKGROUNDS.map((src, idx) => (
-          <img
-            key={src}
-            src={src}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover opacity-0 animate-[bgCycle_7s_linear_infinite]"
-            style={{
-              animationDelay: `${idx * 0.3}s`,
-              filter:
-                "brightness(0) invert(1) drop-shadow(0 0 18px rgba(255,140,0,0.65)) drop-shadow(0 0 42px rgba(255,140,0,0.5))",
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="pointer-events-none absolute left-0 right-0 top-6 md:top-10 flex flex-col items-center gap-3 md:gap-6">
-        <img
-          src="/gridalert-logo.svg"
-          alt="GridAlert"
-          className="h-24 w-auto md:h-32 drop-shadow-[0_14px_48px_rgba(0,0,0,0.6)]"
-        />
+    <div className="relative flex h-[100dvh] w-full items-center justify-center bg-[#12100D] p-6 md:p-10 overflow-hidden fixed inset-0 md:static md:bg-[#FBF8F2]">
+      <div className="pointer-events-none absolute left-0 right-0 top-8 md:top-10 flex justify-center">
+        <Wordmark height={40} className="text-[#F3EEE4] md:text-[#24211C]" />
       </div>
 
       <div className="relative w-full max-w-3xl">
-        <Card ref={cardRef} className="relative w-full border border-white/10 md:border-gray-200 bg-black/70 md:bg-white shadow-2xl p-8 md:p-10">
+        <Card ref={cardRef} className="relative w-full border border-white/10 md:border-gray-200 bg-[#1D1A16] md:bg-white md:border-[#E6DFD1] shadow-none p-8 md:p-10">
           <div className="mb-6 md:mb-8 space-y-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-white md:text-slate-900">Setup Your Account</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white md:text-slate-900">Set up your account</h1>
             <p className="text-sm md:text-base text-gray-400 md:text-slate-600">
-              Welcome, {profile?.first_name || "there"}! Finish your profile to access GridAlert.
+              Welcome, {profile?.first_name || "there"}! Finish your profile to start using Wattle.
             </p>
           </div>
 

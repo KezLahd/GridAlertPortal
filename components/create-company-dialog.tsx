@@ -511,7 +511,7 @@ export function CreateCompanyDialog({ onCreateCompany, saving, trigger, mapsLoad
           <Button variant="outline" onClick={() => setOpen(false)} className="text-xs md:text-sm text-white md:text-foreground border-gray-600 md:border-gray-200">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={saving} className="text-xs md:text-sm text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))]">
+          <Button onClick={handleSubmit} disabled={saving} className="text-xs md:text-sm text-[#24211C] md:text-[#24211C] bg-[#F2B300] md:bg-[hsl(var(--primary))] hover:bg-[#F5C023] md:hover:bg-[hsl(var(--primary))]">
             {saving ? "Creating..." : "Create Company"}
           </Button>
         </DialogFooter>

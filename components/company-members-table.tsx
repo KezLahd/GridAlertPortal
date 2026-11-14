@@ -126,7 +126,7 @@ function MultiSelect({
                     className={cn(
                       "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
                       value.includes(opt.value)
-                        ? "border-orange-500 bg-orange-500 text-white"
+                        ? "border-orange-500 bg-orange-500 text-[#24211C]"
                         : "border-muted-foreground/30 text-transparent",
                     )}
                   >
@@ -243,7 +243,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
   }
 
   const getIconBgColor = (member: MemberRecord) => {
-    return member.icon_bg_color || "#f97316"
+    return member.icon_bg_color || "#F2B300"
   }
 
   const getIconTextColor = (member: MemberRecord) => {
@@ -384,7 +384,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                     <TableRow 
                       key={member.user_id}
                       data-member-id={member.user_id}
-                      className={`border-gray-900 md:border-[hsl(var(--border))] ${isSelected ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
+                      className={`border-gray-900 md:border-[hsl(var(--border))] ${isSelected ? "bg-[#F2B300]/30 md:bg-blue-50 hover:!bg-[#F2B300]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
                       style={{
                         WebkitTapHighlightColor: 'transparent',
                         userSelect: 'none',
@@ -408,7 +408,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                               }}
                               className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] transition-colors ${
                                 isSelected
-                                  ? "border-[#FF8E32] bg-[#FF8E32] text-white"
+                                  ? "border-[#F2B300] bg-[#F2B300] text-[#24211C]"
                                   : "border-gray-800 md:border-gray-300 bg-black md:bg-white hover:border-gray-700 md:hover:border-gray-400"
                               }`}
                             >
@@ -451,9 +451,9 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                           style={{
                             backgroundColor: member.role === "admin" 
                               ? (companyTextColor || "#ffffff") 
-                              : (companyBgColor || "#f97316"),
+                              : (companyBgColor || "#F2B300"),
                             color: member.role === "admin" 
-                              ? (companyBgColor || "#f97316") 
+                              ? (companyBgColor || "#F2B300") 
                               : (companyTextColor || "#ffffff"),
                           }}
                         >
@@ -704,7 +704,7 @@ export function CompanyMembersTable({ members, onUpdateMember, onDeleteMember, s
                 <Button 
                   variant="outline" 
                   onClick={() => setEditMember(null)}
-                  className="bg-[#FF8E32] hover:bg-[#FFAA5B] text-black border-0"
+                  className="bg-[#F2B300] hover:bg-[#F5C023] text-black border-0"
                 >
                   Cancel
                 </Button>

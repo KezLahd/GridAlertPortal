@@ -113,17 +113,17 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: "GridAlert <gridalert@mjsons.net>",
+          from: "Wattle <gridalert@mjsons.net>",
           to: email,
-          subject: `You've been invited to ${company?.name || "a company"}'s GridAlert portal`,
+          subject: `You've been invited to ${company?.name || "a company"}'s Wattle portal`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #1a1a1a;">Welcome to GridAlert!</h2>
+              <h2 style="color: #24211C;">Welcome to Wattle</h2>
               <p>Hi ${first_name},</p>
-              <p>${admin?.first_name} ${admin?.last_name} has invited you to join <strong>${company?.name}</strong>'s GridAlert portal to view live outage data and receive notifications.</p>
+              <p>${admin?.first_name} ${admin?.last_name} has invited you to join <strong>${company?.name}</strong>'s Wattle portal to see power outages near your sites.</p>
               <p>To complete your account setup, please click the link below:</p>
               <p style="margin: 30px 0;">
-                <a href="${inviteUrl}" style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Account Setup</a>
+                <a href="${inviteUrl}" style="background-color: #F2B300; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Account Setup</a>
               </p>
               <p>You'll need to:</p>
               <ul>
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
               </ul>
               <p style="margin-top: 30px; color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
               <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-              <p>Best regards,<br/>The GridAlert Team</p>
+              <p>Best regards,<br/>The Wattle team</p>
             </div>
           `,
         }),

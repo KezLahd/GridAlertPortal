@@ -4,6 +4,7 @@ import { googleMapsApiKey } from "@/lib/config"
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from "@react-google-maps/api"
 import MapsError from "./maps-error"
+import AppleMap from "./apple-map"
 import MapLegend from "./map-legend"
 import { Badge } from "@/components/ui/badge"
 
@@ -36,9 +37,9 @@ const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: numbe
 
 // Marker colors based on outage type
 const markerColors = {
-  unplanned: "red",
-  planned: "orange",
-  future: "blue",
+  unplanned: "#F2B300",
+  planned: "#C98F00",
+  future: "#9C9588",
 }
 
 const buildOutageKey = (outage: any, index: number) => {
@@ -141,7 +142,7 @@ const ClientGoogleMap = ({ children, ...props }: any) => {
   return <GoogleMap {...props}>{children}</GoogleMap>
 }
 
-export default function Map({ outages, outageType, searchQuery = "", selectedOutageId, selectedPoiId, companyCenter, companyLocation, poiLocations = [], showPoiMarkers = false, showPolygons = false, showServiceAreas = false, serviceAreas = [] }: MapProps) {
+function GoogleMapView({ outages, outageType, searchQuery = "", selectedOutageId, selectedPoiId, companyCenter, companyLocation, poiLocations = [], showPoiMarkers = false, showPolygons = false, showServiceAreas = false, serviceAreas = [] }: MapProps) {
   const [apiError, setApiError] = useState<string | null>(null)
   const [currentZoom, setCurrentZoom] = useState(12)
 
@@ -660,7 +661,7 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
     if (typeof window !== "undefined" && window.google?.maps) {
       return {
         path: window.google.maps.SymbolPath.CIRCLE,
-        fillColor: "#EF4444",
+        fillColor: "#F2B300",
         fillOpacity: 1,
         strokeWeight: 2,
         strokeColor: "#ffffff",
@@ -903,7 +904,7 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
             }
 
             const geometryType = geoJsonData.geometry.type
-            const color = area.color_hex || '#4285F4'
+            const color = area.color_hex || '#9C9588'
             const polygons: React.ReactElement[] = []
 
             if (geometryType === 'Polygon') {
@@ -1041,9 +1042,9 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
                 key={`polygon-${outageId}-${provider}`}
                 paths={polygonPath}
                 options={{
-                  fillColor: outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6",
+                  fillColor: outageType === "unplanned" ? "#F2B300" : outageType === "planned" ? "#C98F00" : "#9C9588",
                   fillOpacity: 0.25,
-                  strokeColor: outageType === "unplanned" ? "#EF4444" : outageType === "planned" ? "#F97316" : "#3B82F6",
+                  strokeColor: outageType === "unplanned" ? "#F2B300" : outageType === "planned" ? "#C98F00" : "#9C9588",
                   strokeOpacity: 0.7,
                   strokeWeight: 2,
                   clickable: false,
@@ -1058,4 +1059,11 @@ export default function Map({ outages, outageType, searchQuery = "", selectedOut
       <MapLegend outageType={outageType} zoomLevel={currentZoom} showPoiMarkers={showPoiMarkers} showPolygons={showPolygons} companyName={companyLocation?.name} />
     </div>
   )
+}
+
+// Apple MapKit JS once the key is set up (NEXT_PUBLIC_MAP_PROVIDER=apple plus the MAPKIT_* server vars, see
+// app/api/mapkit-token); Google Maps until then.
+export default function Map(props: MapProps) {
+  if (process.env.NEXT_PUBLIC_MAP_PROVIDER === "apple") return <AppleMap {...props} />
+  return <GoogleMapView {...props} />
 }

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/heroui"
 import { DesktopInput } from "@/components/desktop-input"
-import { MobileInput } from "@/components/mobile-input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 
@@ -169,31 +168,18 @@ export function LoginForm() {
   }
 
   return (
-    <div className="rounded-xl border bg-black/40 md:bg-white border-gray-800 md:border-[hsl(var(--border))] p-6 shadow-lg backdrop-blur">
-      <div className="mb-6 space-y-2 text-center">
-        <p className="text-3xl font-semibold tracking-tight text-white md:text-black">GridAlert</p>
-        <h1 className="text-2xl font-semibold text-white md:text-neutral-900">Sign in</h1>
-        <p className="text-sm text-gray-400 md:text-neutral-600">Use your company email and password.</p>
-      </div>
+    <div>
+      <h1 className="font-rounded text-2xl font-bold text-[#24211C]">Sign in</h1>
+      <p className="mt-1 mb-6 text-sm text-[#6F685C]">Use your work email and password.</p>
 
       {error && (
-        <Alert variant="destructive" className="mb-4 bg-red-900/50 border-red-700 md:bg-red-50 md:border-red-200">
-          <AlertDescription className="text-red-300 md:text-red-800">{error}</AlertDescription>
+        <Alert variant="destructive" className="mb-4 border-[#E6DFD1] bg-[#FDEFC2]/40">
+          <AlertDescription className="text-[#24211C]">{error}</AlertDescription>
         </Alert>
       )}
 
       <form className="space-y-4" onSubmit={handleLogin}>
-        <div className="md:hidden">
-          <MobileInput
-            ref={emailRef}
-            label="Email"
-            placeholder=""
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="hidden md:block">
+        <div>
           <DesktopInput
             ref={emailRef}
             label="Email"
@@ -203,17 +189,7 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="md:hidden">
-          <MobileInput
-            ref={passwordRef}
-            label="Password"
-            placeholder=""
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div className="hidden md:block">
+        <div>
           <DesktopInput
             ref={passwordRef}
             label="Password"
@@ -225,7 +201,7 @@ export function LoginForm() {
         </div>
         <Button 
           type="submit" 
-          className="w-full text-white md:text-foreground bg-[#FF8E32] md:bg-[hsl(var(--primary))] hover:bg-[#FFAA5B] md:hover:bg-[hsl(var(--primary))] disabled:opacity-50 disabled:cursor-not-allowed" 
+          className="w-full h-12 rounded-full font-rounded text-base font-semibold text-[#24211C] bg-[#F2B300] hover:bg-[#F5C023] disabled:opacity-50 disabled:cursor-not-allowed" 
           isDisabled={loading || !email.trim() || !password.trim()} 
           color="primary" 
           variant="solid"

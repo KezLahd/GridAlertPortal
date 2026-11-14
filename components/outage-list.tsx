@@ -389,7 +389,7 @@ function CompactOutageItem({ outage, outageType }: { outage: any; outageType: "u
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between">
         <div className="flex flex-col">
-          <h3 className="font-semibold text-[#1f1f22]">{outage.area_suburb}</h3>
+          <h3 className="font-semibold text-[#24211C]">{outage.area_suburb}</h3>
         </div>
         <Badge className={cn(providerColor, "text-center")} variant="outline">
           {outage.provider || "Unknown"}

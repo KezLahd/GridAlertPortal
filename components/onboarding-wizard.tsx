@@ -85,10 +85,10 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
   const progress = (step / totalSteps) * 100
 
   return (
-    <div className="min-h-mobile flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-mobile flex items-center justify-center bg-[#FBF8F2] p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Welcome to GridAlert</CardTitle>
+          <CardTitle>Welcome to Wattle</CardTitle>
           <CardDescription>Let's set up your profile in just a few steps</CardDescription>
           <Progress value={progress} className="mt-4" />
         </CardHeader>
@@ -96,7 +96,7 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
           {step === 1 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-[#24211C] font-bold">
                   1
                 </div>
                 <div>
@@ -128,7 +128,7 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-[#24211C] font-bold">
                   2
                 </div>
                 <div>
@@ -161,7 +161,7 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-[#24211C] font-bold">
                   3
                 </div>
                 <div>
@@ -200,7 +200,7 @@ export function OnboardingWizard({ profile, onUpdate, onComplete }: OnboardingWi
           {step === 4 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-[#24211C] font-bold">
                   4
                 </div>
                 <div>

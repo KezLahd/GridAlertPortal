@@ -9,7 +9,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[hsl(var(--card))] border-[hsl(var(--border))] text-[hsl(var(--foreground))] [&>svg]:text-[#FF8E32]",
+          "bg-[hsl(var(--card))] border-[hsl(var(--border))] text-[hsl(var(--foreground))] [&>svg]:text-[#F2B300]",
         destructive:
           "bg-[hsl(var(--card))] border-[hsl(var(--border))] text-[#FF4A4A] [&>svg]:text-[#FF4A4A]",
       },

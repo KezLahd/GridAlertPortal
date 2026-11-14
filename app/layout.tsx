@@ -1,21 +1,20 @@
 import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
-import { Inter, Instrument_Serif, DM_Sans } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { HeroUIProviders } from "@/components/heroui-provider"
 import { MobileEmailScroll } from "@/components/mobile-email-scroll"
 
-const inter = Inter({ subsets: ["latin"] })
-const serif = Instrument_Serif({ weight: "400", subsets: ["latin"], variable: "--font-serif" })
-const sans = DM_Sans({ subsets: ["latin"], variable: "--font-sans" })
+// Type is Apple's system faces only (SF Pro Rounded for titles, numbers and buttons; SF Pro for text), with each
+// platform's own sans as the fallback. Nothing is downloaded.
 
 export const metadata: Metadata = {
-  title: "GridAlert - Power Outage Monitoring",
-  description: "Monitor planned and unplanned power outages in your area",
-  generator: 'v0.dev',
+  title: "Wattle — power outages near your clinics",
+  description: "Planned and unplanned power outages near your clinics and pharmacies, from Australia's electricity distributors.",
+  applicationName: "Wattle",
   icons: {
-    icon: '/gridalert-favicon.svg',
+    icon: [{ url: "/wattle-icon.svg", type: "image/svg+xml" }],
+    apple: "/apple-icon.png",
   },
   viewport: {
     width: 'device-width',
@@ -31,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`} suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en-AU" suppressHydrationWarning>
+      <body>
         <HeroUIProviders>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <MobileEmailScroll />

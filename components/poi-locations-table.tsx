@@ -504,25 +504,25 @@ export function PoiLocationsTable({
                         <DropdownMenuItem onClick={() => onStatusFilterChange("ACTIVE")} className="text-white md:text-foreground focus:bg-gray-800 md:focus:bg-accent">
                           <div className="flex items-center gap-2 w-full">
                             <Badge className={getStatusBadgeVariant("ACTIVE")}>Active</Badge>
-                            {statusFilter === "ACTIVE" && <span className="ml-auto text-[#FF8E32] md:text-primary">✓</span>}
+                            {statusFilter === "ACTIVE" && <span className="ml-auto text-[#F2B300] md:text-primary">✓</span>}
                           </div>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onStatusFilterChange("RESERVED")} className="text-white md:text-foreground focus:bg-gray-800 md:focus:bg-accent">
                           <div className="flex items-center gap-2 w-full">
                             <Badge className={getStatusBadgeVariant("RESERVED")}>Reserved</Badge>
-                            {statusFilter === "RESERVED" && <span className="ml-auto text-[#FF8E32] md:text-primary">✓</span>}
+                            {statusFilter === "RESERVED" && <span className="ml-auto text-[#F2B300] md:text-primary">✓</span>}
                           </div>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onStatusFilterChange("RETIRED")} className="text-white md:text-foreground focus:bg-gray-800 md:focus:bg-accent">
                           <div className="flex items-center gap-2 w-full">
                             <Badge className={getStatusBadgeVariant("RETIRED")}>Retired</Badge>
-                            {statusFilter === "RETIRED" && <span className="ml-auto text-[#FF8E32] md:text-primary">✓</span>}
+                            {statusFilter === "RETIRED" && <span className="ml-auto text-[#F2B300] md:text-primary">✓</span>}
                           </div>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onStatusFilterChange("ALL")} className="text-white md:text-foreground focus:bg-gray-800 md:focus:bg-accent">
                           <div className="flex items-center gap-2 w-full">
                             <span className="flex-1 text-white md:text-foreground">All Locations</span>
-                            {statusFilter === "ALL" && <span className="text-[#FF8E32] md:text-primary">✓</span>}
+                            {statusFilter === "ALL" && <span className="text-[#F2B300] md:text-primary">✓</span>}
                           </div>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -666,7 +666,7 @@ export function PoiLocationsTable({
               {/* Mobile: Pagination and Search */}
               <div className="md:hidden flex items-center justify-between gap-2">
                 {totalPages > 1 && !isSearchExpanded && (
-                  <div className="[&_.heroui-pagination-wrapper]:bg-black [&_button]:!bg-gray-900 [&_button]:!text-white [&_button]:!border-gray-800 [&_button[data-selected=true]]:!bg-[#FF8E32] [&_button[data-selected=true]]:!text-black [&_button[data-selected=true]]:!border-[#FF8E32] [&_span]:!text-white [&_svg]:!text-white [&_button[data-slot=prev]]:!hidden [&_button[data-slot=next]]:!hidden">
+                  <div className="[&_.heroui-pagination-wrapper]:bg-black [&_button]:!bg-gray-900 [&_button]:!text-white [&_button]:!border-gray-800 [&_button[data-selected=true]]:!bg-[#F2B300] [&_button[data-selected=true]]:!text-[#24211C] [&_button[data-selected=true]]:!text-black [&_button[data-selected=true]]:!border-[#F2B300] [&_span]:!text-white [&_svg]:!text-white [&_button[data-slot=prev]]:!hidden [&_button[data-slot=next]]:!hidden">
                     <Pagination
                       total={totalPages}
                       page={currentPage}
@@ -677,7 +677,7 @@ export function PoiLocationsTable({
                       boundaries={1}
                       classNames={{
                         wrapper: "bg-black",
-                        item: "bg-gray-900 text-white border-gray-800 data-[selected=true]:bg-[#FF8E32] data-[selected=true]:text-black data-[selected=true]:border-[#FF8E32]",
+                        item: "bg-gray-900 text-white border-gray-800 data-[selected=true]:bg-[#F2B300] data-[selected=true]:text-[#24211C] data-[selected=true]:text-black data-[selected=true]:border-[#F2B300]",
                       }}
                     />
                   </div>
@@ -819,7 +819,7 @@ export function PoiLocationsTable({
                         <TableRow 
                           key={location.id}
                           data-location-id={location.id}
-                          className={`border-gray-900 md:border-[hsl(var(--border))] ${selectedRows.has(location.id) ? "bg-[#FF8E32]/30 md:bg-blue-50 hover:!bg-[#FF8E32]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
+                          className={`border-gray-900 md:border-[hsl(var(--border))] ${selectedRows.has(location.id) ? "bg-[#F2B300]/30 md:bg-blue-50 hover:!bg-[#F2B300]/30 md:hover:!bg-blue-50" : "bg-gray-800 md:bg-transparent hover:!bg-gray-800 md:hover:!bg-transparent"} ${isAdmin ? "md:cursor-pointer cursor-pointer" : ""}`}
                           style={{
                             WebkitTapHighlightColor: 'transparent',
                             userSelect: 'none',
@@ -843,7 +843,7 @@ export function PoiLocationsTable({
                                   }}
                                   className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] transition-colors ${
                                     selectedRows.has(location.id)
-                                      ? "border-[#FF8E32] bg-[#FF8E32] text-white"
+                                      ? "border-[#F2B300] bg-[#F2B300] text-[#24211C]"
                                       : "border-gray-800 md:border-gray-300 bg-black md:bg-white hover:border-gray-700 md:hover:border-gray-400"
                                   }`}
                                 >
