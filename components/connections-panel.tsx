@@ -23,7 +23,7 @@ async function call(method: string, path: string, body?: any) {
   return json
 }
 
-export function ConnectionsPanel() {
+export function ConnectionsPanel({ bare = false }: { bare?: boolean } = {}) {
   const [keys, setKeys] = useState<KeyRow[]>([])
   const [name, setName] = useState("")
   const [fresh, setFresh] = useState<{ name: string; connectorUrl: string; key: string } | null>(null)
@@ -58,12 +58,14 @@ export function ConnectionsPanel() {
   const live = keys.filter((k) => !k.revoked_at)
 
   return (
-    <section className="border-t border-[#E6DFD1] pt-8 mt-8">
+    <section className={bare ? "" : "border-t border-[#E6DFD1] pt-8 mt-8"}>
+      {!bare && <>
       <h2 className="text-xl font-bold text-[#24211C]" style={{ fontFamily: "var(--font-rounded)" }}>Connections</h2>
       <p className="mt-1 max-w-2xl text-sm text-[#6F685C]">
         Read-only keys for connecting Claude, or another system, to your sites and outages. A key can only read this
         organisation&apos;s data and can be turned off at any time.
       </p>
+      </>}
 
       {fresh && (
         <div className="mt-5 max-w-3xl border-l-2 border-[#F2B300] pl-4">

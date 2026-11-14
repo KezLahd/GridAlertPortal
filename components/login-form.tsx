@@ -164,7 +164,7 @@ export function LoginForm() {
     // Small delay to ensure scroll completes before navigation
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    router.push("/unplanned")
+    router.push("/overview")
   }
 
   return (

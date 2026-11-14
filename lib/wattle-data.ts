@@ -49,6 +49,9 @@ export interface Site {
   postcode: string | null
   state: string | null
   provider: string | null
+  /** Map pin, or null when the address hasn't been placed (some imports carry 1,1 as a placeholder). */
+  lat: number | null
+  lng: number | null
 }
 
 export type Kind = "unplanned" | "planned" | "future"
@@ -76,12 +79,18 @@ const TZ: Record<string, string> = {
 }
 export const tzFor = (state?: string | null) => TZ[(state ?? "").toUpperCase()] ?? "Australia/Sydney"
 
+// Australia only: anything else is a placeholder or a typo
+const pin = (lat: unknown, lng: unknown) => {
+  const a = Number(lat), b = Number(lng)
+  return a < -9 && a > -45 && b > 112 && b < 155 ? { lat: a, lng: b } : { lat: null, lng: null }
+}
+
 export async function sites(companyId: string): Promise<Site[]> {
   const db = createServiceClient()
   const out: Site[] = []
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("locations")
-      .select("id, institutionname, institutionnickname, institutioncode, addressline1, addressline2, addresssuburb, addresspostcode, addressstate, provider")
+      .select("id, institutionname, institutionnickname, institutioncode, addressline1, addressline2, addresssuburb, addresspostcode, addressstate, addresslatitude, addresslongitude, provider")
       .eq("company_id", companyId).order("institutionname").range(from, from + 999)
     if (error) throw error
     for (const l of data ?? []) {
@@ -94,6 +103,7 @@ export async function sites(companyId: string): Promise<Site[]> {
         postcode: l.addresspostcode ?? null,
         state: l.addressstate ?? null,
         provider: l.provider ?? null,
+        ...pin(l.addresslatitude, l.addresslongitude),
       })
     }
     if (!data || data.length < 1000) break
@@ -168,6 +178,11 @@ export async function outages(companyId: string, q: OutageQuery = {}): Promise<O
 
 export async function summary(companyId: string) {
   const [all, list] = await Promise.all([sites(companyId), outages(companyId, { when: "all", days: 28 })])
+  return summaryOf(all, list)
+}
+
+/** The headline numbers from a site list and the outages for the next 28 days. */
+export function summaryOf(all: Site[], list: Outage[]) {
   const out = list.filter((o) => o.status !== "Planned")
   const soon = (d: number) => list.filter((o) => o.status === "Planned" && o.starts && o.starts.getTime() <= Date.now() + d * 86400_000)
   const sitesIn = (l: Outage[]) => new Set(l.map((o) => o.site.id)).size

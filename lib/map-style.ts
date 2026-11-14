@@ -1,0 +1,25 @@
+// Wattle's map style: warm cream land, soft stone roads, muted water, and no business pins, so the gold outages
+// and ink sites are the only colour on the page.
+export const WATTLE_MAP_STYLE: any[] = [
+  { elementType: "geometry", stylers: [{ color: "#F3EEE3" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#6F685C" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#FBF8F2" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#D9CFBD" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#24211C" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#EFE8DA" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.park", stylers: [{ visibility: "on" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#E4E2CC" }] },
+  { featureType: "poi.park", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#E6DFD1" }] },
+  { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#8F8778" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#E9E1D2" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#D9CFBD" }] },
+  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#D6DCD8" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#8F8778" }] },
+]

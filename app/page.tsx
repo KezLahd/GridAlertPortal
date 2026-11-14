@@ -18,7 +18,7 @@ export default function Home() {
       const { data } = await supabase.auth.getUser()
       if (!mounted) return
       if (data?.user) {
-        router.replace("/unplanned")
+        router.replace("/overview")
       } else {
         setShowLanding(true)
       }
