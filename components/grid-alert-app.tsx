@@ -540,7 +540,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
             .eq("provider", provider)
             .order("consolidated_at", { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()   // a provider with no rows right now is normal, not an error (single() answered 406)
 
           if (!providerError && providerData?.consolidated_at) {
             const timestamp = new Date(providerData.consolidated_at)
@@ -552,8 +552,7 @@ export default function GridAlertApp({ initialOutageType = "unplanned" }: GridAl
                 console.log(`[DEBUG] Found status for ${provider}:`, timestamp)
               }
             }
-          } else if (providerError && providerError.code !== 'PGRST116') {
-            // PGRST116 is "not found" which is OK - means no data for that provider
+          } else if (providerError) {
             console.warn(`[DEBUG] Error querying ${provider}:`, providerError.message)
           }
         } catch (err) {
