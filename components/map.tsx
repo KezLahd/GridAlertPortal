@@ -4,7 +4,6 @@ import { googleMapsApiKey } from "@/lib/config"
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from "@react-google-maps/api"
 import MapsError from "./maps-error"
-import AppleMap from "./apple-map"
 import MapLegend from "./map-legend"
 import { Badge } from "@/components/ui/badge"
 
@@ -137,6 +136,32 @@ const isGoogleMapsLoaded = () => {
   )
 }
 
+// Wattle's map style: warm cream land, soft stone roads, muted water, and no business pins, so the gold outages
+// and ink sites are the only colour on the page.
+const WATTLE_MAP_STYLE: any[] = [
+  { elementType: "geometry", stylers: [{ color: "#F3EEE3" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#6F685C" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#FBF8F2" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#D9CFBD" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#24211C" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#EFE8DA" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.park", stylers: [{ visibility: "on" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#E4E2CC" }] },
+  { featureType: "poi.park", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#E6DFD1" }] },
+  { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#8F8778" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#E9E1D2" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#D9CFBD" }] },
+  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#D6DCD8" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#8F8778" }] },
+]
+
 // Create a client component wrapper for the GoogleMap
 const ClientGoogleMap = ({ children, ...props }: any) => {
   return <GoogleMap {...props}>{children}</GoogleMap>
@@ -163,6 +188,9 @@ function GoogleMapView({ outages, outageType, searchQuery = "", selectedOutageId
   const mapOptions = useMemo<any>(() => {
     const opts: any = {
       disableDefaultUI: false,
+      styles: WATTLE_MAP_STYLE,
+      backgroundColor: "#F3EEE3",
+      clickableIcons: false,
       zoomControl: true,
       streetViewControl: false,
       mapTypeControl: false,
@@ -1061,9 +1089,6 @@ function GoogleMapView({ outages, outageType, searchQuery = "", selectedOutageId
   )
 }
 
-// Apple MapKit JS once the key is set up (NEXT_PUBLIC_MAP_PROVIDER=apple plus the MAPKIT_* server vars, see
-// app/api/mapkit-token); Google Maps until then.
 export default function Map(props: MapProps) {
-  if (process.env.NEXT_PUBLIC_MAP_PROVIDER === "apple") return <AppleMap {...props} />
   return <GoogleMapView {...props} />
 }
