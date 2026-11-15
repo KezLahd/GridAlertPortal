@@ -33,6 +33,8 @@ const NET_NAME: Record<string, string> = {
   Endeavour: "Endeavour Energy", Ergon: "Ergon Energy", EvoEnergy: "Evoenergy", UnitedEnergy: "United Energy", Horizon: "Horizon Power",
 }
 const netName = (p: string | null) => p ? NET_NAME[p] ?? p : "Network not set"
+// on wider screens the side panel floats over the map's left edge, so framing a place leaves that strip clear
+const pad = (n: number) => typeof window !== "undefined" && innerWidth > 820 ? { left: 400 + n, top: n, right: n, bottom: n } : n
 
 // Who looks after the power where. public/network-areas.json covers all of Australia: the networks' own outlines where
 // we hold them, hand-traced areas (marked approx) for CitiPower, United Energy and Western Power, and the rest of each
@@ -112,7 +114,7 @@ export default function MapPage() {
   const fit = useCallback((v: string, m = map) => {
     if (!m) return
     const [w, s, e, n] = VIEWS[v]
-    m.fitBounds({ west: w, south: s, east: e, north: n }, 24)
+    m.fitBounds({ west: w, south: s, east: e, north: n }, pad(24))
   }, [map])
   useEffect(() => {
     if (!map) return
@@ -205,14 +207,13 @@ export default function MapPage() {
       <section className="mp-side">
         <div className="mp-head">
           <div className="eyebrow"><i className="dot" />{ready ? `Live · checked ${checked(full.at)}` : "Checking now"}</div>
-          <h1>Map</h1>
           <div className="mp-figs" role="group" aria-label="Show on the map">
             {([["now", "Off now", "now", nowOn], ["plan", "Planned", "long", on.plan], ["clear", "All clear", "clear", on.clear]] as const).map(([k, l, sw, isOn]) => (
               <button key={k} className={`${k} ${isOn ? "" : "off"}`} aria-pressed={isOn} title={isOn ? "Hide these on the map" : "Show these on the map"}
                 onClick={() => setOn((o) => k === "now" ? { ...o, fault: !nowOn, work: !nowOn } : { ...o, [k]: !o[k] })}>
                 <b>{ready ? count(k) : <Wait />}</b>
                 <span><i className={`sw ${sw}`} />{l}</span>
-                {k === "now" && ready && count("now") > 0 && <small>{[faults && `${faults} ${faults === 1 ? "fault" : "faults"}`, works && `${works} planned work`].filter(Boolean).join(" · ")}</small>}
+                {k === "now" && <small className="q" title={ready ? [`${faults} ${faults === 1 ? "fault" : "faults"}`, `${works} planned work`].join(" · ") : undefined}>right now</small>}
                 {k === "plan" && <small className="q">next {days} days</small>}
                 {k === "clear" && <small className="q">no outage due</small>}
               </button>
@@ -333,7 +334,7 @@ export default function MapPage() {
                   b.forEach((p) => bb.extend({ lat: p.s.lat, lng: p.s.lng }))
                   const ne = bb.getNorthEast(), sw = bb.getSouthWest()
                   if (ne.lat() - sw.lat() < 0.0004 && ne.lng() - sw.lng() < 0.0004) { setSel(null); setStack(b.map((p) => p.s.id)); return }
-                  map?.fitBounds(bb, 80)
+                  map?.fitBounds(bb, pad(80))
                 }} />
             })}
             {/* zoomed out, a network's name shows only while the pointer is over it; closer in, the names sit on their areas */}
