@@ -35,8 +35,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <aside className="rail">
         <div className="brandrow">
           <Link href="/overview" className="brand" aria-label="Wattle">
-            <span className="mk"><img src="/wattle-mark-small.svg" alt="" /></span>
-            <img className="wm" src="/wattle-wordmark.svg" alt="Wattle" />
+            {/* dark mode swaps in a white plug and a light wordmark (an SVG's own dark-mode rule isn't honoured inside <img> everywhere) */}
+            <span className="mk"><picture><source srcSet="/wattle-mark-small-dark.svg" media="(prefers-color-scheme: dark)" /><img src="/wattle-mark-small.svg" alt="" /></picture></span>
+            <picture><source srcSet="/wattle-wordmark-dark.svg" media="(prefers-color-scheme: dark)" /><img className="wm" src="/wattle-wordmark.svg" alt="Wattle" /></picture>
           </Link>
           <button className="fold" onClick={fold} aria-label={slim ? "Open the sidebar" : "Fold the sidebar"} title={slim ? "Open the sidebar" : "Fold the sidebar"}>
             <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="3.5" width="15" height="13" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d={slim ? "M8 3.5v13" : "M7 3.5v13"} stroke="currentColor" strokeWidth="1.6" /><circle cx={slim ? 12.5 : 4.9} cy="10" r="1.3" fill="currentColor" /></svg>
