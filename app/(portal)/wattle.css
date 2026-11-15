@@ -554,3 +554,10 @@
 .wt .pkm,.wt .pkm.glass{background:var(--g-shine),var(--pop-fill);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);
   border:1px solid var(--g-rim);border-radius:14px;box-shadow:var(--pop-shadow)}
 .wt .mp-where{padding-top:10px}
+@media (min-width:821px){
+  /* flush with the page on three sides, square; only the edge facing the map catches the light */
+  .wt .mp-side{top:0;left:0;bottom:0;border-radius:0;border:0;border-right:1px solid var(--g-rim);
+    box-shadow:inset 0 1px 0 var(--g-hi),inset -1px 0 0 var(--g-hi),inset 0 0 28px var(--g-glow),12px 0 40px -20px rgba(60,45,10,.35)}
+  .wt .mp-net,.wt .mp-legend{left:392px}
+}
+@media (min-width:821px) and (prefers-color-scheme:dark){.wt .mp-side{box-shadow:inset 0 1px 0 var(--g-hi),inset -1px 0 0 var(--g-hi),12px 0 40px -16px rgba(0,0,0,.7)}}

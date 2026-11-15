@@ -34,7 +34,7 @@ const NET_NAME: Record<string, string> = {
 }
 const netName = (p: string | null) => p ? NET_NAME[p] ?? p : "Network not set"
 // on wider screens the side panel floats over the map's left edge, so framing a place leaves that strip clear
-const pad = (n: number) => typeof window !== "undefined" && innerWidth > 820 ? { left: 400 + n, top: n, right: n, bottom: n } : n
+const pad = (n: number) => typeof window !== "undefined" && innerWidth > 820 ? { left: 372 + n, top: n, right: n, bottom: n } : n
 
 // Who looks after the power where. public/network-areas.json covers all of Australia: the networks' own outlines where
 // we hold them, hand-traced areas (marked approx) for CitiPower, United Energy and Western Power, and the rest of each
