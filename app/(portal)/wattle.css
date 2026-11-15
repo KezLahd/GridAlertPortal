@@ -25,7 +25,7 @@
 /* rail */
 .wt .rail{background:var(--rail);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;height:100dvh}
 .wt .brand{display:flex;align-items:center;gap:10px;padding:2px 10px 22px}
-.wt .brand .mk{width:32px;height:32px;border-radius:9px;overflow:hidden;border:1px solid var(--line);display:block}
+.wt .brand .mk{width:34px;height:34px;display:block;margin:0 -4px 0 -6px}
 .wt .brand .mk img,.wt .brand .mk picture{width:100%;height:100%;display:block}
 .wt .brand .wm{height:17px;width:auto}
 .wt .nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:999px;font-family:var(--rounded);font-weight:600;font-size:15px;color:var(--muted)}

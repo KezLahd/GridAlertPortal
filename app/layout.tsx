@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Planned and unplanned power outages near your clinics and pharmacies, from Australia's electricity distributors.",
   applicationName: "Wattle",
   icons: {
-    icon: [{ url: "/wattle-icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/wattle-mark-small.svg", type: "image/svg+xml" }],
     apple: "/apple-icon.png",
   },
   viewport: {

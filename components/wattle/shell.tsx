@@ -30,7 +30,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <Aurora />
       <aside className="rail">
         <Link href="/overview" className="brand" aria-label="Wattle">
-          <span className="mk"><picture><source srcSet="/wattle-icon-dark.svg" media="(prefers-color-scheme: dark)" /><img src="/wattle-icon.svg" alt="" /></picture></span>
+          <span className="mk"><img src="/wattle-mark-small.svg" alt="" /></span>
           <img className="wm" src="/wattle-wordmark.svg" alt="Wattle" />
         </Link>
         <nav className="nav">
