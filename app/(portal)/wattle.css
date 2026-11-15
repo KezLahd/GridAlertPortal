@@ -567,18 +567,32 @@
   box-shadow:inset 0 1px 0 var(--g-hi),0 1px 3px rgba(36,33,28,.05)}
 .wt .mp-find:focus-within{box-shadow:inset 0 1px 0 var(--g-hi),0 0 0 3px rgba(242,179,0,.26)}
 
-/* left rail: a soft wattle bloom so it isn't flat; every glow fades out well inside the rail, no edges */
+/* left rail: a soft glow from the top-left and bottom-right, with small soft discs scattered down it (no outlines) */
 @media (min-width:821px){
   .wt .rail{background:
-    radial-gradient(130% 38% at 0% 0%,rgba(242,179,0,.17),rgba(242,179,0,0) 70%),
-    radial-gradient(120% 34% at 100% 100%,rgba(242,179,0,.12),rgba(242,179,0,0) 72%),
-    radial-gradient(90% 28% at 40% 55%,rgba(255,255,255,.55),rgba(255,255,255,0) 75%),
+    radial-gradient(circle 34px at 82% 6%,rgba(242,179,0,0.150),rgba(242,179,0,0.120) 28px,rgba(242,179,0,0) 34px),
+    radial-gradient(circle 18px at 20% 22%,rgba(242,179,0,0.140),rgba(242,179,0,0.112) 12px,rgba(242,179,0,0) 18px),
+    radial-gradient(circle 26px at 92% 36%,rgba(242,179,0,0.120),rgba(242,179,0,0.096) 20px,rgba(242,179,0,0) 26px),
+    radial-gradient(circle 52px at 8% 52%,rgba(242,179,0,0.100),rgba(242,179,0,0.080) 46px,rgba(242,179,0,0) 52px),
+    radial-gradient(circle 16px at 64% 66%,rgba(242,179,0,0.140),rgba(242,179,0,0.112) 10px,rgba(242,179,0,0) 16px),
+    radial-gradient(circle 44px at 90% 78%,rgba(242,179,0,0.120),rgba(242,179,0,0.096) 38px,rgba(242,179,0,0) 44px),
+    radial-gradient(circle 28px at 26% 90%,rgba(242,179,0,0.130),rgba(242,179,0,0.104) 22px,rgba(242,179,0,0) 28px),
+    radial-gradient(circle 12px at 58% 97%,rgba(242,179,0,0.160),rgba(242,179,0,0.128) 6px,rgba(242,179,0,0) 12px),
+    radial-gradient(140% 70% at 0% 0%,rgba(242,179,0,0.120),rgba(242,179,0,0) 75%),
+    radial-gradient(140% 70% at 100% 100%,rgba(242,179,0,0.090),rgba(242,179,0,0) 75%),
     var(--rail)}
 }
 @media (min-width:821px) and (prefers-color-scheme:dark){
   .wt .rail{background:
-    radial-gradient(130% 38% at 0% 0%,rgba(242,179,0,.12),rgba(242,179,0,0) 70%),
-    radial-gradient(120% 34% at 100% 100%,rgba(242,179,0,.07),rgba(242,179,0,0) 72%),
-    radial-gradient(90% 28% at 40% 55%,rgba(255,255,255,.025),rgba(255,255,255,0) 75%),
+    radial-gradient(circle 34px at 82% 6%,rgba(242,179,0,0.120),rgba(242,179,0,0.096) 28px,rgba(242,179,0,0) 34px),
+    radial-gradient(circle 18px at 20% 22%,rgba(242,179,0,0.112),rgba(242,179,0,0.090) 12px,rgba(242,179,0,0) 18px),
+    radial-gradient(circle 26px at 92% 36%,rgba(242,179,0,0.096),rgba(242,179,0,0.077) 20px,rgba(242,179,0,0) 26px),
+    radial-gradient(circle 52px at 8% 52%,rgba(242,179,0,0.080),rgba(242,179,0,0.064) 46px,rgba(242,179,0,0) 52px),
+    radial-gradient(circle 16px at 64% 66%,rgba(242,179,0,0.112),rgba(242,179,0,0.090) 10px,rgba(242,179,0,0) 16px),
+    radial-gradient(circle 44px at 90% 78%,rgba(242,179,0,0.096),rgba(242,179,0,0.077) 38px,rgba(242,179,0,0) 44px),
+    radial-gradient(circle 28px at 26% 90%,rgba(242,179,0,0.104),rgba(242,179,0,0.083) 22px,rgba(242,179,0,0) 28px),
+    radial-gradient(circle 12px at 58% 97%,rgba(242,179,0,0.128),rgba(242,179,0,0.102) 6px,rgba(242,179,0,0) 12px),
+    radial-gradient(140% 70% at 0% 0%,rgba(242,179,0,0.096),rgba(242,179,0,0) 75%),
+    radial-gradient(140% 70% at 100% 100%,rgba(242,179,0,0.072),rgba(242,179,0,0) 75%),
     var(--rail)}
 }
