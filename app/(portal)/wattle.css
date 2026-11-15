@@ -185,6 +185,7 @@
 .wt .mp-map .gm{position:absolute;inset:0}
 .wt .mp-legend{position:absolute;left:20px;bottom:24px;border-radius:16px;padding:12px 14px;font-size:12.5px;color:var(--muted);display:grid;gap:7px}
 .wt .mp-legend span{display:flex;gap:8px;align-items:center}
+.wt .mp-legend .src{font-size:10.5px;color:var(--faint);max-width:220px;line-height:1.35}
 .wt .mp-net{position:absolute;left:20px;top:20px;right:20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none}
 .wt .mp-net>*{pointer-events:auto;border-radius:999px;padding:8px 14px;font-family:var(--rounded);font-weight:600;font-size:12.5px;color:var(--ink);display:inline-flex;gap:8px;align-items:center}
 .wt .mp-net button{cursor:pointer;color:var(--muted)}
