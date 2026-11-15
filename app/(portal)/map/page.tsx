@@ -8,7 +8,8 @@ import { WATTLE_MAP_STYLE, WATTLE_MAP_STYLE_DARK } from "@/lib/map-style"
 import { Loading } from "@/components/wattle/shell"
 import { GhostRows, Wait } from "@/components/wattle/waiting"
 import { Opt, Pick, Sep } from "@/components/wattle/pick"
-import { dayKey, fmt, isStale, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
+import { OutageGlance } from "@/components/wattle/glance"
+import { fmt, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
 
 // Map: every site on an Apple-style Google map (light or dark to match the page). Solid gold = power off now, a gold
 // ring = planned in the next 14 days (thicker for 4 hours or longer), grey = all clear. Close sites group into a dark
@@ -276,8 +277,7 @@ export default function MapPage() {
                 <div className="caphint">{hint}</div>
                 {l.slice(0, 150).map((p) => {
                   const o = p.st.o!
-                  const away = o.atSite ? "At the site" : o.distanceKm !== null ? `${o.distanceKm < 1 ? "Under 1" : Math.round(o.distanceKm * 10) / 10} km away` : "Nearby"
-                  return <OutGlance key={p.s.id} p={p} at={full!.at} away={away} net={netName(p.s.provider ?? o.provider)}
+                  return <OutageGlance key={p.s.id} o={o} at={full!.at} name={p.s.name}
                     open={openRow === p.s.id} sel={sel === p.s.id}
                     onToggle={() => { const was = openRow === p.s.id; setOpenRow(was ? null : p.s.id); if (!was) choose(p) }} />
                 })}
@@ -388,60 +388,6 @@ export default function MapPage() {
       </section>
     </main>
   )
-}
-
-// One outage as a glance, like the app's: shut, the time, the site and a thin bar where it falls in the day; opened,
-// the bar grows into the day with its hours marked, and the details come out from under it.
-function OutGlance({ p, at, away, net, open, sel, onToggle }: { p: Pin; at: string; away: string; net: string; open: boolean; sel: boolean; onToggle: () => void }) {
-  const o = p.st.o!, st = o.site.state, now = p.st.k === "now", long = p.st.k === "long"
-  // where it sits in the day: today for one that's off now (from midnight if it began earlier), its own day if planned
-  const day = now ? at : o.starts!
-  const hr = (d: string) => dayKey(d, st) === dayKey(day, st) ? hourOf(d, st) : new Date(d) < new Date(day) ? 0 : 24
-  const a = o.starts ? hr(o.starts) : 0
-  const b = o.ends ? hr(o.ends) : now ? hourOf(at, st) : Math.min(24, a + (o.hours ?? 1))
-  const nowAt = now ? hourOf(at, st) : null
-  const lead = now ? (o.ends ? backAt(o.ends, st, at) : "No ETA") : fmt(o.starts!, st, { weekday: "short", day: "numeric" })
-  const leadSub = now ? (o.ends ? "back" : "") : time(o.starts!, st)
-  const stale = now && !o.ends && isStale(o, at)
-  return (
-    <div className={`og${open ? " open" : ""}${sel ? " sel" : ""}`}>
-      <button className="ogh" aria-expanded={open} onClick={onToggle}>
-        <span className="lead"><b>{lead}</b><small>{leadSub}</small></span>
-        <span className="nm">{o.atSite && <i className="hot" title="At the site" />}<b>{p.s.name}</b></span>
-        <span className={`dur${long ? " lg" : ""}`}>{now ? since(o, at) : `${o.hours ?? "?"} h`}</span>
-        <span className="gb" aria-hidden>
-          <i className="tk" />
-          <i className={`sp${now ? " now" : ""}${o.atSite || long ? " hot" : ""}${now && !o.ends ? " open-end" : ""}`} style={{ left: `${(a / 24) * 100}%`, width: `max(var(--gbh), ${((Math.max(b, a) - a) / 24) * 100}%)` }} />
-          {nowAt !== null && <i className="nw" style={{ left: `${(nowAt / 24) * 100}%` }} />}
-          <span className="hrs">{["12a", "6a", "12p", "6p", "12a"].map((h, k) => <em key={k} style={{ left: `${k * 25}%` }}>{h}</em>)}</span>
-        </span>
-      </button>
-      <div className="ogx"><div>
-        <dl>
-          <dt>When</dt><dd>{o.starts ? `${fmt(o.starts, st, { weekday: "short", day: "numeric", month: "short" })} ${time(o.starts, st)}` : "Unknown"}{o.ends ? ` – ${time(o.ends, st)}` : now ? " – no restore time yet" : ""}</dd>
-          <dt>Where</dt><dd className={o.atSite ? "g" : ""}>{away}{p.s.suburb ? ` · ${p.s.suburb} ${p.s.state ?? ""}` : ""}</dd>
-          {o.cause && <><dt>Cause</dt><dd>{o.cause}</dd></>}
-          <dt>Network</dt><dd>{net}</dd>
-          {long && <><dt>Fridge</dt><dd className="g">4 hours or more: check fridge stock</dd></>}
-          {stale && <><dt>Note</dt><dd>Off for a week with no update; the network's feed may be stale</dd></>}
-        </dl>
-      </div></div>
-    </div>
-  )
-}
-
-/** Hours since midnight (0–24) in the site's own state. */
-function hourOf(d: string, state: string | null) {
-  const [h, m] = fmt(d, state, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).split(":").map(Number)
-  return h + m / 60
-}
-
-/** "4:00pm" today, "Tue 4:00pm" this week, "10 Dec" further out. */
-function backAt(ends: string, state: string | null, at: string) {
-  const days = (new Date(ends).getTime() - new Date(at).getTime()) / 86400_000
-  if (days < 0.75 && fmt(ends, state, { day: "numeric" }) === fmt(at, state, { day: "numeric" })) return time(ends, state)
-  if (days < 6) return `${fmt(ends, state, { weekday: "short" })} ${time(ends, state)}`
-  return fmt(ends, state, { day: "numeric", month: "short" })
 }
 
 function line(st: SiteState, at: string) {

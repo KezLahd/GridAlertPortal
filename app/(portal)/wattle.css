@@ -648,3 +648,163 @@
 .wt .ogx dd.g{color:var(--gold-text)}
 @media (prefers-reduced-motion:reduce){.wt .gb,.wt .ogx,.wt .ogx dl{transition:none}}
 @media (prefers-color-scheme:dark){.wt .og{border-bottom-color:rgba(243,238,228,.08)}.wt .gb .tk{background:rgba(243,238,228,.1)}.wt .gb .nw{background:#F3EEE4}}
+
+/* ---------- Dashboard, like the app: figures, then folds whose glances change shape as they open ---------- */
+.wt main.dash{max-width:980px}
+.wt .dfigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:26px 0 8px}
+.wt .dfigs>div{display:flex;flex-direction:column;gap:6px}
+.wt .dfigs b{font-family:var(--rounded);font-weight:800;font-size:46px;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--ink);min-height:46px;display:flex;align-items:center}
+.wt .dfigs span{display:flex;align-items:center;gap:7px;font-family:var(--rounded);font-weight:600;font-size:13.5px;color:var(--ink)}
+.wt .dfigs small{font-family:var(--rounded);font-weight:600;font-size:12px;color:var(--faint)}
+.wt .dfigs .now small{color:var(--gold-text)}
+.wt .folds{margin-top:18px;border-top:1px solid var(--g-hair)}
+/* a fold: header, its glance, then content that unrolls */
+.wt .fsec{border-bottom:1px solid var(--g-hair)}
+.wt .fh{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:baseline;gap:10px;padding:18px 2px 12px}
+.wt .fh:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:8px}
+.wt .ft{flex:1;display:flex;align-items:baseline;gap:10px;font-family:var(--rounded);font-weight:600;font-size:20px;color:var(--ink);transition:font-weight .2s}
+.wt .fsec.open .ft{font-weight:700}
+.wt .ft .hot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;align-self:center;box-shadow:0 0 10px 2px rgba(242,179,0,.35)}
+.wt .fv{font-family:var(--rounded);font-weight:800;font-size:28px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.wt .fv.w{font-size:20px;font-weight:600;letter-spacing:0}
+.wt .fsec.open .fv.w{font-weight:700}
+.wt .fc{width:14px;height:14px;flex:none;align-self:center;fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .34s cubic-bezier(.3,.7,.2,1),stroke .2s}
+.wt .fsec.open .fc{transform:rotate(180deg);stroke:var(--gold-text)}
+.wt .fh:hover .ft{color:var(--gold-text)}
+.wt .fg{padding:0 2px 16px;cursor:pointer}
+.wt .fsec.open .fg{cursor:default}
+.wt .fx{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s cubic-bezier(.3,.7,.2,1)}
+.wt .fsec.open .fx{grid-template-rows:1fr}
+.wt .fx>div{overflow:hidden;min-height:0}
+.wt .fxi{padding:0 0 14px;opacity:0;transform:translateY(-10px);transition:opacity .25s,transform .4s}
+.wt .fsec.open .fxi{opacity:1;transform:none}
+.wt .fxi .og:last-of-type{border-bottom:0}
+.wt .fold-more{all:unset;cursor:pointer;display:inline-block;margin:10px 2px 4px;font-family:var(--rounded);font-weight:600;font-size:13px;color:var(--gold-text)}
+.wt .fold-more:hover{text-decoration:underline}
+.wt .fold-filters{margin:0 0 6px;max-width:460px}
+.wt .dgrp{margin-top:8px}
+.wt .dgrp .dayhead{display:flex;justify-content:space-between;align-items:baseline;padding:12px 2px 4px;font-family:var(--rounded);font-weight:700;font-size:14px;color:var(--ink);position:sticky;top:0;z-index:1;background:var(--page)}
+.wt .dgrp .dayhead span{font-weight:600;font-size:12px;color:var(--faint)}
+.wt .oga{padding:0 2px 14px 80px;display:flex;gap:14px}
+.wt .oga a,.wt .oga button{all:unset;cursor:pointer;font-family:var(--rounded);font-weight:600;font-size:13px;color:var(--gold-text)}
+
+/* Out now: the stair of sites still out, stepping down as each is due back */
+.wt .bo svg{display:block;width:100%;transition:height .4s cubic-bezier(.3,.7,.2,1);overflow:visible}
+.wt .bo-s{fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.wt .bo.open .bo-s{stroke-width:2.4}
+.wt .bo-m{stroke:var(--muted);stroke-opacity:.2;stroke-dasharray:2 3}
+.wt .bo-x{position:relative;height:18px;margin-top:4px;font-family:var(--rounded);font-weight:600;font-size:11px;color:var(--faint);animation:wt-in .3s .1s both}
+.wt .bo-x span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.wt .bo-x span:first-child{transform:none}
+.wt .bo-x span.g{transform:none;color:var(--gold-text);font-weight:700}
+.wt .bo-f{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 36px;margin-top:12px;font-family:var(--rounded);animation:wt-in .3s .12s both}
+.wt .bo-f span{display:flex;flex-direction:column;gap:1px}
+.wt .bo-f b{white-space:nowrap;font-weight:700;font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums}
+.wt .bo-f small{font-weight:500;font-size:12px;color:var(--muted)}
+.wt .bo-f .g b{color:var(--gold-text)}
+.wt .bo-f em{font-style:normal;font-weight:600;font-size:12.5px;color:var(--muted);margin-left:auto}
+.wt .bo-none{font-family:var(--rounded);font-weight:600;font-size:13.5px;color:var(--muted)}
+@keyframes wt-in{from{opacity:0;transform:translateY(-4px)}}
+
+/* The next 14 days: letters with a few dots, rising into a column of dots per day */
+.wt .dgc{display:grid;grid-template-columns:repeat(14,minmax(0,1fr))}
+.wt .dgd{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;padding:2px 0}
+.wt .dg.open .dgd{cursor:pointer;flex-direction:column-reverse;justify-content:flex-start}
+.wt .dg.open .dgd:hover .dgl{color:var(--gold-text)}
+.wt .dgl{display:flex;flex-direction:column;align-items:center;gap:1px;font-family:var(--rounded);font-weight:700;font-size:12.5px;color:var(--muted)}
+.wt .dgl b{font-weight:600;font-size:11px;color:var(--faint)}
+.wt .dgd.today .dgl{color:var(--ink)}
+.wt .dgd.today .dgl b{color:var(--ink);font-weight:800}
+.wt .dgd.we .dgl{opacity:.7}
+.wt .dgs{display:flex;gap:4px;height:6px}
+.wt .dgs i,.wt .dgo i{width:5px;height:5px;border-radius:50%;background:var(--gold);display:block}
+.wt .dgd.today .dgs i{background:var(--ink)}
+.wt .dg.open .dgs{display:none}
+.wt .dgo{display:none}
+.wt .dg.open .dgo{display:flex;flex-wrap:wrap-reverse;justify-content:center;align-content:flex-start;gap:3.5px;width:26px;height:calc(var(--rows) * 8.5px + 18px);position:relative}
+.wt .dgo i{width:6px;height:6px;background:rgba(242,179,0,.5);animation:wt-rise .45s cubic-bezier(.3,.7,.2,1) both;animation-delay:calc(var(--i) * 22ms)}
+.wt .dgo i.l{background:var(--gold)}
+.wt .dgo em{position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-style:normal;font-family:var(--rounded);font-weight:700;font-size:11px;color:var(--muted)}
+.wt .dgb{display:flex;gap:6px;align-items:baseline;margin-top:12px;font-family:var(--rounded);font-weight:600;font-size:13.5px;color:var(--muted);animation:wt-in .3s .1s both}
+.wt .dgb b{color:var(--ink)}
+.wt .dgb span.t{margin:0;display:inline}
+.wt .dgb span:not(.t){margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px}
+.wt .dgb i.l{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+@keyframes wt-rise{from{opacity:0;transform:translateY(-22px) scale(.8)}}
+
+/* Where: one thin line split by state, opening into a row per state */
+.wt .sgl{display:flex;gap:3px;height:6px}
+.wt .sgl span{position:relative;border-radius:99px;background:rgba(111,104,92,.14);overflow:hidden;min-width:4px}
+.wt .sgl i,.wt .sgrow .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px}
+.wt .sgl i.p,.wt .sgrow .bar i.p,.wt .sgk i.p{background:rgba(242,179,0,.45)}
+.wt .sgl i.o,.wt .sgrow .bar i.o,.wt .sgk i.o{background:var(--gold)}
+.wt .sg.open .sgl{height:0;opacity:0;transition:height .3s,opacity .2s}
+.wt .sgr{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s cubic-bezier(.3,.7,.2,1)}
+.wt .sg.open .sgr{grid-template-rows:1fr}
+.wt .sgr>div{overflow:hidden;min-height:0}
+.wt .sgrow{display:grid;grid-template-columns:48px minmax(0,1fr) 240px;gap:14px;align-items:center;padding:7px 0}
+.wt .sgrow>b{font-family:var(--rounded);font-weight:700;font-size:13.5px;color:var(--ink)}
+.wt .sgrow .bar{position:relative;height:10px;border-radius:99px;background:rgba(111,104,92,.13);overflow:hidden}
+.wt .sgrow .nums{font-family:var(--rounded);font-weight:500;font-size:12.5px;color:var(--muted)}
+.wt .sgrow .nums b{color:var(--ink);font-weight:700}
+.wt .sgrow .nums em{font-style:normal;color:var(--gold-text);font-weight:600}
+.wt .sgk{display:flex;gap:18px;padding:10px 0 2px;font-family:var(--rounded);font-weight:600;font-size:12px;color:var(--faint)}
+.wt .sgk span{display:flex;align-items:center;gap:6px}
+.wt .sgk i{width:10px;height:6px;border-radius:99px;display:inline-block}
+@media (prefers-color-scheme:dark){
+  .wt .fsec,.wt .folds{border-color:rgba(243,238,228,.08)}
+  .wt .sgl span,.wt .sgrow .bar{background:rgba(243,238,228,.1)}
+}
+@media (max-width:820px){
+  .wt .dfigs b{font-size:34px;min-height:36px}
+  .wt .dgl b{display:none}
+  .wt .sgrow{grid-template-columns:40px minmax(0,1fr);row-gap:4px}
+  .wt .sgrow .nums{grid-column:2}
+  .wt .oga{padding-left:2px}
+  .wt .bo-f{gap:10px 24px}
+  .wt .bo-f em{flex-basis:100%;margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){.wt .fx,.wt .fxi,.wt .sgr,.wt .bo svg,.wt .dgo i,.wt .fc{transition:none;animation:none}}
+
+/* ---------- Sites, like the app: rows with a status dot, one line under the name, the time on the right and the
+   outage drawn thin on its day; a glass panel for the chosen site ---------- */
+.wt .st-find{flex:0 1 340px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.wt .st-filters{flex:0 0 200px;margin:0;grid-template-columns:1fr}
+.wt .tools{gap:12px;margin:18px 0 8px}
+.wt .srs{margin-top:6px;border-top:1px solid var(--g-hair)}
+.wt .sr{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:14px minmax(0,1fr) 170px 150px;column-gap:14px;row-gap:8px;align-items:center;padding:13px 10px;border-bottom:1px solid var(--g-hair);border-radius:0;--gbh:4px;transition:background .15s}
+.wt .sr:hover{background:var(--hover)}
+.wt .sr.sel{background:rgba(242,179,0,.1)}
+.wt .sr:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.wt .sr .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wt .sr .nm b{font-family:var(--rounded);font-weight:600;font-size:14.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt .sr.sel .nm b{font-weight:700}
+.wt .sr .nm span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt .sr .nm em.miss{font-style:normal;color:var(--amber);font-weight:600}
+.wt .sr .net{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt .sr .when{font-family:var(--rounded);font-weight:600;font-size:12.5px;color:var(--faint);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wt .sr .when.now{color:var(--ink)}
+.wt .sr .when.long{color:var(--gold-text)}
+.wt .sr .gb{grid-column:2/-1;margin:0}
+.wt .sr .gb .hrs{display:none}
+/* the chosen site: frosted glass over the page's bloom, flush to the edges */
+.wt .detail{background:var(--g-fill);backdrop-filter:blur(30px) saturate(130%);-webkit-backdrop-filter:blur(30px) saturate(130%);border-left:1px solid var(--g-rim);box-shadow:inset 1px 0 0 var(--g-hi),-24px 0 60px -40px rgba(60,45,10,.3)}
+.wt .detail .facts{margin:18px 0 6px;display:grid;grid-template-columns:96px 1fr;row-gap:8px;column-gap:10px}
+.wt .detail .facts dt{font-family:var(--rounded);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding-top:2px}
+.wt .detail .facts dd{margin:0;font-family:var(--rounded);font-weight:600;font-size:13.5px;color:var(--ink)}
+.wt .detail h3{margin:24px 0 2px}
+.wt .detail .og{--gbh:4px}
+.wt .detail .og.open{--gbh:8px}
+.wt .detail .ogh{grid-template-columns:58px minmax(0,1fr) auto}
+.wt .detail .gb{margin-left:68px}
+.wt .detail .og.open .gb{margin-left:0}
+.wt .detail .ogx dl{grid-template-columns:58px 1fr}
+.wt .detail .fix{border-top:1px solid var(--g-hair)}
+@media (prefers-color-scheme:dark){.wt .srs,.wt .sr{border-color:rgba(243,238,228,.08)}.wt .sr.sel{background:rgba(242,179,0,.1)}}
+@media (max-width:820px){
+  .wt .sr{grid-template-columns:14px minmax(0,1fr) auto}
+  .wt .sr .gb{grid-column:2/-1}
+  .wt .sr .h-s{display:none}
+  .wt .st-find{flex:1 1 100%}
+  .wt .detail{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--page)}
+}
