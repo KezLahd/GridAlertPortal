@@ -91,7 +91,8 @@ export async function sites(companyId: string): Promise<Site[]> {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("locations")
       .select("id, institutionname, institutionnickname, institutioncode, addressline1, addressline2, addresssuburb, addresspostcode, addressstate, addresslatitude, addresslongitude, provider")
-      .eq("company_id", companyId).order("institutionname").range(from, from + 999)
+      .eq("company_id", companyId).or("institutionstatus.is.null,institutionstatus.eq.ACTIVE") // retired, reserved and inactive sites are left out
+      .order("institutionname").range(from, from + 999)
     if (error) throw error
     for (const l of data ?? []) {
       out.push({

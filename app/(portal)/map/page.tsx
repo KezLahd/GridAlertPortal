@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-maps/api"
 import { googleMapsApiKey } from "@/lib/config"
@@ -21,6 +21,27 @@ const VIEWS: Record<string, [number, number, number, number]> = {
 const COL = { now: "#F2B300", long: "#F2B300", soon: "#F2B300", clear: "#A8A196" }
 const RANK = { now: 3, long: 2, soon: 1, clear: 0 }
 type Pin = { s: Site & { lat: number; lng: number }; st: SiteState }
+
+// Who looks after the power where. Outlines come from public/network-areas.json (the distributors' published service
+// areas, simplified); a soft tint per network, a name label where it fits, and the name on hover or tap. SA, Tasmania,
+// the ACT, NT and WA have one main network each, so those get a label only.
+const NET: Record<string, { c: string; at: [number, number]; z: number; name?: string }> = {
+  "Ausgrid": { c: "#3B7FC4", at: [-32.7, 151.2], z: 5 },
+  "Endeavour": { c: "#2E9E6B", at: [-34.25, 150.45], z: 6, name: "Endeavour Energy" },
+  "Essential Energy": { c: "#8A6FD1", at: [-31.2, 147.3], z: 4 },
+  "Energex": { c: "#D9467A", at: [-27.35, 152.7], z: 6 },
+  "Ergon": { c: "#1F9DA3", at: [-21.5, 144.5], z: 4, name: "Ergon Energy" },
+  "AusNet": { c: "#6C8A3A", at: [-37.2, 146.8], z: 5, name: "AusNet Services" },
+  "Jemena": { c: "#C0563A", at: [-37.6, 144.75], z: 9 },
+}
+const WHOLE: [string, [number, number], number][] = [
+  ["SA Power Networks", [-31.5, 135.6], 4], ["TasNetworks", [-42.1, 146.6], 5], ["Evoenergy", [-35.3, 149.08], 8],
+  ["Power and Water", [-19.8, 133.6], 4], ["Western Power", [-31.6, 117.4], 5], ["Horizon Power", [-23.5, 121.5], 4],
+]
+function netLabel(name: string, dark: boolean, c?: string) {
+  const w = Math.round(name.length * 6.6 + 22), h = 22
+  return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="11" fill="${dark ? "#1D1A16" : "#FFFFFF"}" fill-opacity=".9" stroke="${c ?? (dark ? "#3A342B" : "#D9D2C3")}"/>${c ? `<circle cx="11" cy="11" r="3.5" fill="${c}"/>` : ""}<text x="${c ? 19 : 11}" y="15" font-family="ui-rounded,-apple-system,system-ui,sans-serif" font-weight="700" font-size="11" fill="${dark ? "#F3EEE4" : "#24211C"}">${name}</text></svg>`), w, h }
+}
 
 // Dots like the app's: off now is solid gold with a soft bloom, planned is a gold ring (thicker for 4 hours or more),
 // all clear is a small grey dot.
@@ -59,6 +80,9 @@ export default function MapPage() {
   const [on, setOn] = useState({ now: true, plan: true, clear: true })
   const [sel, setSel] = useState<string | null>(null)
   const dark = useDark()
+  const [nets, setNets] = useState(true)
+  const netsLoaded = useRef(false)
+  const [net, setNet] = useState<string | null>(null)
 
   const pins = useMemo<Pin[]>(() => (data?.sites ?? [])
     .filter((s): s is Pin["s"] => s.lat !== null && s.lng !== null)
@@ -78,6 +102,25 @@ export default function MapPage() {
     fit(innerWidth < 820 ? "Sydney" : "Australia")
     if (innerWidth < 820) setView("Sydney")
   }, [map, pins.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // network areas: loaded once onto the map's data layer, tinted per network, highlighted on hover or tap
+  useEffect(() => {
+    if (!map || netsLoaded.current) return
+    netsLoaded.current = true
+    {
+      map.data.loadGeoJson("/network-areas.json", { idPropertyName: "network" })
+      map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => setNet(String(e.feature.getProperty("network"))))
+      map.data.addListener("mouseout", () => setNet(null))
+      map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(String(e.feature.getProperty("network"))) })
+    }
+  }, [map])
+  useEffect(() => {
+    if (!map) return
+    map.data.setStyle((f) => {
+      const n = String(f.getProperty("network")), c = NET[n]?.c ?? "#888", hot = n === net
+      return { visible: nets, fillColor: c, fillOpacity: hot ? 0.16 : 0.04, strokeColor: c, strokeOpacity: hot ? 0.9 : 0.5, strokeWeight: hot ? 2 : 1.2, zIndex: 0 }
+    })
+  }, [map, nets, net, dark])
 
   const shown = (p: Pin) => p.st.k === "now" ? on.now : p.st.k === "clear" ? on.clear : on.plan
   const inBounds = (p: Pin) => !bounds || bounds.contains({ lat: p.s.lat, lng: p.s.lng })
@@ -183,6 +226,16 @@ export default function MapPage() {
                   map?.fitBounds(bb, 80)
                 }} />
             })}
+            {nets && Object.entries(NET).filter(([, v]) => zoom >= v.z && zoom <= 9).map(([k, v]) => {
+              const ic = netLabel(v.name ?? k, dark, v.c)
+              return <Marker key={`net-${k}`} position={{ lat: v.at[0], lng: v.at[1] }} clickable={false} zIndex={2}
+                icon={{ url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h / 2) }} />
+            })}
+            {nets && WHOLE.filter(([, , z]) => zoom >= z && zoom <= 9).map(([k, at]) => {
+              const ic = netLabel(k, dark)
+              return <Marker key={`net-${k}`} position={{ lat: at[0], lng: at[1] }} clickable={false} zIndex={2}
+                icon={{ url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h / 2) }} />
+            })}
             {selPin && (
               <InfoWindow position={{ lat: selPin.s.lat, lng: selPin.s.lng }} onCloseClick={() => setSel(null)} options={{ pixelOffset: new google.maps.Size(0, -10) }}>
                 <div className="mp-pop">
@@ -200,6 +253,10 @@ export default function MapPage() {
           <span><i className="sw long" />Planned, 4 hours or longer</span>
           <span><i className="sw soon" />Planned, shorter</span>
           <span><i className="sw clear" />All clear</span>
+        </div>
+        <div className="mp-net">
+          <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}><i />Network areas</button>
+          {nets && net && <span className="glass"><i style={{ background: NET[net]?.c }} />{NET[net]?.name ?? net} looks after the power here</span>}
         </div>
         {noPin > 0 && <div className="mp-note glass">{noPin} sites have no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
       </section>
