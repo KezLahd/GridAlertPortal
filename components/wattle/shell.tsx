@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -25,17 +25,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { data, me } = usePortal()
   const initials = me ? `${me.firstName[0] ?? ""}${me.lastName[0] ?? ""}`.toUpperCase() || "?" : ""
+  // the rail folds down to its icons, and remembers that on this computer
+  const [slim, setSlim] = useState(false)
+  useEffect(() => { try { setSlim(localStorage.getItem("wt-slim") === "1") } catch {} }, [])
+  const fold = () => setSlim((x) => { try { localStorage.setItem("wt-slim", x ? "0" : "1") } catch {} return !x })
   return (
-    <div className="wt">
+    <div className={`wt ${slim ? "slim" : ""}`}>
       <Aurora />
       <aside className="rail">
-        <Link href="/overview" className="brand" aria-label="Wattle">
-          <span className="mk"><img src="/wattle-mark-small.svg" alt="" /></span>
-          <img className="wm" src="/wattle-wordmark.svg" alt="Wattle" />
-        </Link>
+        <div className="brandrow">
+          <Link href="/overview" className="brand" aria-label="Wattle">
+            <span className="mk"><img src="/wattle-mark-small.svg" alt="" /></span>
+            <img className="wm" src="/wattle-wordmark.svg" alt="Wattle" />
+          </Link>
+          <button className="fold" onClick={fold} aria-label={slim ? "Open the sidebar" : "Fold the sidebar"} title={slim ? "Open the sidebar" : "Fold the sidebar"}>
+            <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="3.5" width="15" height="13" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d={slim ? "M8 3.5v13" : "M7 3.5v13"} stroke="currentColor" strokeWidth="1.6" /><circle cx={slim ? 12.5 : 4.9} cy="10" r="1.3" fill="currentColor" /></svg>
+          </button>
+        </div>
         <nav className="nav">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={path?.startsWith(n.href) ? "on" : ""} aria-label={n.label}>
+            <Link key={n.href} href={n.href} className={path?.startsWith(n.href) ? "on" : ""} aria-label={n.label} title={slim ? n.label : undefined}>
               <svg viewBox="0 0 28 28" aria-hidden>{n.icon}</svg>
               <span className="l">{n.label}</span>
               {n.count && data && <span className="n">{data.summary.sites}</span>}
@@ -43,8 +52,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="foot">
-          <div className="av">{initials}</div>
-          <div style={{ minWidth: 0 }}><b>{me?.firstName}</b><br />{data?.company}</div>
+          <div className="av" title={slim ? `${me?.firstName ?? ""} · ${data?.company ?? ""}` : undefined}>{initials}</div>
+          <div className="who" style={{ minWidth: 0 }}><b>{me?.firstName}</b><br />{data?.company}</div>
           <button onClick={async () => { await supabase.auth.signOut(); router.replace("/login") }}>Sign out</button>
         </div>
       </aside>

@@ -6,6 +6,7 @@ import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-map
 import { googleMapsApiKey } from "@/lib/config"
 import { WATTLE_MAP_STYLE, WATTLE_MAP_STYLE_DARK } from "@/lib/map-style"
 import { Loading } from "@/components/wattle/shell"
+import { GhostRows, Wait } from "@/components/wattle/waiting"
 import { checked, fmt, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
 
 // Map: every site on an Apple-style Google map (light or dark to match the page). Solid gold = power off now, a gold
@@ -80,6 +81,7 @@ export default function MapPage() {
   const dark = useDark()
   const [nets, setNets] = useState(true)
   const [netsIn, setNetsIn] = useState(false)
+  const [tiles, setTiles] = useState(false) // the plain map is drawn first; pins go on once its tiles are in
   const netsLoaded = useRef(false)
   const [labels, setLabels] = useState<NetLabel[]>([])
   const [net, setNet] = useState<string | null>(null)
@@ -105,7 +107,7 @@ export default function MapPage() {
 
   // network areas: loaded once onto the map's data layer, tinted per network, highlighted on hover or tap
   useEffect(() => {
-    if (!map || !ready || netsLoaded.current) return
+    if (!map || !ready || !tiles || netsLoaded.current) return
     netsLoaded.current = true
     const idle = (f: () => void) => "requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 300)
     idle(() => {
@@ -119,7 +121,7 @@ export default function MapPage() {
       map.data.addListener("mouseout", () => setNet(null))
       map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(which(e.feature)) })
     })
-  }, [map, ready])
+  }, [map, ready, tiles])
   useEffect(() => {
     if (!map) return
     map.data.setStyle((f) => {
@@ -166,37 +168,45 @@ export default function MapPage() {
         <div className="mp-head">
           <div className="eyebrow"><i className="dot" />{ready ? `Live · checked ${checked(full.at)}` : "Checking now"}</div>
           <h1>Map</h1>
-          <div className="chips">
+          <div className="mp-hero">
+            <b className={ready && count("now") ? "hot" : ""}>{ready ? count("now") : <Wait />}</b>
+            <div>
+              <span>{ready && count("now") === 1 ? "site" : "sites"} off now{view ? ` in ${view}` : " in this view"}</span>
+              <small>{ready ? <><em>{count("plan")} planned</em> in the next 14 days · {count("clear")} clear</> : data ? `Checking ${data.sites.length} sites` : "Finding your sites"}</small>
+            </div>
+          </div>
+          <div className="mp-key" role="group" aria-label="Show on the map">
+            {([["now", "Off now", "now"], ["plan", "Planned", "long"], ["clear", "All clear", "clear"]] as const).map(([k, l, sw]) => (
+              <button key={k} className={on[k] ? "" : "off"} aria-pressed={on[k]} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}><i className={`sw ${sw}`} />{l}</button>
+            ))}
+          </div>
+          <nav className="mp-places" aria-label="Go to">
             {Object.keys(VIEWS).map((v) => {
               const [w, s, e, n] = VIEWS[v]
               const c = pins.filter((p) => p.st.k !== "clear" && p.s.lng >= w && p.s.lng <= e && p.s.lat >= s && p.s.lat <= n).length
-              return <button key={v} className={`chip ${v === view ? "on" : ""}`} onClick={() => { setView(v); setSel(null); fit(v) }}>{v}{v === "Australia" || !ready ? "" : ` · ${c}`}</button>
+              return <button key={v} className={v === view ? "on" : ""} onClick={() => { setView(v); setSel(null); fit(v) }}>{v}{v !== "Australia" && ready && c > 0 && <sup>{c}</sup>}</button>
             })}
-          </div>
-          <div className="layers">
-            {([["now", "Off now", "now"], ["plan", "Next 14 days", "long"], ["clear", "All clear", "clear"]] as const).map(([k, l, sw]) => (
-              <button key={k} className={`layer ${on[k] ? "" : "off"}`} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>
-                <div className="k"><i className={`sw ${sw}`} />{l}</div><div className="v">{ready ? count(k) : <i className="wait" />}</div>
-              </button>
-            ))}
-          </div>
+          </nav>
         </div>
         <div className="mp-list">
-          {!ready && <Checking n={data?.sites.length} />}
-          {ready && list.length === 0 && <div className="lh">Nothing in this part of the map</div>}
+          {!ready && <GhostRows rows={7} label={data ? `Checking ${data.sites.length} sites for outages` : "Finding your sites"} />}
+          {ready && list.length === 0 && <div className="cap">Nothing in this part of the map</div>}
           {(["now", "plan"] as const).map((g) => {
             const l = list.filter((p) => (p.st.k === "now") === (g === "now"))
             if (!l.length) return null
             return (
               <div key={g}>
-                <div className="lh">{g === "now" ? "Off now" : "Planned, next 14 days"}<span>{l.length}</span></div>
+                <div className="cap">{g === "now" ? "Off now" : "Planned, next 14 days"}<span>{l.length}</span></div>
                 {l.slice(0, 120).map((p) => {
                   const o = p.st.o!
                   return (
                     <button key={p.s.id} className={`it ${sel === p.s.id ? "sel" : ""}`} onClick={() => choose(p)}>
-                      <i className={`sw ${p.st.k}`} />
-                      <div style={{ minWidth: 0 }}><b>{p.s.name}</b><span>{p.s.suburb} {p.s.state} · {o.provider}</span></div>
-                      {p.st.k === "now" ? <em className="now">Off now</em> : <em>{fmt(o.starts!, o.site.state, { weekday: "short", day: "numeric" })} · {o.hours ?? "?"} h</em>}
+                      <Ring st={p.st} at={full!.at} />
+                      <div style={{ minWidth: 0 }}>
+                        <b>{p.s.name}</b>
+                        <span className="l1">{p.st.k === "now" ? (o.ends ? `Back ${time(o.ends, o.site.state)}` : "No restore time yet") : `${fmt(o.starts!, o.site.state, { weekday: "short", day: "numeric" })} · ${time(o.starts!, o.site.state)} for ${o.hours ?? "?"} h`}{p.st.k === "long" && <em> · check fridge</em>}</span>
+                        <span>{p.s.suburb} {p.s.state} · {o.provider}</span>
+                      </div>
                     </button>
                   )
                 })}
@@ -214,14 +224,16 @@ export default function MapPage() {
             onLoad={(m) => setMap(m)}
             onIdle={() => { if (map) { setZoom(map.getZoom() ?? 4); setBounds(map.getBounds() ?? null) } }}
             onClick={() => setSel(null)}
+            onTilesLoaded={() => setTiles(true)}
+            onDragStart={() => setView("")}
             options={{ styles: dark ? WATTLE_MAP_STYLE_DARK : WATTLE_MAP_STYLE, backgroundColor: dark ? "#24252A" : "#F4F2EE", disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
           >
-            {on.clear && pins.filter((p) => p.st.k === "clear").map((p) => {
+            {tiles && on.clear && pins.filter((p) => p.st.k === "clear").map((p) => {
               const ic = dotIcon("clear", false, dark)
               return <Marker key={p.s.id} position={{ lat: p.s.lat, lng: p.s.lng }} title={p.s.name} onClick={() => setSel(p.s.id)}
                 icon={{ url: ic.url, anchor: new google.maps.Point(ic.anchor, ic.anchor) }} zIndex={1} />
             })}
-            {clusters.map((b) => {
+            {tiles && clusters.map((b) => {
               if (b.length === 1) {
                 const p = b[0], ic = dotIcon(p.st.k, sel === p.s.id, dark)
                 return <Marker key={p.s.id} position={{ lat: p.s.lat, lng: p.s.lng }} title={p.s.name} onClick={() => setSel(p.s.id)}
@@ -273,15 +285,29 @@ export default function MapPage() {
   )
 }
 
-// While the outages are on their way: a row of dots that light up in turn, like the app's dot field, and what is
-// happening in words. Not a skeleton: nothing pretends to be content that isn't there yet.
-function Checking({ n }: { n?: number }) {
+// The app's time ring: off now shows the hours until power is back as a gold arc (12 hours makes a full circle), with
+// the hours in the middle; planned shows the day of the month in a gold ring, thick for 4 hours or longer.
+function Ring({ st, at }: { st: SiteState; at: string }) {
+  const o = st.o!
+  const R = 15, L = 2 * Math.PI * R
+  if (st.k === "now") {
+    const left = o.ends ? Math.max(0, (new Date(o.ends).getTime() - new Date(at).getTime()) / 3600_000) : null
+    const f = left === null ? 0 : Math.min(left / 12, 1)
+    return (
+      <svg className="tring" viewBox="0 0 40 40" aria-hidden>
+        <circle cx="20" cy="20" r={R} className="tr" />
+        {left === null ? <circle cx="20" cy="20" r={R} className="arc" strokeDasharray="2 4.5" />
+          : <circle cx="20" cy="20" r={R} className="arc" strokeDasharray={`${Math.max(f * L, 2)} ${L}`} transform="rotate(-90 20 20)" />}
+        <text x="20" y="24.2">{left === null ? "?" : left < 1 ? "<1h" : `${Math.round(left)}h`}</text>
+      </svg>
+    )
+  }
   return (
-    <div className="checking" role="status">
-      <div className="row">{Array.from({ length: 14 }, (_, i) => <i key={i} style={{ animationDelay: `${i * 90}ms` }} />)}</div>
-      <b>{n ? `Checking ${n} sites for outages` : "Finding your sites"}</b>
-      <span>{n ? "The pins turn gold where the power is off or work is planned." : "The map is ready; pins arrive in a moment."}</span>
-    </div>
+    <svg className="tring plan" viewBox="0 0 40 40" aria-hidden>
+      <circle cx="20" cy="20" r={R} className="arc" strokeWidth={st.k === "long" ? 3.4 : 1.8} />
+      <text x="20" y="18" className="wd">{fmt(o.starts!, o.site.state, { weekday: "short" }).toUpperCase()}</text>
+      <text x="20" y="28.5">{fmt(o.starts!, o.site.state, { day: "numeric" })}</text>
+    </svg>
   )
 }
 
