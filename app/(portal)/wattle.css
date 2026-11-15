@@ -359,3 +359,15 @@
   .wt .aud{grid-template-columns:minmax(0,1fr)}
   .wt .mail{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:16px}
 }
+
+/* waiting, without skeletons: a breathing dot where a number will go, and a row of dots that light up in turn */
+.wt i.wait{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:.35;animation:wt-wait 1.2s ease-in-out infinite;vertical-align:middle}
+@keyframes wt-wait{50%{opacity:.9;background:#F2B300}}
+.wt .checking{padding:28px 0 12px;display:grid;gap:6px;font-family:var(--rounded)}
+.wt .checking .row{display:flex;gap:7px;margin-bottom:8px}
+.wt .checking .row i{width:9px;height:9px;border-radius:50%;background:var(--muted);opacity:.25;animation:wt-light 1.6s ease-in-out infinite}
+@keyframes wt-light{30%{opacity:1;background:#F2B300;box-shadow:0 0 8px 1px #F2B30066}60%{opacity:.25}}
+.wt .checking b{font-weight:700;font-size:15px;color:var(--ink)}
+.wt .checking span{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.wt i.wait,.wt .checking .row i{animation:none;opacity:.5}}
+.wt .mp-net button i.wait,.wt .mp-net button.on i.wait{width:8px;height:8px;border:0;border-radius:50%;background:var(--muted)}

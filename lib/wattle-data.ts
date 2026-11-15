@@ -124,14 +124,14 @@ export interface OutageQuery {
   atSiteOnly?: boolean
 }
 
-export async function outages(companyId: string, q: OutageQuery = {}): Promise<Outage[]> {
+export async function outages(companyId: string, q: OutageQuery = {}, known?: Site[] | Promise<Site[]>): Promise<Outage[]> {
   const when = q.when ?? "all"
   const days = Math.min(Math.max(q.days ?? 14, 1), 120)
   const now = Date.now()
   const horizon = now + days * 86400_000
   const db = createServiceClient()
   const [all, rows] = await Promise.all([
-    sites(companyId),
+    known ?? sites(companyId),
     (async () => {
       const out: any[] = []
       for (let from = 0; ; from += 1000) {

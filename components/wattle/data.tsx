@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 
@@ -24,13 +24,15 @@ export interface Summary {
   next28Days: { outages: number; sites: number }
   longOnes7Days: number
 }
-export interface PortalData { company: string; companyId: string; userId: string; role: string; at: string; summary: Summary; sites: Site[]; outages: Outage[] }
+export interface PortalData { partial?: boolean; company: string; companyId: string; userId: string; role: string; at: string; summary: Summary; sites: Site[]; outages: Outage[] }
 
 /** Where a site stands: power off now, a planned outage in the next 14 days (4h+ or shorter), or all clear. */
 export type SiteState = { k: "now" | "long" | "soon"; o: Outage } | { k: "clear"; o?: undefined }
 
 interface Ctx {
   data: PortalData | null
+  /** The sites alone, which arrive before the outages; null once `data` is in. Only the map uses it. */
+  early: PortalData | null
   error: string | null
   me: { userId: string; firstName: string; lastName: string } | null
   reload: () => Promise<void>
@@ -54,18 +56,28 @@ export const headers = async (): Promise<Record<string, string>> => {
 export function PortalProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [data, setData] = useState<PortalData | null>(null)
+  const [early, setEarly] = useState<PortalData | null>(null)
+  const loaded = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [me, setMe] = useState<Ctx["me"]>(null)
 
   const reload = useCallback(async () => {
     const { data: s } = await supabase.auth.getSession()
     if (!s.session) { router.replace("/login"); return }
-    const res = await fetch("/api/portal", { headers: await headers(), cache: "no-store" })
+    const h = await headers()
+    let full = false
+    // the sites alone come back first, so the map can put its pins down; the full call follows alongside it
+    if (!loaded.current) fetch("/api/portal?part=sites", { headers: h, cache: "no-store" }).then((r) => r.ok ? r.json() : null)
+      .then((j) => { if (j && !full) setEarly(j) }).catch(() => {})
+    const res = await fetch("/api/portal", { headers: h, cache: "no-store" })
+    full = true
     if (res.status === 401) { router.replace("/login"); return }
     const j = await res.json().catch(() => ({}))
     if (!res.ok) { setError(j.error ?? "Couldn't load your sites."); return }
     setError(null)
+    loaded.current = true
     setData(j)
+    setEarly(null)
   }, [router])
 
   useEffect(() => {
@@ -109,7 +121,7 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
     return { bySite, stateOf }
   }, [data])
 
-  return <PortalCtx.Provider value={{ data, error, me, reload, headers, stateOf, bySite }}>{children}</PortalCtx.Provider>
+  return <PortalCtx.Provider value={{ data, early, error, me, reload, headers, stateOf, bySite }}>{children}</PortalCtx.Provider>
 }
 
 /** True when the device is in dark mode, like the app; follows changes live. */

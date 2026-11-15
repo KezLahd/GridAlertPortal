@@ -65,7 +65,11 @@ function clusterIcon(n: number, longShare: number, nNow: number, dark: boolean) 
 }
 
 export default function MapPage() {
-  const { data, error, stateOf } = usePortal()
+  // Things arrive in turn so the page is never blank: the map and the side straight away, the sites (grey pins) a
+  // moment later, then the outages light them up gold, and the network areas are drawn last, once the map is idle.
+  const { data: full, early, error, stateOf } = usePortal()
+  const data = full ?? early
+  const ready = !!full
   const { isLoaded, loadError } = useJsApiLoader({ id: "google-map-script", googleMapsApiKey, libraries })
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [view, setView] = useState<string>("Australia")
@@ -75,6 +79,7 @@ export default function MapPage() {
   const [sel, setSel] = useState<string | null>(null)
   const dark = useDark()
   const [nets, setNets] = useState(true)
+  const [netsIn, setNetsIn] = useState(false)
   const netsLoaded = useRef(false)
   const [labels, setLabels] = useState<NetLabel[]>([])
   const [net, setNet] = useState<string | null>(null)
@@ -100,19 +105,21 @@ export default function MapPage() {
 
   // network areas: loaded once onto the map's data layer, tinted per network, highlighted on hover or tap
   useEffect(() => {
-    if (!map || netsLoaded.current) return
+    if (!map || !ready || netsLoaded.current) return
     netsLoaded.current = true
-    {
+    const idle = (f: () => void) => "requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 300)
+    idle(() => {
       fetch("/network-areas.json").then((r) => r.json()).then((fc) => {
         map.data.addGeoJson(fc)
+        setNetsIn(true)
         setLabels(fc.features.filter((f: any) => f.properties.label).map((f: any) => ({ name: f.properties.name, at: f.properties.label, z: f.properties.z, approx: f.properties.approx })))
       }).catch(() => {})
       const which = (f: google.maps.Data.Feature) => f.getProperty("kind") === "edge" ? `${f.getProperty("a")}|${f.getProperty("b")}` : String(f.getProperty("name"))
       map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => setNet(which(e.feature)))
       map.data.addListener("mouseout", () => setNet(null))
       map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(which(e.feature)) })
-    }
-  }, [map])
+    })
+  }, [map, ready])
   useEffect(() => {
     if (!map) return
     map.data.setStyle((f) => {
@@ -140,12 +147,12 @@ export default function MapPage() {
     return [...bins.values()]
   }, [pins, zoom, on]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return <Loading error={error} />
+  if (error && !data) return <Loading error={error} />
   const here = pins.filter(inBounds)
   const count = (k: "now" | "plan" | "clear") => here.filter((p) => k === "plan" ? p.st.k === "long" || p.st.k === "soon" : p.st.k === k).length
   const list = here.filter((p) => p.st.k !== "clear" && shown(p))
     .sort((a, b) => (a.st.k === "now" ? 0 : 1) - (b.st.k === "now" ? 0 : 1) || new Date(a.st.o?.starts ?? 0).getTime() - new Date(b.st.o?.starts ?? 0).getTime())
-  const selPin = pins.find((p) => p.s.id === sel)
+  const selPin = data ? pins.find((p) => p.s.id === sel) : undefined
   const choose = (p: Pin) => {
     setSel(p.s.id)
     if (map && (map.getZoom() ?? 0) < 11) { map.setZoom(13) }
@@ -157,25 +164,26 @@ export default function MapPage() {
       <title>Map · Wattle</title>
       <section className="mp-side">
         <div className="mp-head">
-          <div className="eyebrow"><i className="dot" />Live · checked {checked(data.at)}</div>
+          <div className="eyebrow"><i className="dot" />{ready ? `Live · checked ${checked(full.at)}` : "Checking now"}</div>
           <h1>Map</h1>
           <div className="chips">
             {Object.keys(VIEWS).map((v) => {
               const [w, s, e, n] = VIEWS[v]
               const c = pins.filter((p) => p.st.k !== "clear" && p.s.lng >= w && p.s.lng <= e && p.s.lat >= s && p.s.lat <= n).length
-              return <button key={v} className={`chip ${v === view ? "on" : ""}`} onClick={() => { setView(v); setSel(null); fit(v) }}>{v}{v === "Australia" ? "" : ` · ${c}`}</button>
+              return <button key={v} className={`chip ${v === view ? "on" : ""}`} onClick={() => { setView(v); setSel(null); fit(v) }}>{v}{v === "Australia" || !ready ? "" : ` · ${c}`}</button>
             })}
           </div>
           <div className="layers">
             {([["now", "Off now", "now"], ["plan", "Next 14 days", "long"], ["clear", "All clear", "clear"]] as const).map(([k, l, sw]) => (
               <button key={k} className={`layer ${on[k] ? "" : "off"}`} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>
-                <div className="k"><i className={`sw ${sw}`} />{l}</div><div className="v">{count(k)}</div>
+                <div className="k"><i className={`sw ${sw}`} />{l}</div><div className="v">{ready ? count(k) : <i className="wait" />}</div>
               </button>
             ))}
           </div>
         </div>
         <div className="mp-list">
-          {list.length === 0 && <div className="lh">Nothing in this part of the map</div>}
+          {!ready && <Checking n={data?.sites.length} />}
+          {ready && list.length === 0 && <div className="lh">Nothing in this part of the map</div>}
           {(["now", "plan"] as const).map((g) => {
             const l = list.filter((p) => (p.st.k === "now") === (g === "now"))
             if (!l.length) return null
@@ -239,7 +247,7 @@ export default function MapPage() {
                 <div className="mp-pop">
                   <b>{selPin.s.name}</b>
                   <div className="m">{selPin.s.address}</div>
-                  <div className="m">{line(selPin.st, data.at)}</div>
+                  <div className="m">{line(selPin.st, data!.at)}</div>
                   {selPin.st.k === "long" && <span className="tag">Check fridge stock</span>}
                 </div>
               </InfoWindow>
@@ -254,14 +262,26 @@ export default function MapPage() {
           {nets && <small className="src">Network areas are a guide; the shaded edges could be either network. Coastlines: geoBoundaries, CC BY 4.0.</small>}
         </div>
         <div className="mp-net">
-          <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}><i />Network areas</button>
+          <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}>{nets && !netsIn && ready ? <i className="wait" /> : <i />}Network areas</button>
           {nets && net && (net.includes("|")
             ? <span className="glass"><i style={{ background: NET_C[net.split("|")[0]] }} /><i style={{ background: NET_C[net.split("|")[1]], marginLeft: -4 }} />Could be {net.split("|")[0]} or {net.split("|")[1]}. The border here isn&apos;t certain; each site&apos;s details show its real network.</span>
             : <span className="glass"><i style={{ background: NET_C[net] }} />{net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>)}
         </div>
-        {noPin > 0 && <div className="mp-note glass">{noPin} sites have no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
+        {data && noPin > 0 && <div className="mp-note glass">{noPin} sites have no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
       </section>
     </main>
+  )
+}
+
+// While the outages are on their way: a row of dots that light up in turn, like the app's dot field, and what is
+// happening in words. Not a skeleton: nothing pretends to be content that isn't there yet.
+function Checking({ n }: { n?: number }) {
+  return (
+    <div className="checking" role="status">
+      <div className="row">{Array.from({ length: 14 }, (_, i) => <i key={i} style={{ animationDelay: `${i * 90}ms` }} />)}</div>
+      <b>{n ? `Checking ${n} sites for outages` : "Finding your sites"}</b>
+      <span>{n ? "The pins turn gold where the power is off or work is planned." : "The map is ready; pins arrive in a moment."}</span>
+    </div>
   )
 }
 
