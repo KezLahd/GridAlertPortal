@@ -6,16 +6,17 @@ import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { checked, usePortal } from "./data"
 
-// The portal's frame: a rail on the left with the four places and the app's own tab icons, which becomes a floating
+// The portal's frame: a rail on the left with the five places and the app's own tab icons, which becomes a floating
 // glass tab bar along the bottom on a phone. Light or dark follows the device, like the app. The Aurora, gold light
 // drifting behind each page's title, is the same one as in the app.
 
-// The four icons are the app's own tab icons (dots like a wattle flower), plus Sites drawn the same way.
+// The icons are the app's own tab icons (dots like a wattle flower), plus Sites drawn the same way.
 const C = (cx: number, cy: number, r: number) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={r} fill="currentColor" />
 const line = { fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" } as const
 const NAV = [
   { href: "/overview", label: "Dashboard", icon: <>{[[14, 14, 3.1], [14, 6.6, 2.35], [19.7, 4.13, 1.45], [20.41, 10.3, 2.35], [25.4, 14, 1.45], [20.41, 17.7, 2.35], [19.7, 23.87, 1.45], [14, 21.4, 2.35], [8.3, 23.87, 1.45], [7.59, 17.7, 2.35], [2.6, 14, 1.45], [7.59, 10.3, 2.35], [8.3, 4.13, 1.45]].map(([x, y, r]) => C(x, y, r))}</> },
   { href: "/map", label: "Map", icon: <><path {...line} d="M14 25.2C14 25.2 6 18 6 11.8a8 8 0 0 1 16 0C22 18 14 25.2 14 25.2Z" />{C(14, 11.8, 3)}</> },
+  { href: "/planned", label: "Planned", icon: <><rect {...line} x="4" y="6.2" width="20" height="18" rx="4.5" /><path {...line} d="M9.5 3.6v4.4M18.5 3.6v4.4" />{C(9.6, 14, 1.45)}{C(14, 14, 1.45)}{C(18.4, 14, 1.45)}{C(9.6, 19, 1.45)}{C(14, 19, 1.45)}{C(18.4, 19, 2.3)}</> },
   { href: "/sites", label: "Sites", icon: <><path {...line} d="M11 7h12M11 14h12M11 21h8" />{C(5.6, 7, 2.3)}{C(5.6, 14, 1.6)}{C(5.6, 21, 1.6)}</>, count: true },
   { href: "/organisation", label: "Organisation", icon: <><path {...line} d="M7 24.5V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v17.5M3.8 24.5h20.4M12 24.5v-3a2 2 0 0 1 4 0v3" />{C(11.3, 9.4, 1.45)}{C(16.7, 9.4, 1.45)}{C(11.3, 14.4, 1.45)}{C(16.7, 14.4, 1.45)}</> },
 ]

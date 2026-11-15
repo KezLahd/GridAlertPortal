@@ -7,7 +7,8 @@ import { SitesExportMenu } from "@/components/sites-export-menu"
 import { Loading } from "@/components/wattle/shell"
 import { useSiteDialogs, useToast } from "@/components/wattle/site-dialogs"
 import { fmt, plural, since, time, usePortal, type Outage, type Site, type SiteState } from "@/components/wattle/data"
-import { backAt, DayBar, GlanceList, netName } from "@/components/wattle/glance"
+import { backAt, DayBar, GlanceList } from "@/components/wattle/glance"
+import { NetLink, netName, netTint } from "@/components/wattle/networks"
 import { Opt, Pick, Sep } from "@/components/wattle/pick"
 
 // Sites: every clinic and pharmacy, sorted so the ones with the power off come first, then by the soonest outage.
@@ -96,7 +97,7 @@ function Sites() {
                 <b>{x.s.name}</b>
                 <span>{detail(x.s, x.st, x.fix)}</span>
               </span>
-              <span className="net h-s">{netName(x.s.provider)}</span>
+              <span className="net h-s"><i style={{ background: netTint(x.s.provider) }} />{netName(x.s.provider)}</span>
               <span className={`when ${x.st.k}`}>{trailing(x.st, data.at)}</span>
               {x.st.o && <DayBar o={x.st.o} at={data.at} />}
             </button>
@@ -149,7 +150,7 @@ function Detail({ s, fix, admin, outages, at, onEdit }: { s: Site; fix: string |
       <div className="addr">{s.address}</div>
       {fix && <div className="fix"><i>!</i><div><b>{fix}.</b> Add it so outages can be matched to this site.</div></div>}
       <dl className="facts">
-        <dt>Network</dt><dd>{netName(s.provider)}</dd>
+        <dt>Network</dt><dd><NetLink p={s.provider} /></dd>
         <dt>Next 28 days</dt><dd>{plural(l.length, "outage")}</dd>
       </dl>
       <h3>Coming up</h3>

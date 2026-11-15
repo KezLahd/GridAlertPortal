@@ -2,15 +2,12 @@
 
 import { useState } from "react"
 import { dayKey, fmt, isStale, since, time, type Outage } from "./data"
+import { NetLink, netName } from "./networks"
 
 // Glances, as in the app: things that stay on show while a section or row is shut and change shape as it opens.
 // No cards: straight on the page with hairlines between.
 
-const NET_NAME: Record<string, string> = {
-  WPower: "Western Power", SAPower: "SA Power Networks", CitiPowerCor: "CitiPower and Powercor", AusNet: "AusNet Services",
-  Endeavour: "Endeavour Energy", Ergon: "Ergon Energy", EvoEnergy: "Evoenergy", UnitedEnergy: "United Energy", Horizon: "Horizon Power",
-}
-export const netName = (p: string | null | undefined) => p ? NET_NAME[p] ?? p : "Network not set"
+export { netName }
 
 /** Hours since midnight (0–24) in the site's own state. */
 export function hourOf(d: string, state: string | null) {
@@ -25,6 +22,9 @@ export function backAt(ends: string, state: string | null, at: string) {
   if (days < 6) return `${fmt(ends, state, { weekday: "short" })} ${time(ends, state)}`
   return fmt(ends, state, { day: "numeric", month: "short" })
 }
+
+/** A network's area name, which some feeds send in capitals ("PHILLIP"), as a place name ("Phillip"). */
+const place = (a: string) => a === a.toUpperCase() ? a.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()) : a
 
 export const awayText = (o: Outage) =>
   o.atSite ? "At the site" : o.distanceKm !== null ? `${o.distanceKm < 1 ? "Under 1" : Math.round(o.distanceKm * 10) / 10} km away` : "Nearby"
@@ -50,15 +50,17 @@ export function OutageGlance({ o, at, open, sel, onToggle, lead = "day", name, c
         <DayBar o={o} at={at} />
       </button>
       <div className="ogx"><div>
-        <dl>
-          <dt>When</dt><dd>{o.starts ? `${fmt(o.starts, st, { weekday: "short", day: "numeric", month: "short" })} ${time(o.starts, st)}` : "Unknown"}{o.ends ? ` – ${time(o.ends, st)}` : now ? " – no restore time yet" : ""}</dd>
-          <dt>Where</dt><dd className={o.atSite ? "g" : ""}>{awayText(o)}{o.site.suburb ? ` · ${o.site.suburb} ${o.site.state ?? ""}` : ""}</dd>
-          {o.cause && <><dt>Cause</dt><dd>{o.cause}</dd></>}
-          <dt>Network</dt><dd>{netName(o.site.provider ?? o.provider)}</dd>
-          {long && <><dt>Fridge</dt><dd className="g">4 hours or more: check fridge stock</dd></>}
-          {stale && <><dt>Note</dt><dd>Off for a week with no update; the network&apos;s feed may be stale</dd></>}
-        </dl>
-        {children && <div className="oga">{children}</div>}
+        {/* the record as two columns, the label over the value, like the app: short facts pair up, long ones run across */}
+        <div className="facts2">
+          <div className="w"><small>When</small><span>{o.starts ? `${fmt(o.starts, st, { weekday: "short", day: "numeric", month: "short" })} ${time(o.starts, st)}` : "Unknown"}{o.ends ? ` – ${time(o.ends, st)}` : now ? " – no restore time yet" : ""}</span></div>
+          <div><small>Where</small><span className={o.atSite ? "g" : ""}>{awayText(o)}</span></div>
+          {(o.area || o.site.suburb) && <div><small>Area</small><span>{o.area ? place(o.area) : `${o.site.suburb} ${o.site.state ?? ""}`}</span></div>}
+          {o.cause && <div><small>Cause</small><span>{o.cause}</span></div>}
+          <div><small>Network</small><span><NetLink p={o.provider || o.site.provider} /></span></div>
+          {long && <div className="w"><small>Fridge</small><span className="g">4 hours or more: check fridge stock</span></div>}
+          {stale && <div className="w"><small>Note</small><span>Off for a week with no update; the network&apos;s feed may be stale</span></div>}
+          {children && <div className="oga">{children}</div>}
+        </div>
       </div></div>
     </div>
   )

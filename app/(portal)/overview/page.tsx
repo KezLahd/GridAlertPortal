@@ -143,6 +143,7 @@ export default function Dashboard() {
               )
             })}
             {agendaDays.length > showDays && <button className="fold-more" onClick={() => setShowDays((n) => n + 4)}>Show more days</button>}
+            <Link className="fold-more" href="/planned">Everything planned, by month</Link>
           </>}
         </Fold>
 

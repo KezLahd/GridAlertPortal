@@ -9,6 +9,7 @@ import { Loading } from "@/components/wattle/shell"
 import { GhostRows, Wait } from "@/components/wattle/waiting"
 import { Opt, Pick, Sep } from "@/components/wattle/pick"
 import { OutageGlance } from "@/components/wattle/glance"
+import { NetLink, netKey, netName, netTint } from "@/components/wattle/networks"
 import { fmt, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
 
 // Map: every site on an Apple-style Google map (light or dark to match the page). Solid gold = power off now, a gold
@@ -28,12 +29,6 @@ type Kind = "fault" | "work" | "plan" | "clear"
 const kindOf = (p: Pin): Kind => p.st.k === "clear" ? "clear" : p.st.k === "now" ? (p.st.o.kind === "unplanned" ? "fault" : "work") : "plan"
 const KIND_NAME: Record<Kind, string> = { fault: "Faults", work: "Planned work", plan: "Planned", clear: "All clear" }
 const ALL_ON: Record<Kind, boolean> = { fault: true, work: true, plan: true, clear: true }
-// the clinics' provider field uses the feeds' short names
-const NET_NAME: Record<string, string> = {
-  WPower: "Western Power", SAPower: "SA Power Networks", CitiPowerCor: "CitiPower and Powercor", AusNet: "AusNet Services",
-  Endeavour: "Endeavour Energy", Ergon: "Ergon Energy", EvoEnergy: "Evoenergy", UnitedEnergy: "United Energy", Horizon: "Horizon Power",
-}
-const netName = (p: string | null) => p ? NET_NAME[p] ?? p : "Network not set"
 // on wider screens the side panel floats over the map's left edge, so framing a place leaves that strip clear
 const pad = (n: number) => typeof window !== "undefined" && innerWidth > 820 ? { left: 372 + n, top: n, right: n, bottom: n } : n
 
@@ -249,7 +244,7 @@ export default function MapPage() {
               {(close) => <>
                 <Opt on={!netF} n={ready ? pins.filter((p) => p.st.k !== "clear").length : undefined} onPick={() => { setNetF(null); close() }}>All networks</Opt>
                 <Sep />
-                {nets_.map(({ n, c }) => <Opt key={n} on={netF === n} n={ready ? c : undefined} onPick={() => { setNetF(n); close() }}>{netName(n)}</Opt>)}
+                {nets_.map(({ n, c }) => <Opt key={n} on={netF === n} n={ready ? c : undefined} sw={<i className="netsw" style={{ background: netTint(n) }} />} onPick={() => { setNetF(n); close() }}>{netName(n)}</Opt>)}
               </>}
             </Pick>
             <Pick label="Planned" value={`Next ${days} days${longOnly ? ", 4h+" : ""}`} active={days !== 14 || longOnly}>
@@ -383,7 +378,7 @@ export default function MapPage() {
           <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}>{nets && !netsIn && ready ? <i className="wait" /> : <i />}Network areas</button>
           {nets && net && (zoom >= 8 || net.includes("|")) && (net.includes("|")
             ? <span className="glass"><i style={{ background: NET_C[net.split("|")[0]] }} /><i style={{ background: NET_C[net.split("|")[1]], marginLeft: -4 }} />Could be {net.split("|")[0]} or {net.split("|")[1]}. The border here isn&apos;t certain; each site&apos;s details show its real network.</span>
-            : <span className="glass"><i style={{ background: NET_C[net] }} />{net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>)}
+            : <span className="glass"><i style={{ background: NET_C[net] }} />{netKey(net) ? <NetLink p={net} dot={false} /> : net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>)}
         </div>
       </section>
     </main>
