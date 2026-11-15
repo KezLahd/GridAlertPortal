@@ -41,7 +41,7 @@ function netLabel(name: string, dark: boolean, c?: string) {
 // Dots like the app's: off now is solid gold with a soft bloom, planned is a gold ring (thicker for 4 hours or more),
 // all clear is a small grey dot.
 const svgUrl = (svg: string) => "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg)
-function dotIcon(k: keyof typeof COL, sel: boolean, dark: boolean) {
+function dotIcon(k: keyof typeof COL, sel: boolean, dark: boolean, work = false) {
   const bg = dark ? "#12100D" : "#FFFFFF", edge = dark ? "#12100D" : "#FFFFFF"
   if (k === "clear") {
     const size = 14, c = 7
@@ -49,7 +49,7 @@ function dotIcon(k: keyof typeof COL, sel: boolean, dark: boolean) {
   }
   if (k === "now") {
     const size = 44, c = 22, r = sel ? 9.5 : 8
-    return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><defs><radialGradient id="b"><stop offset="0" stop-color="#F2B300" stop-opacity=".55"/><stop offset="1" stop-color="#F2B300" stop-opacity="0"/></radialGradient></defs><circle cx="${c}" cy="${c}" r="21" fill="url(#b)"/><circle cx="${c}" cy="${c}" r="${r}" fill="#F2B300" stroke="${sel ? (dark ? "#F3EEE4" : "#24211C") : edge}" stroke-width="${sel ? 3 : 2}"/></svg>`), size, anchor: c }
+    return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><defs><radialGradient id="b"><stop offset="0" stop-color="#F2B300" stop-opacity=".55"/><stop offset="1" stop-color="#F2B300" stop-opacity="0"/></radialGradient></defs><circle cx="${c}" cy="${c}" r="21" fill="url(#b)"/><circle cx="${c}" cy="${c}" r="${r}" fill="#F2B300" stroke="${sel ? (dark ? "#F3EEE4" : "#24211C") : edge}" stroke-width="${sel ? 3 : 2}"/>${work ? `<circle cx="${c}" cy="${c}" r="3" fill="${dark ? "#12100D" : "#24211C"}"/>` : ""}</svg>`), size, anchor: c }
   }
   const r = sel ? 9 : 7.5, w = k === "long" ? 3.4 : 2, size = r * 2 + 10, c = size / 2
   return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${c}" cy="${c}" r="${r + 1.5}" fill="${edge}" opacity=".9"/><circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="${bg}" stroke="#F2B300" stroke-width="${w}"/>${sel ? `<circle cx="${c}" cy="${c}" r="2.6" fill="#F2B300"/>` : ""}</svg>`), size, anchor: c }
@@ -126,13 +126,14 @@ export default function MapPage() {
     if (!map) return
     map.data.setStyle((f) => {
       if (f.getProperty("kind") === "edge") {
-        const hot = net === `${f.getProperty("a")}|${f.getProperty("b")}`
+        const hot = zoom < 8 && net === `${f.getProperty("a")}|${f.getProperty("b")}`
         return { visible: nets, fillColor: dark ? "#F3EEE4" : "#24211C", fillOpacity: hot ? 0.16 : 0.05, strokeWeight: 0, zIndex: 1 }
       }
-      const n = String(f.getProperty("name")), c = NET_C[n] ?? "#888", hot = n === net
-      return { visible: nets, fillColor: c, fillOpacity: hot ? 0.16 : 0.04, strokeColor: c, strokeOpacity: hot ? 0.9 : 0.5, strokeWeight: hot ? 2 : 1.2, zIndex: 0 }
+      // zoomed out the area under the pointer darkens; zoomed in it stays still (the name shows up top instead)
+      const n = String(f.getProperty("name")), c = NET_C[n] ?? "#888", hot = n === net && zoom < 8, close = zoom >= 8
+      return { visible: nets, fillColor: c, fillOpacity: hot ? 0.16 : close ? 0.03 : 0.04, strokeColor: c, strokeOpacity: hot ? 0.9 : close ? 0.35 : 0.5, strokeWeight: hot ? 2 : 1.2, zIndex: 0 }
     })
-  }, [map, nets, net, dark])
+  }, [map, nets, net, dark, zoom < 8]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = (p: Pin) => p.st.k === "now" ? on.now : p.st.k === "clear" ? on.clear : on.plan
   const inBounds = (p: Pin) => !bounds || bounds.contains({ lat: p.s.lat, lng: p.s.lng })
@@ -154,6 +155,8 @@ export default function MapPage() {
   const count = (k: "now" | "plan" | "clear") => here.filter((p) => k === "plan" ? p.st.k === "long" || p.st.k === "soon" : p.st.k === k).length
   const list = here.filter((p) => p.st.k !== "clear" && shown(p))
     .sort((a, b) => (a.st.k === "now" ? 0 : 1) - (b.st.k === "now" ? 0 : 1) || new Date(a.st.o?.starts ?? 0).getTime() - new Date(b.st.o?.starts ?? 0).getTime())
+  const faults = here.filter((p) => p.st.k === "now" && p.st.o.kind === "unplanned").length
+  const works = count("now") - faults
   const selPin = data ? pins.find((p) => p.s.id === sel) : undefined
   const choose = (p: Pin) => {
     setSel(p.s.id)
@@ -168,18 +171,19 @@ export default function MapPage() {
         <div className="mp-head">
           <div className="eyebrow"><i className="dot" />{ready ? `Live · checked ${checked(full.at)}` : "Checking now"}</div>
           <h1>Map</h1>
-          <div className="mp-hero">
-            <b className={ready && count("now") ? "hot" : ""}>{ready ? count("now") : <Wait />}</b>
-            <div>
-              <span>{ready && count("now") === 1 ? "site" : "sites"} off now{view ? ` in ${view}` : " in this view"}</span>
-              <small>{ready ? <><em>{count("plan")} planned</em> in the next 14 days · {count("clear")} clear</> : data ? `Checking ${data.sites.length} sites` : "Finding your sites"}</small>
-            </div>
-          </div>
-          <div className="mp-key" role="group" aria-label="Show on the map">
+          <div className="mp-figs" role="group" aria-label="Show on the map">
             {([["now", "Off now", "now"], ["plan", "Planned", "long"], ["clear", "All clear", "clear"]] as const).map(([k, l, sw]) => (
-              <button key={k} className={on[k] ? "" : "off"} aria-pressed={on[k]} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}><i className={`sw ${sw}`} />{l}</button>
+              <button key={k} className={`${k} ${on[k] ? "" : "off"}`} aria-pressed={on[k]} title={on[k] ? "Hide these on the map" : "Show these on the map"}
+                onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>
+                <b>{ready ? count(k) : <Wait />}</b>
+                <span><i className={`sw ${sw}`} />{l}</span>
+                {k === "now" && ready && count("now") > 0 && <small>{faults} {faults === 1 ? "fault" : "faults"} · {works} planned</small>}
+                {k === "plan" && <small className="q">next 14 days</small>}
+                {k === "clear" && <small className="q">no outage due</small>}
+              </button>
             ))}
           </div>
+          <div className="mp-where">{ready ? <>Showing {view ? view : "this part of the map"}</> : data ? `Checking ${data.sites.length} sites` : "Finding your sites"}</div>
           <nav className="mp-places" aria-label="Go to">
             {Object.keys(VIEWS).map((v) => {
               const [w, s, e, n] = VIEWS[v]
@@ -191,12 +195,13 @@ export default function MapPage() {
         <div className="mp-list">
           {!ready && <GhostRows rows={7} label={data ? `Checking ${data.sites.length} sites for outages` : "Finding your sites"} />}
           {ready && list.length === 0 && <div className="cap">Nothing in this part of the map</div>}
-          {(["now", "plan"] as const).map((g) => {
-            const l = list.filter((p) => (p.st.k === "now") === (g === "now"))
+          {([["fault", "Off now · fault", "No warning: the network is working on it"], ["work", "Off now · planned work", "Booked by the network, under way now"], ["plan", "Planned, next 14 days", "Booked ahead; 4 hours or more puts fridge stock at risk"]] as const).map(([g, title, hint]) => {
+            const l = list.filter((p) => g === "plan" ? p.st.k !== "now" : p.st.k === "now" && (p.st.o.kind === "unplanned") === (g === "fault"))
             if (!l.length) return null
             return (
               <div key={g}>
-                <div className="cap">{g === "now" ? "Off now" : "Planned, next 14 days"}<span>{l.length}</span></div>
+                <div className="cap">{title}<span>{l.length}</span></div>
+                <div className="caphint">{hint}</div>
                 {l.slice(0, 120).map((p) => {
                   const o = p.st.o!
                   return (
@@ -204,7 +209,7 @@ export default function MapPage() {
                       <Ring st={p.st} at={full!.at} />
                       <div style={{ minWidth: 0 }}>
                         <b>{p.s.name}</b>
-                        <span className="l1">{p.st.k === "now" ? (o.ends ? `Back ${time(o.ends, o.site.state)}` : "No restore time yet") : `${fmt(o.starts!, o.site.state, { weekday: "short", day: "numeric" })} · ${time(o.starts!, o.site.state)} for ${o.hours ?? "?"} h`}{p.st.k === "long" && <em> · check fridge</em>}</span>
+                        <span className="l1">{p.st.k === "now" ? (o.ends ? `Back ${backAt(o.ends, o.site.state, full!.at)}` : "No restore time yet") : `${fmt(o.starts!, o.site.state, { weekday: "short", day: "numeric" })} · ${time(o.starts!, o.site.state)} for ${o.hours ?? "?"} h`}{p.st.k === "long" && <em> · check fridge</em>}</span>
                         <span>{p.s.suburb} {p.s.state} · {o.provider}</span>
                       </div>
                     </button>
@@ -226,7 +231,7 @@ export default function MapPage() {
             onClick={() => setSel(null)}
             onTilesLoaded={() => setTiles(true)}
             onDragStart={() => setView("")}
-            options={{ styles: dark ? WATTLE_MAP_STYLE_DARK : WATTLE_MAP_STYLE, backgroundColor: dark ? "#24252A" : "#F4F2EE", disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
+            options={{ styles: dark ? WATTLE_MAP_STYLE_DARK : WATTLE_MAP_STYLE, backgroundColor: dark ? "#1E347B" : "#8DDAF7", disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
           >
             {tiles && on.clear && pins.filter((p) => p.st.k === "clear").map((p) => {
               const ic = dotIcon("clear", false, dark)
@@ -235,7 +240,7 @@ export default function MapPage() {
             })}
             {tiles && clusters.map((b) => {
               if (b.length === 1) {
-                const p = b[0], ic = dotIcon(p.st.k, sel === p.s.id, dark)
+                const p = b[0], ic = dotIcon(p.st.k, sel === p.s.id, dark, p.st.k === "now" && p.st.o.kind !== "unplanned")
                 return <Marker key={p.s.id} position={{ lat: p.s.lat, lng: p.s.lng }} title={p.s.name} onClick={() => setSel(p.s.id)}
                   icon={{ url: ic.url, anchor: new google.maps.Point(ic.anchor, ic.anchor) }} zIndex={10 + RANK[p.st.k]} />
               }
@@ -267,7 +272,8 @@ export default function MapPage() {
           </GoogleMap>
         )}
         <div className="mp-legend glass">
-          <span><i className="sw now" />Off now</span>
+          <span><i className="sw now" />Off now, fault</span>
+          <span><i className="sw now work" />Off now, planned work</span>
           <span><i className="sw long" />Planned, 4 hours or longer</span>
           <span><i className="sw soon" />Planned, shorter</span>
           <span><i className="sw clear" />All clear</span>
@@ -298,7 +304,7 @@ function Ring({ st, at }: { st: SiteState; at: string }) {
         <circle cx="20" cy="20" r={R} className="tr" />
         {left === null ? <circle cx="20" cy="20" r={R} className="arc" strokeDasharray="2 4.5" />
           : <circle cx="20" cy="20" r={R} className="arc" strokeDasharray={`${Math.max(f * L, 2)} ${L}`} transform="rotate(-90 20 20)" />}
-        <text x="20" y="24.2">{left === null ? "?" : left < 1 ? "<1h" : `${Math.round(left)}h`}</text>
+        <text x="20" y="24.2">{left === null ? "?" : left < 1 ? "<1h" : left < 48 ? `${Math.round(left)}h` : `${Math.round(left / 24)}d`}</text>
       </svg>
     )
   }
@@ -309,6 +315,14 @@ function Ring({ st, at }: { st: SiteState; at: string }) {
       <text x="20" y="28.5">{fmt(o.starts!, o.site.state, { day: "numeric" })}</text>
     </svg>
   )
+}
+
+/** "4:00pm" today, "Tue 4:00pm" this week, "10 Dec" further out. */
+function backAt(ends: string, state: string | null, at: string) {
+  const days = (new Date(ends).getTime() - new Date(at).getTime()) / 86400_000
+  if (days < 0.75 && fmt(ends, state, { day: "numeric" }) === fmt(at, state, { day: "numeric" })) return time(ends, state)
+  if (days < 6) return `${fmt(ends, state, { weekday: "short" })} ${time(ends, state)}`
+  return fmt(ends, state, { day: "numeric", month: "short" })
 }
 
 function line(st: SiteState, at: string) {

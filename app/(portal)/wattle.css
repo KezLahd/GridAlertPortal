@@ -184,8 +184,8 @@
 .wt .it em{font-style:normal;color:var(--gold-text);font-weight:600}
 .wt .it:hover b{color:var(--gold-text)}
 .wt .it.sel{background:linear-gradient(90deg,var(--tint),transparent);margin:0 -24px;padding-left:24px;padding-right:24px;width:calc(100% + 48px)}
-.wt .mp-map{position:relative;overflow:hidden;background:#F4F2EE;min-height:0}
-@media (prefers-color-scheme:dark){.wt .mp-map{background:#24252A}}
+.wt .mp-map{position:relative;overflow:hidden;background:#F3F2EA;min-height:0}
+@media (prefers-color-scheme:dark){.wt .mp-map{background:#334457}}
 .wt .mp-map .gm{position:absolute;inset:0}
 .wt .mp-legend{position:absolute;left:20px;bottom:24px;border-radius:16px;padding:12px 14px;font-size:12.5px;color:var(--muted);display:grid;gap:7px}
 .wt .mp-legend span{display:flex;gap:8px;align-items:center}
@@ -373,17 +373,33 @@
 @media (prefers-reduced-motion:reduce){.wt i.wait{animation:none;opacity:.5}}
 .wt .mp-net button i.wait,.wt .mp-net button.on i.wait{width:8px;height:8px;border:0;border-radius:50%;background:var(--muted)}
 
-/* map side, in the app's voice: a big figure, a dot key, places as plain words, time rings in the list */
-.wt .mp-hero{display:flex;align-items:center;gap:14px;margin:18px 0 4px}
-.wt .mp-hero>b{font-family:var(--rounded);font-weight:800;font-size:64px;line-height:.9;letter-spacing:-.05em;font-variant-numeric:tabular-nums;min-width:30px}
-.wt .mp-hero>b .wait{width:14px;height:14px}
-.wt .mp-hero span{display:block;font-family:var(--rounded);font-weight:700;font-size:17px;letter-spacing:-.01em}
-.wt .mp-hero small{display:block;font-family:var(--rounded);font-weight:600;font-size:13px;color:var(--muted);margin-top:2px}
-.wt .mp-hero small em{font-style:normal;color:var(--gold-text)}
-.wt .mp-key{display:flex;gap:18px;margin:18px 0 0;padding:12px 0;border-top:1px solid var(--line)}
-.wt .mp-key button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:var(--rounded);font-weight:600;font-size:13px;color:var(--ink);transition:opacity .2s}
-.wt .mp-key button.off{opacity:.35}
-.wt .mp-key button.off .sw{box-shadow:inset 0 0 0 1.5px var(--faint);background:transparent}
+/* map side, in the app's voice: three figures that are also the map's toggles, places as plain words, time rings in
+   the list. A field of faint wattle dots behind the header gives it depth and fades out before the list. */
+.wt .mp-side{position:relative;box-shadow:1px 0 0 var(--line),12px 0 32px -18px var(--shadow);z-index:2}
+.wt .mp-head{position:relative}
+.wt .mp-head::before{content:"";position:absolute;inset:0 0 -40px 0;pointer-events:none;z-index:-1;
+  background-image:radial-gradient(circle at 50% 50%,var(--dotpat) 1.1px,transparent 1.6px),radial-gradient(circle at 50% 50%,var(--dotpat) .8px,transparent 1.2px);
+  background-size:16px 16px,16px 16px;background-position:0 0,8px 8px;
+  -webkit-mask-image:radial-gradient(120% 90% at 85% 0%,#000 20%,transparent 75%);mask-image:radial-gradient(120% 90% at 85% 0%,#000 20%,transparent 75%)}
+.wt{--dotpat:#C9A54A55}
+@media (prefers-color-scheme:dark){.wt{--dotpat:#F2B30030}}
+.wt .mp-figs{display:grid;grid-template-columns:1.25fr 1fr 1fr;margin:20px 0 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.wt .mp-figs button{all:unset;cursor:pointer;padding:14px 0 14px 14px;display:flex;flex-direction:column;gap:5px;transition:opacity .2s}
+.wt .mp-figs button:first-child{padding-left:0}
+.wt .mp-figs button+button{border-left:1px solid var(--line)}
+.wt .mp-figs b{font-family:var(--rounded);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--ink);min-height:40px;display:flex;align-items:center}
+.wt .mp-figs button.now b{font-size:52px;min-height:52px}
+.wt .mp-figs span{display:flex;align-items:center;gap:6px;font-family:var(--rounded);font-weight:600;font-size:12.5px;color:var(--ink)}
+.wt .mp-figs small{font-family:var(--rounded);font-weight:600;font-size:11.5px;color:var(--gold-text)}
+.wt .mp-figs small.q{color:var(--faint)}
+.wt .mp-figs button.off{opacity:.38}
+.wt .mp-figs button.off .sw{box-shadow:inset 0 0 0 1.5px var(--faint);background:transparent}
+.wt .mp-figs button:hover span{color:var(--gold-text)}
+.wt .mp-where{font-family:var(--rounded);font-weight:600;font-size:12px;color:var(--faint);padding:12px 0 2px}
+.wt .mp-places{border-top:0}
+.wt .caphint{font-size:12px;color:var(--faint);margin:-2px 0 4px}
+.wt .sw.now.work{background:radial-gradient(circle,var(--ink) 0 2px,var(--gold) 2.4px)}
+.wt .it:hover{background:linear-gradient(90deg,var(--tint),transparent);margin:0 -24px;padding-left:24px;padding-right:24px;width:calc(100% + 48px)}
 .wt .mp-places{display:flex;flex-wrap:wrap;gap:4px 16px;padding:12px 0 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .wt .mp-places button{all:unset;cursor:pointer;position:relative;font-family:var(--rounded);font-weight:600;font-size:13.5px;color:var(--muted);padding:2px 0 6px}
 .wt .mp-places button:hover{color:var(--ink)}
