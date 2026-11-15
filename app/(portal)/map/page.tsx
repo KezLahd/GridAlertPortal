@@ -105,16 +105,21 @@ export default function MapPage() {
     {
       fetch("/network-areas.json").then((r) => r.json()).then((fc) => {
         map.data.addGeoJson(fc)
-        setLabels(fc.features.map((f: any) => ({ name: f.properties.name, at: f.properties.label, z: f.properties.z, approx: f.properties.approx })))
+        setLabels(fc.features.filter((f: any) => f.properties.label).map((f: any) => ({ name: f.properties.name, at: f.properties.label, z: f.properties.z, approx: f.properties.approx })))
       }).catch(() => {})
-      map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => setNet(String(e.feature.getProperty("name"))))
+      const which = (f: google.maps.Data.Feature) => f.getProperty("kind") === "edge" ? `${f.getProperty("a")}|${f.getProperty("b")}` : String(f.getProperty("name"))
+      map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => setNet(which(e.feature)))
       map.data.addListener("mouseout", () => setNet(null))
-      map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(String(e.feature.getProperty("name"))) })
+      map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(which(e.feature)) })
     }
   }, [map])
   useEffect(() => {
     if (!map) return
     map.data.setStyle((f) => {
+      if (f.getProperty("kind") === "edge") {
+        const hot = net === `${f.getProperty("a")}|${f.getProperty("b")}`
+        return { visible: nets, fillColor: dark ? "#F3EEE4" : "#24211C", fillOpacity: hot ? 0.16 : 0.05, strokeWeight: 0, zIndex: 1 }
+      }
       const n = String(f.getProperty("name")), c = NET_C[n] ?? "#888", hot = n === net
       return { visible: nets, fillColor: c, fillOpacity: hot ? 0.16 : 0.04, strokeColor: c, strokeOpacity: hot ? 0.9 : 0.5, strokeWeight: hot ? 2 : 1.2, zIndex: 0 }
     })
@@ -246,11 +251,13 @@ export default function MapPage() {
           <span><i className="sw long" />Planned, 4 hours or longer</span>
           <span><i className="sw soon" />Planned, shorter</span>
           <span><i className="sw clear" />All clear</span>
-          {nets && <small className="src">Network areas are a guide; some are approximate. Coastlines: geoBoundaries, CC BY 4.0.</small>}
+          {nets && <small className="src">Network areas are a guide; the shaded edges could be either network. Coastlines: geoBoundaries, CC BY 4.0.</small>}
         </div>
         <div className="mp-net">
           <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}><i />Network areas</button>
-          {nets && net && <span className="glass"><i style={{ background: NET_C[net] }} />{net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>}
+          {nets && net && (net.includes("|")
+            ? <span className="glass"><i style={{ background: NET_C[net.split("|")[0]] }} /><i style={{ background: NET_C[net.split("|")[1]], marginLeft: -4 }} />Could be {net.split("|")[0]} or {net.split("|")[1]}. The border here isn&apos;t certain; each site&apos;s details show its real network.</span>
+            : <span className="glass"><i style={{ background: NET_C[net] }} />{net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>)}
         </div>
         {noPin > 0 && <div className="mp-note glass">{noPin} sites have no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
       </section>
