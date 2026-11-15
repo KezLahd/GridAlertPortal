@@ -596,3 +596,55 @@
     radial-gradient(140% 70% at 100% 100%,rgba(242,179,0,0.072),rgba(242,179,0,0) 75%),
     var(--rail)}
 }
+
+/* the Live line sits in the rail, just above the account */
+.wt .rail .live{margin-top:auto;display:flex;align-items:center;gap:9px;padding:10px 8px;font-family:var(--rounded);font-weight:600;font-size:12px;color:var(--muted);white-space:nowrap}
+.wt .rail .live+.foot{margin-top:0}
+.wt.slim .rail .live{justify-content:center;padding:10px 0}
+.wt.slim .rail .live span{display:none}
+@media (max-width:820px){.wt .rail .live{display:none}}
+
+/* the three figures stand on their own, no rules between or around them */
+.wt .mp-figs{border:0;gap:14px;margin-top:4px}
+.wt .mp-figs button,.wt .mp-figs button:first-child{padding:6px 0}
+.wt .mp-figs button+button{border-left:0}
+
+/* outage glances (the app's PlanRowGlance): shut, time · site · length over a thin bar of the day; open, the bar grows
+   into the day with its hours marked and the details slide out from under it. Hairlines between, no cards. */
+.wt .og{border-bottom:1px solid var(--g-hair);--gbh:4px}
+.wt .og.open{--gbh:10px}
+.wt .ogh{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:68px minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:baseline;padding:12px 2px}
+.wt .ogh:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:8px}
+.wt .ogh .lead{display:flex;flex-direction:column;gap:1px;font-family:var(--rounded)}
+.wt .ogh .lead b{font-weight:700;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wt .ogh .lead small{font-weight:600;font-size:11px;color:var(--faint);white-space:nowrap}
+.wt .ogh .nm{display:flex;align-items:baseline;gap:7px;min-width:0}
+.wt .ogh .nm b{font-family:var(--rounded);font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:font-weight .2s}
+.wt .og.open .ogh .nm b,.wt .og.sel .ogh .nm b{font-weight:700}
+.wt .ogh .nm .hot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex:none;transform:translateY(-1px)}
+.wt .ogh .dur{font-family:var(--rounded);font-weight:600;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wt .ogh .dur.lg{color:var(--gold-text)}
+.wt .ogh:hover .nm b{color:var(--gold-text)}
+/* the day bar: under the name while shut, the whole row once open */
+.wt .gb{grid-column:1/-1;position:relative;display:block;height:var(--gbh);margin-left:78px;margin-bottom:0;transition:margin .34s cubic-bezier(.3,.7,.2,1),height .34s cubic-bezier(.3,.7,.2,1)}
+.wt .og.open .gb{margin-left:0;margin-bottom:20px}
+.wt .gb .tk{position:absolute;inset:0;border-radius:99px;background:rgba(111,104,92,.13)}
+.wt .gb .sp{position:absolute;top:0;bottom:0;border-radius:99px;background:rgba(242,179,0,.55)}
+.wt .gb .sp.hot,.wt .gb .sp.now{background:var(--gold)}
+.wt .gb .sp.open-end{background:linear-gradient(90deg,var(--gold) 70%,rgba(242,179,0,.25))}
+.wt .gb .nw{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:2px;background:var(--ink);opacity:.55}
+.wt .gb .hrs{position:absolute;left:0;right:0;top:calc(100% + 4px);height:14px;opacity:0;transition:opacity .2s}
+.wt .og.open .gb .hrs{opacity:1;transition-delay:.12s}
+.wt .gb .hrs em{position:absolute;transform:translateX(-50%);font-style:normal;font-family:var(--rounded);font-weight:500;font-size:10px;color:var(--faint)}
+.wt .gb .hrs em:first-child{transform:none}.wt .gb .hrs em:last-child{transform:translateX(-100%)}
+/* details lift out from under the bar */
+.wt .ogx{display:grid;grid-template-rows:0fr;transition:grid-template-rows .34s cubic-bezier(.3,.7,.2,1)}
+.wt .og.open .ogx{grid-template-rows:1fr}
+.wt .ogx>div{overflow:hidden;min-height:0}
+.wt .ogx dl{margin:0;padding:0 2px 16px;display:grid;grid-template-columns:68px 1fr;column-gap:10px;row-gap:7px;opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .34s}
+.wt .og.open .ogx dl{opacity:1;transform:none}
+.wt .ogx dt{font-family:var(--rounded);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding-top:2px}
+.wt .ogx dd{margin:0;font-family:var(--rounded);font-weight:500;font-size:13px;color:var(--ink)}
+.wt .ogx dd.g{color:var(--gold-text)}
+@media (prefers-reduced-motion:reduce){.wt .gb,.wt .ogx,.wt .ogx dl{transition:none}}
+@media (prefers-color-scheme:dark){.wt .og{border-bottom-color:rgba(243,238,228,.08)}.wt .gb .tk{background:rgba(243,238,228,.1)}.wt .gb .nw{background:#F3EEE4}}

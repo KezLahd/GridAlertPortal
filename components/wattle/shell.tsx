@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { usePortal } from "./data"
+import { checked, usePortal } from "./data"
 
 // The portal's frame: a rail on the left with the four places and the app's own tab icons, which becomes a floating
 // glass tab bar along the bottom on a phone. Light or dark follows the device, like the app. The Aurora, gold light
@@ -52,6 +52,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        {/* how fresh the outage data is, for every page, out of the way of the content */}
+        <div className="live" title={data ? `Outage feeds checked at ${checked(data.at)}` : "Checking the outage feeds"}>
+          <i className="dot" /><span>{data ? <>Live · checked {checked(data.at)}</> : "Checking now"}</span>
+        </div>
         <div className="foot">
           <div className="av" title={slim ? `${me?.firstName ?? ""} · ${data?.company ?? ""}` : undefined}>{initials}</div>
           <div className="who" style={{ minWidth: 0 }}><b>{me?.firstName}</b><br />{data?.company}</div>
