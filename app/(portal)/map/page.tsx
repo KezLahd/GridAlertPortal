@@ -7,7 +7,8 @@ import { googleMapsApiKey } from "@/lib/config"
 import { WATTLE_MAP_STYLE, WATTLE_MAP_STYLE_DARK } from "@/lib/map-style"
 import { Loading } from "@/components/wattle/shell"
 import { GhostRows, Wait } from "@/components/wattle/waiting"
-import { checked, fmt, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
+import { Opt, Pick, Sep } from "@/components/wattle/pick"
+import { checked, fmt, isStale, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
 
 // Map: every site on an Apple-style Google map (light or dark to match the page). Solid gold = power off now, a gold
 // ring = planned in the next 14 days (thicker for 4 hours or longer), grey = all clear. Close sites group into a dark
@@ -22,6 +23,16 @@ const VIEWS: Record<string, [number, number, number, number]> = {
 const COL = { now: "#F2B300", long: "#F2B300", soon: "#F2B300", clear: "#A8A196" }
 const RANK = { now: 3, long: 2, soon: 1, clear: 0 }
 type Pin = { s: Site & { lat: number; lng: number }; st: SiteState }
+type Kind = "fault" | "work" | "plan" | "clear"
+const kindOf = (p: Pin): Kind => p.st.k === "clear" ? "clear" : p.st.k === "now" ? (p.st.o.kind === "unplanned" ? "fault" : "work") : "plan"
+const KIND_NAME: Record<Kind, string> = { fault: "Faults", work: "Planned work", plan: "Planned", clear: "All clear" }
+const ALL_ON: Record<Kind, boolean> = { fault: true, work: true, plan: true, clear: true }
+// the clinics' provider field uses the feeds' short names
+const NET_NAME: Record<string, string> = {
+  WPower: "Western Power", SAPower: "SA Power Networks", CitiPowerCor: "CitiPower and Powercor", AusNet: "AusNet Services",
+  Endeavour: "Endeavour Energy", Ergon: "Ergon Energy", EvoEnergy: "Evoenergy", UnitedEnergy: "United Energy", Horizon: "Horizon Power",
+}
+const netName = (p: string | null) => p ? NET_NAME[p] ?? p : "Network not set"
 
 // Who looks after the power where. public/network-areas.json covers all of Australia: the networks' own outlines where
 // we hold them, hand-traced areas (marked approx) for CitiPower, United Energy and Western Power, and the rest of each
@@ -76,7 +87,12 @@ export default function MapPage() {
   const [view, setView] = useState<string>("Australia")
   const [zoom, setZoom] = useState(4)
   const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null)
-  const [on, setOn] = useState({ now: true, plan: true, clear: true })
+  const [on, setOn] = useState(ALL_ON)
+  const [days, setDays] = useState(14) // how far ahead planned outages count
+  const [longOnly, setLongOnly] = useState(false)
+  const [netF, setNetF] = useState<string | null>(null) // one network, or all
+  const [q, setQ] = useState("")
+  const [hoverAt, setHoverAt] = useState<google.maps.LatLng | null>(null)
   const [sel, setSel] = useState<string | null>(null)
   // clinics in the same building share one spot, so zooming can never pull them apart: tapping lists them instead
   const [stack, setStack] = useState<string[] | null>(null)
@@ -119,9 +135,9 @@ export default function MapPage() {
         setLabels(fc.features.filter((f: any) => f.properties.label).map((f: any) => ({ name: f.properties.name, at: f.properties.label, z: f.properties.z, approx: f.properties.approx })))
       }).catch(() => {})
       const which = (f: google.maps.Data.Feature) => f.getProperty("kind") === "edge" ? `${f.getProperty("a")}|${f.getProperty("b")}` : String(f.getProperty("name"))
-      map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => setNet(which(e.feature)))
+      map.data.addListener("mouseover", (e: google.maps.Data.MouseEvent) => { setNet(which(e.feature)); setHoverAt(e.latLng ?? null) })
       map.data.addListener("mouseout", () => setNet(null))
-      map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(which(e.feature)) })
+      map.data.addListener("click", (e: google.maps.Data.MouseEvent) => { setSel(null); setNet(which(e.feature)); setHoverAt(e.latLng ?? null) })
     })
   }, [map, ready, tiles])
   useEffect(() => {
@@ -137,7 +153,13 @@ export default function MapPage() {
     })
   }, [map, nets, net, dark, zoom < 8]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const shown = (p: Pin) => p.st.k === "now" ? on.now : p.st.k === "clear" ? on.clear : on.plan
+  // the filters: network, search and the planned window narrow everything; the kinds pick what's drawn and listed
+  const needle = q.trim().toLowerCase()
+  const now0 = data ? new Date(data.at).getTime() : 0
+  const base = (p: Pin) => (!netF || p.s.provider === netF)
+    && (!needle || `${p.s.name} ${p.s.code ?? ""} ${p.s.suburb ?? ""} ${p.s.postcode ?? ""} ${p.s.address}`.toLowerCase().includes(needle))
+    && (kindOf(p) !== "plan" || ((new Date(p.st.o!.starts!).getTime() - now0) < days * 86400_000 && (!longOnly || p.st.k === "long")))
+  const shown = (p: Pin) => on[kindOf(p)] && base(p)
   const inBounds = (p: Pin) => !bounds || bounds.contains({ lat: p.s.lat, lng: p.s.lng })
 
   // group close outages on screen: cells of ~46px at this zoom
@@ -150,14 +172,15 @@ export default function MapPage() {
       bins.set(key, [...(bins.get(key) ?? []), p])
     }
     return [...bins.values()]
-  }, [pins, zoom, on]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pins, zoom, on, netF, needle, days, longOnly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error && !data) return <Loading error={error} />
   const here = pins.filter(inBounds)
-  const count = (k: "now" | "plan" | "clear") => here.filter((p) => k === "plan" ? p.st.k === "long" || p.st.k === "soon" : p.st.k === k).length
+  const inView = here.filter(base) // what the filters allow in this part of the map, before the kinds
+  const count = (k: "now" | "plan" | "clear") => inView.filter((p) => k === "now" ? p.st.k === "now" : k === "plan" ? kindOf(p) === "plan" : p.st.k === "clear").length
   const list = here.filter((p) => p.st.k !== "clear" && shown(p))
     .sort((a, b) => (a.st.k === "now" ? 0 : 1) - (b.st.k === "now" ? 0 : 1) || new Date(a.st.o?.starts ?? 0).getTime() - new Date(b.st.o?.starts ?? 0).getTime())
-  const faults = here.filter((p) => p.st.k === "now" && p.st.o.kind === "unplanned").length
+  const faults = inView.filter((p) => kindOf(p) === "fault").length
   const works = count("now") - faults
   const selPin = data ? pins.find((p) => p.s.id === sel) : undefined
   const choose = (p: Pin) => {
@@ -165,6 +188,16 @@ export default function MapPage() {
     if (map && (map.getZoom() ?? 0) < 11) { map.setZoom(13) }
     map?.panTo({ lat: p.s.lat, lng: p.s.lng })
   }
+  const nowOn = on.fault || on.work
+  const kinds = (Object.keys(KIND_NAME) as Kind[]).filter((k) => on[k])
+  const kindsLabel = kinds.length === 4 ? "Everything" : kinds.length === 0 ? "Nothing" : kinds.length === 3 && !on.clear ? "All outages" : kinds.map((k) => KIND_NAME[k]).join(", ")
+  const filtered = !!netF || !!needle || days !== 14 || longOnly || kinds.length !== 4
+  const reset = () => { setNetF(null); setQ(""); setDays(14); setLongOnly(false); setOn(ALL_ON) }
+  // networks with sites, busiest first
+  const nets_ = [...new Set(pins.map((p) => p.s.provider ?? ""))].filter(Boolean)
+    .map((n) => ({ n, c: pins.filter((p) => p.s.provider === n && p.st.k !== "clear").length }))
+    .sort((a, b) => b.c - a.c || netName(a.n).localeCompare(netName(b.n)))
+  const planIn = (d: number, long = longOnly) => pins.filter((p) => kindOf(p) === "plan" && (new Date(p.st.o!.starts!).getTime() - now0) < d * 86400_000 && (!long || p.st.k === "long") && (!netF || p.s.provider === netF)).length
 
   return (
     <main className="mp">
@@ -174,53 +207,98 @@ export default function MapPage() {
           <div className="eyebrow"><i className="dot" />{ready ? `Live · checked ${checked(full.at)}` : "Checking now"}</div>
           <h1>Map</h1>
           <div className="mp-figs" role="group" aria-label="Show on the map">
-            {([["now", "Off now", "now"], ["plan", "Planned", "long"], ["clear", "All clear", "clear"]] as const).map(([k, l, sw]) => (
-              <button key={k} className={`${k} ${on[k] ? "" : "off"}`} aria-pressed={on[k]} title={on[k] ? "Hide these on the map" : "Show these on the map"}
-                onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>
+            {([["now", "Off now", "now", nowOn], ["plan", "Planned", "long", on.plan], ["clear", "All clear", "clear", on.clear]] as const).map(([k, l, sw, isOn]) => (
+              <button key={k} className={`${k} ${isOn ? "" : "off"}`} aria-pressed={isOn} title={isOn ? "Hide these on the map" : "Show these on the map"}
+                onClick={() => setOn((o) => k === "now" ? { ...o, fault: !nowOn, work: !nowOn } : { ...o, [k]: !o[k] })}>
                 <b>{ready ? count(k) : <Wait />}</b>
                 <span><i className={`sw ${sw}`} />{l}</span>
                 {k === "now" && ready && count("now") > 0 && <small>{[faults && `${faults} ${faults === 1 ? "fault" : "faults"}`, works && `${works} planned work`].filter(Boolean).join(" · ")}</small>}
-                {k === "plan" && <small className="q">next 14 days</small>}
+                {k === "plan" && <small className="q">next {days} days</small>}
                 {k === "clear" && <small className="q">no outage due</small>}
               </button>
             ))}
           </div>
-          <div className="mp-where">{ready ? <>Showing {view ? view : "this part of the map"}</> : data ? `Checking ${data.sites.length} sites` : "Finding your sites"}</div>
-          <nav className="mp-places" aria-label="Go to">
-            {Object.keys(VIEWS).map((v) => {
-              const [w, s, e, n] = VIEWS[v]
-              const c = pins.filter((p) => p.st.k !== "clear" && p.s.lng >= w && p.s.lng <= e && p.s.lat >= s && p.s.lat <= n).length
-              return <button key={v} className={v === view ? "on" : ""} onClick={() => { setView(v); setSel(null); fit(v) }}>{v}{v !== "Australia" && ready && c > 0 && <sup>{c}</sup>}</button>
-            })}
-          </nav>
+          <label className="mp-find">
+            <svg viewBox="0 0 16 16" aria-hidden><circle cx="7" cy="7" r="4.6" /><path d="m10.4 10.4 3.4 3.4" /></svg>
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a clinic, suburb or postcode" aria-label="Find a clinic" />
+            {q && <button onClick={() => setQ("")} aria-label="Clear search">×</button>}
+          </label>
+          <div className="mp-filters">
+            <Pick label="Area" value={view || "This part of the map"} active={view !== "Australia"}>
+              {(close) => Object.keys(VIEWS).map((v) => {
+                const [w, s, e, n] = VIEWS[v]
+                const c = pins.filter((p) => p.st.k !== "clear" && shown(p) && p.s.lng >= w && p.s.lng <= e && p.s.lat >= s && p.s.lat <= n).length
+                return <Opt key={v} on={v === view} n={ready ? c : undefined} onPick={() => { setView(v); setSel(null); fit(v); close() }}>{v}</Opt>
+              })}
+            </Pick>
+            <Pick label="Showing" value={kindsLabel} active={kinds.length !== 4}>
+              {() => <>
+                {(["fault", "work", "plan"] as const).map((k) => (
+                  <Opt key={k} check on={on[k]} n={ready ? here.filter((p) => kindOf(p) === k && base(p)).length : undefined}
+                    sw={<i className={`sw ${k === "plan" ? "long" : "now"}${k === "work" ? " work" : ""}`} />}
+                    hint={{ fault: "Off now, no warning", work: "Off now, booked by the network", plan: `Booked in the next ${days} days` }[k]}
+                    onPick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>{KIND_NAME[k]}</Opt>
+                ))}
+                <Sep />
+                <Opt check on={on.clear} n={ready ? count("clear") : undefined} sw={<i className="sw clear" />} hint="On the map only" onPick={() => setOn((o) => ({ ...o, clear: !o.clear }))}>All clear sites</Opt>
+              </>}
+            </Pick>
+            <Pick label="Network" value={netF ? netName(netF) : "All networks"} active={!!netF}>
+              {(close) => <>
+                <Opt on={!netF} n={ready ? pins.filter((p) => p.st.k !== "clear").length : undefined} onPick={() => { setNetF(null); close() }}>All networks</Opt>
+                <Sep />
+                {nets_.map(({ n, c }) => <Opt key={n} on={netF === n} n={ready ? c : undefined} onPick={() => { setNetF(n); close() }}>{netName(n)}</Opt>)}
+              </>}
+            </Pick>
+            <Pick label="Planned" value={`Next ${days} days${longOnly ? ", 4h+" : ""}`} active={days !== 14 || longOnly}>
+              {(close) => <>
+                {[3, 7, 14].map((d) => <Opt key={d} on={days === d} n={ready ? planIn(d) : undefined} onPick={() => { setDays(d); close() }}>Next {d} days</Opt>)}
+                <Sep />
+                <Opt check on={longOnly} n={ready ? planIn(days, true) : undefined} hint="Long enough to put fridge stock at risk" onPick={() => setLongOnly(!longOnly)}>Only 4 hours or longer</Opt>
+              </>}
+            </Pick>
+          </div>
+          <div className="mp-where">
+            {ready ? <>{list.length === 1 ? "1 outage" : `${list.length} outages`} in {view || "this part of the map"}</> : data ? `Checking ${data.sites.length} sites` : "Finding your sites"}
+            {filtered && <button onClick={reset}>Clear filters</button>}
+          </div>
         </div>
         <div className="mp-list">
           {!ready && <GhostRows rows={7} label={data ? `Checking ${data.sites.length} sites for outages` : "Finding your sites"} />}
-          {ready && list.length === 0 && <div className="cap">Nothing in this part of the map</div>}
-          {([["fault", "Off now · fault", "No warning: the network is working on it"], ["work", "Off now · planned work", "Booked by the network, under way now"], ["plan", "Planned, next 14 days", "Booked ahead; 4 hours or more puts fridge stock at risk"]] as const).map(([g, title, hint]) => {
-            const l = list.filter((p) => g === "plan" ? p.st.k !== "now" : p.st.k === "now" && (p.st.o.kind === "unplanned") === (g === "fault"))
+          {ready && list.length === 0 && <div className="mp-empty">{filtered ? "Nothing matches these filters here." : "No outages in this part of the map."}{filtered && <button onClick={reset}>Clear filters</button>}</div>}
+          {([["fault", "Off now · fault", "No warning: the network is working on it"], ["work", "Off now · planned work", "Booked by the network, under way now"], ["plan", `Planned, next ${days} days`, "Booked ahead; 4 hours or more puts fridge stock at risk"]] as const).map(([g, title, hint]) => {
+            const l = list.filter((p) => kindOf(p) === g)
             if (!l.length) return null
             return (
               <div key={g}>
                 <div className="cap">{title}<span>{l.length}</span></div>
                 <div className="caphint">{hint}</div>
-                {l.slice(0, 120).map((p) => {
-                  const o = p.st.o!
+                {l.slice(0, 150).map((p) => {
+                  const o = p.st.o!, st = o.site.state
+                  const away = o.atSite ? "At the site" : o.distanceKm !== null ? `${o.distanceKm < 1 ? "Under 1" : Math.round(o.distanceKm * 10) / 10} km away` : "Nearby"
                   return (
-                    <button key={p.s.id} className={`it ${sel === p.s.id ? "sel" : ""}`} onClick={() => choose(p)}>
+                    <button key={p.s.id} className={`it ot ${sel === p.s.id ? "sel" : ""}`} onClick={() => choose(p)}>
                       <Ring st={p.st} at={full!.at} />
                       <div style={{ minWidth: 0 }}>
-                        <b>{p.s.name}</b>
-                        <span className="l1">{p.st.k === "now" ? (o.ends ? `Back ${backAt(o.ends, o.site.state, full!.at)}` : "No restore time yet") : `${fmt(o.starts!, o.site.state, { weekday: "short", day: "numeric" })} · ${time(o.starts!, o.site.state)} for ${o.hours ?? "?"} h`}{p.st.k === "long" && <em> · check fridge</em>}</span>
-                        <span>{p.s.suburb} {p.s.state} · {o.provider}</span>
+                        <div className="r1">
+                          <b>{p.s.name}</b>
+                          {p.st.k === "now" ? <time>{since(o, full!.at)}</time> : <time className={p.st.k === "long" ? "lg" : ""}>{o.hours ?? "?"} h</time>}
+                        </div>
+                        <span className="l1">{p.st.k === "now"
+                          ? (o.ends ? <>Back {backAt(o.ends, st, full!.at)}</> : isStale(o, full!.at) ? "No restore time · feed may be stale" : "No restore time yet")
+                          : <>{fmt(o.starts!, st, { weekday: "short", day: "numeric", month: "short" })} · {time(o.starts!, st)}{o.ends ? ` to ${time(o.ends, st)}` : ""}{p.st.k === "long" && <em> · check fridge</em>}</>}</span>
+                        <span>{[away, p.s.suburb && `${p.s.suburb} ${p.s.state ?? ""}`.trim(), netName(p.s.provider ?? o.provider)].filter(Boolean).join(" · ")}</span>
+                        {o.cause && <span className="cz">{o.cause}</span>}
                       </div>
                     </button>
                   )
                 })}
+                {l.length > 150 && <div className="caphint">and {l.length - 150} more; zoom in or filter to see them</div>}
               </div>
             )
           })}
         </div>
+        {data && noPin > 0 && <div className="mp-foot">{noPin === 1 ? "1 site has" : `${noPin} sites have`} no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
       </section>
 
       <section className="mp-map">
@@ -258,9 +336,11 @@ export default function MapPage() {
                   map?.fitBounds(bb, 80)
                 }} />
             })}
-            {nets && labels.filter((l) => zoom >= l.z && zoom <= 10).map((l) => {
+            {/* zoomed out, a network's name shows only while the pointer is over it; closer in, the names sit on their areas */}
+            {nets && labels.filter((l) => zoom < 8 ? l.name === net : zoom >= l.z && zoom <= 10).map((l) => {
               const ic = netLabel(l.name, dark, NET_C[l.name])
-              return <Marker key={`net-${l.name}`} position={{ lat: l.at[0], lng: l.at[1] }} clickable={false} zIndex={2}
+              const at = zoom < 8 && hoverAt && bounds && !bounds.contains({ lat: l.at[0], lng: l.at[1] }) ? { lat: hoverAt.lat(), lng: hoverAt.lng() } : { lat: l.at[0], lng: l.at[1] }
+              return <Marker key={`net-${l.name}`} position={at} clickable={false} zIndex={2}
                 icon={{ url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h / 2) }} />
             })}
             {stack && (() => {
@@ -313,11 +393,10 @@ export default function MapPage() {
         </div>
         <div className="mp-net">
           <button className={`glass ${nets ? "on" : ""}`} onClick={() => { setNets(!nets); setNet(null) }}>{nets && !netsIn && ready ? <i className="wait" /> : <i />}Network areas</button>
-          {nets && net && (net.includes("|")
+          {nets && net && (zoom >= 8 || net.includes("|")) && (net.includes("|")
             ? <span className="glass"><i style={{ background: NET_C[net.split("|")[0]] }} /><i style={{ background: NET_C[net.split("|")[1]], marginLeft: -4 }} />Could be {net.split("|")[0]} or {net.split("|")[1]}. The border here isn&apos;t certain; each site&apos;s details show its real network.</span>
             : <span className="glass"><i style={{ background: NET_C[net] }} />{net} looks after the power here{labels.find((l) => l.name === net)?.approx ? " (area approximate)" : ""}</span>)}
         </div>
-        {data && noPin > 0 && <div className="mp-note glass">{noPin} sites have no map pin<Link href="/sites?tab=fix">Fix in Sites</Link></div>}
       </section>
     </main>
   )
