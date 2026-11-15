@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-maps/api"
 import { googleMapsApiKey } from "@/lib/config"
-import { WATTLE_MAP_STYLE } from "@/lib/map-style"
+import { WATTLE_MAP_STYLE, WATTLE_MAP_STYLE_DARK } from "@/lib/map-style"
 import { Loading } from "@/components/wattle/shell"
-import { checked, fmt, since, time, usePortal, type Site, type SiteState } from "@/components/wattle/data"
+import { checked, fmt, since, time, useDark, usePortal, type Site, type SiteState } from "@/components/wattle/data"
 
-// Map: every site on the warm Google map. Orange = power off now, gold = planned for 4 hours or longer in the next
-// 14 days, pale gold = shorter, stone = all clear. Close sites group into an ink circle with the count, a gold arc for
-// the share running 4h+, and an orange badge for any that are off now. The list beside it follows the view.
+// Map: every site on an Apple-style Google map (light or dark to match the page). Solid gold = power off now, a gold
+// ring = planned in the next 14 days (thicker for 4 hours or longer), grey = all clear. Close sites group into a dark
+// circle with the count, a gold arc for the share running 4h+, and a gold badge for any that are off now. The list beside it follows the view.
 
 const libraries: ("places" | "geometry" | "drawing")[] = ["places"]
 const VIEWS: Record<string, [number, number, number, number]> = {
@@ -18,25 +18,35 @@ const VIEWS: Record<string, [number, number, number, number]> = {
   Brisbane: [152.8, -27.75, 153.35, -27.2], Adelaide: [138.4, -35.15, 138.9, -34.7], Perth: [115.65, -32.6, 116.1, -31.8],
   Canberra: [148.95, -35.45, 149.25, -35.2],
 }
-const COL = { now: "#E0660A", long: "#F2B300", soon: "#FBE7A6", clear: "#CFC6B5" }
+const COL = { now: "#F2B300", long: "#F2B300", soon: "#F2B300", clear: "#A8A196" }
 const RANK = { now: 3, long: 2, soon: 1, clear: 0 }
 type Pin = { s: Site & { lat: number; lng: number }; st: SiteState }
 
+// Dots like the app's: off now is solid gold with a soft bloom, planned is a gold ring (thicker for 4 hours or more),
+// all clear is a small grey dot.
 const svgUrl = (svg: string) => "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg)
-function dotIcon(k: keyof typeof COL, sel: boolean) {
-  const r = k === "clear" ? 5 : sel ? 9 : 7, size = k === "now" ? 34 : r * 2 + 8, c = size / 2
-  const halo = k === "now" ? `<circle cx="${c}" cy="${c}" r="15" fill="#E0660A" opacity=".18"/>` : ""
-  const ring = k === "soon" ? `stroke="#F2B300"` : `stroke="${sel ? "#24211C" : "#FBF8F2"}"`
-  return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${halo}<circle cx="${c}" cy="${c}" r="${r}" fill="${COL[k]}" ${ring} stroke-width="${sel ? 3 : 2}"/></svg>`), size, anchor: c }
+function dotIcon(k: keyof typeof COL, sel: boolean, dark: boolean) {
+  const bg = dark ? "#12100D" : "#FFFFFF", edge = dark ? "#12100D" : "#FFFFFF"
+  if (k === "clear") {
+    const size = 14, c = 7
+    return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${c}" cy="${c}" r="${sel ? 6 : 4.5}" fill="${dark ? "#6F685C" : COL.clear}" stroke="${edge}" stroke-width="1.5"/></svg>`), size, anchor: c }
+  }
+  if (k === "now") {
+    const size = 44, c = 22, r = sel ? 9.5 : 8
+    return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><defs><radialGradient id="b"><stop offset="0" stop-color="#F2B300" stop-opacity=".55"/><stop offset="1" stop-color="#F2B300" stop-opacity="0"/></radialGradient></defs><circle cx="${c}" cy="${c}" r="21" fill="url(#b)"/><circle cx="${c}" cy="${c}" r="${r}" fill="#F2B300" stroke="${sel ? (dark ? "#F3EEE4" : "#24211C") : edge}" stroke-width="${sel ? 3 : 2}"/></svg>`), size, anchor: c }
+  }
+  const r = sel ? 9 : 7.5, w = k === "long" ? 3.4 : 2, size = r * 2 + 10, c = size / 2
+  return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${c}" cy="${c}" r="${r + 1.5}" fill="${edge}" opacity=".9"/><circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="${bg}" stroke="#F2B300" stroke-width="${w}"/>${sel ? `<circle cx="${c}" cy="${c}" r="2.6" fill="#F2B300"/>` : ""}</svg>`), size, anchor: c }
 }
-function clusterIcon(n: number, longShare: number, nNow: number) {
+function clusterIcon(n: number, longShare: number, nNow: number, dark: boolean) {
   const r = Math.min(13 + Math.sqrt(n) * 3.2, 30), pad = 12, size = (r + pad) * 2, c = size / 2, rr = r - 3
   const a = longShare * Math.PI * 2
   const arc = longShare >= 1 ? `<circle cx="${c}" cy="${c}" r="${rr}" fill="none" stroke="#F2B300" stroke-width="3"/>`
     : longShare > 0 ? `<path d="M${c},${c - rr}A${rr},${rr} 0 ${a > Math.PI ? 1 : 0} 1 ${c + rr * Math.sin(a)},${c - rr * Math.cos(a)}" fill="none" stroke="#F2B300" stroke-width="3" stroke-linecap="round"/>` : ""
   const bx = c + r * 0.72, by = c - r * 0.72
-  const badge = nNow ? `<circle cx="${bx}" cy="${by}" r="9" fill="#E0660A" stroke="#FBF8F2" stroke-width="2"/><text x="${bx}" y="${by + 4}" text-anchor="middle" font-family="ui-rounded,-apple-system,system-ui,sans-serif" font-weight="700" font-size="11" fill="#fff">${nNow}</text>` : ""
-  return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${c}" cy="${c}" r="${r + 5}" fill="#24211C" opacity=".1"/><circle cx="${c}" cy="${c}" r="${r}" fill="#24211C"/>${arc}<text x="${c}" y="${c + 5}" text-anchor="middle" font-family="ui-rounded,-apple-system,system-ui,sans-serif" font-weight="700" font-size="${r > 20 ? 15 : 13}" fill="#FBF8F2">${n}</text>${badge}</svg>`), size, anchor: c }
+  const disc = dark ? "#2F2A23" : "#24211C", txt = dark ? "#F3EEE4" : "#FBF8F2"
+  const badge = nNow ? `<circle cx="${bx}" cy="${by}" r="9" fill="#F2B300" stroke="${dark ? "#12100D" : "#FFFFFF"}" stroke-width="2"/><text x="${bx}" y="${by + 4}" text-anchor="middle" font-family="ui-rounded,-apple-system,system-ui,sans-serif" font-weight="700" font-size="11" fill="#24211C">${nNow}</text>` : ""
+  return { url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${c}" cy="${c}" r="${r + 5}" fill="${nNow ? "#F2B300" : disc}" opacity="${nNow ? ".22" : ".12"}"/><circle cx="${c}" cy="${c}" r="${r}" fill="${disc}"/>${arc}<text x="${c}" y="${c + 5}" text-anchor="middle" font-family="ui-rounded,-apple-system,system-ui,sans-serif" font-weight="700" font-size="${r > 20 ? 15 : 13}" fill="${txt}">${n}</text>${badge}</svg>`), size, anchor: c }
 }
 
 export default function MapPage() {
@@ -48,6 +58,7 @@ export default function MapPage() {
   const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null)
   const [on, setOn] = useState({ now: true, plan: true, clear: true })
   const [sel, setSel] = useState<string | null>(null)
+  const dark = useDark()
 
   const pins = useMemo<Pin[]>(() => (data?.sites ?? [])
     .filter((s): s is Pin["s"] => s.lat !== null && s.lng !== null)
@@ -149,21 +160,21 @@ export default function MapPage() {
             onLoad={(m) => setMap(m)}
             onIdle={() => { if (map) { setZoom(map.getZoom() ?? 4); setBounds(map.getBounds() ?? null) } }}
             onClick={() => setSel(null)}
-            options={{ styles: WATTLE_MAP_STYLE, disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
+            options={{ styles: dark ? WATTLE_MAP_STYLE_DARK : WATTLE_MAP_STYLE, backgroundColor: dark ? "#24252A" : "#F4F2EE", disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
           >
             {on.clear && pins.filter((p) => p.st.k === "clear").map((p) => {
-              const ic = dotIcon("clear", false)
+              const ic = dotIcon("clear", false, dark)
               return <Marker key={p.s.id} position={{ lat: p.s.lat, lng: p.s.lng }} title={p.s.name} onClick={() => setSel(p.s.id)}
                 icon={{ url: ic.url, anchor: new google.maps.Point(ic.anchor, ic.anchor) }} zIndex={1} />
             })}
             {clusters.map((b) => {
               if (b.length === 1) {
-                const p = b[0], ic = dotIcon(p.st.k, sel === p.s.id)
+                const p = b[0], ic = dotIcon(p.st.k, sel === p.s.id, dark)
                 return <Marker key={p.s.id} position={{ lat: p.s.lat, lng: p.s.lng }} title={p.s.name} onClick={() => setSel(p.s.id)}
                   icon={{ url: ic.url, anchor: new google.maps.Point(ic.anchor, ic.anchor) }} zIndex={10 + RANK[p.st.k]} />
               }
               const lat = b.reduce((a, p) => a + p.s.lat, 0) / b.length, lng = b.reduce((a, p) => a + p.s.lng, 0) / b.length
-              const ic = clusterIcon(b.length, b.filter((p) => p.st.k === "long").length / b.length, b.filter((p) => p.st.k === "now").length)
+              const ic = clusterIcon(b.length, b.filter((p) => p.st.k === "long").length / b.length, b.filter((p) => p.st.k === "now").length, dark)
               return <Marker key={b.map((p) => p.s.id).join()} position={{ lat, lng }} zIndex={20}
                 title={`${b.length} sites`} icon={{ url: ic.url, anchor: new google.maps.Point(ic.anchor, ic.anchor) }}
                 onClick={() => {

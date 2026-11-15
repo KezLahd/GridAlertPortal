@@ -6,13 +6,16 @@ import { SitesExportMenu } from "@/components/sites-export-menu"
 import { Loading } from "@/components/wattle/shell"
 import { checked, dayKey, fmt, isStale, plural, since, time, usePortal, type Outage } from "@/components/wattle/data"
 
-// Overview: what's off now and what's coming in the next two weeks, at a glance. Figures on hairlines, a 14-day
-// strip (gold = 4 hours or longer, so fridge stock needs checking), the agenda by day, and what's off right now.
+const RANK = { now: 0, long: 1, soon: 2, clear: 3 }
+
+// Dashboard: what's off now and what's coming in the next two weeks, drawn in gold dots like the app. Every site as one
+// dot (solid = power off now, ring = planned in the next 14 days, grey = clear), the next 14 days as columns of dots
+// (solid = 4 hours or longer, so fridge stock needs checking), the agenda by day, and what's off right now.
 
 const DAY = 86400_000
 
-export default function Overview() {
-  const { data, error } = usePortal()
+export default function Dashboard() {
+  const { data, error, stateOf } = usePortal()
   const [filter, setFilter] = useState<{ long: boolean; atSite: boolean; state: string | null }>({ long: false, atSite: false, state: null })
   const [q, setQ] = useState("")
   const [showDays, setShowDays] = useState(4)
@@ -35,8 +38,11 @@ export default function Overview() {
     const off = data.outages.filter((o) => o.status !== "Planned")
     const states = new Map<string, Set<string>>()
     for (const o of planned) if (o.site.state) states.set(o.site.state, (states.get(o.site.state) ?? new Set()).add(o.site.id))
-    return { now, days, planned, byDay, sitesIn, max, off, states: [...states].sort((a, b) => b[1].size - a[1].size) }
+    const total = new Map<string, number>()
+    for (const s of data.sites) if (s.state) total.set(s.state, (total.get(s.state) ?? 0) + 1)
+    return { now, days, planned, byDay, sitesIn, max, off, total, states: [...states].sort((a, b) => b[1].size - a[1].size) }
   }, [data])
+  const field = useMemo(() => (data?.sites ?? []).map((s) => stateOf(s.id).k).sort((a, b) => RANK[a] - RANK[b]), [data, stateOf])
 
   if (!data || !v) return <Loading error={error} />
   const S = data.summary
@@ -49,7 +55,8 @@ export default function Overview() {
     return !t || [o.site.name, o.site.suburb, o.site.postcode, o.site.code, o.provider].some((x) => x?.toLowerCase().includes(t))
   }
   const agendaDays = v.days.map((x) => x.key).filter((k) => (v.byDay.get(k) ?? []).some(match))
-  const sm = Math.max(1, ...v.states.map(([, s]) => s.size))
+  const unit = Math.max(1, Math.ceil(v.max / 40))
+  const count = (k: string) => field.filter((x) => x === k).length
   const toggle = (k: "long" | "atSite") => setFilter((f) => ({ ...f, [k]: !f[k] }))
   const jump = (key: string) => {
     const i = agendaDays.indexOf(key)
@@ -60,7 +67,7 @@ export default function Overview() {
 
   return (
     <main>
-      <title>Overview · Wattle</title>
+      <title>Dashboard · Wattle</title>
       <div className="top">
         <div>
           <div className="eyebrow"><i className="dot" />Live · checked {checked(data.at)}</div>
@@ -75,11 +82,22 @@ export default function Overview() {
         </div>
       </div>
 
-      <section className="figs">
-        <Fig hot k="Off now" v={S.outNow.sites} s={`${S.outNow.atSite} with the outage at the site`} />
-        <Fig k="Next 3 days" v={S.next3Days.sites} s={`${plural(S.next3Days.outages, "planned outage")}`} />
-        <Fig k="Next 7 days" v={S.next7Days.sites} s={`${S.longOnes7Days} run 4 hours or longer`} />
-        <Fig k="All clear" v={S.sites - new Set([...v.off, ...data.outages].map((o) => o.site.id)).size} s={`of ${S.sites}, nothing in the next 28 days`} />
+      <section className="glance">
+        <div>
+          <div className="field" aria-label={`${count("now")} off now, ${count("long") + count("soon")} planned, ${count("clear")} clear`}>
+            {field.map((k, i) => <i key={i} className={`fd ${k}`} style={{ animationDelay: `${Math.min(i * 2, 700)}ms` }} />)}
+          </div>
+          <div className="key">
+            <span><i className="sw now" /><b>{count("now")}</b> off now</span>
+            <span><i className="sw long" /><b>{count("long") + count("soon")}</b> planned, next 14 days</span>
+            <span><i className="sw clear" /><b>{count("clear")}</b> clear</span>
+          </div>
+        </div>
+        <div className="figs">
+          <Fig hot k="Off now" v={S.outNow.sites} s={`${S.outNow.atSite} with the outage at the site`} />
+          <Fig k="Next 3 days" v={S.next3Days.sites} s={`${plural(S.next3Days.outages, "planned outage")}`} />
+          <Fig k="Next 7 days" v={S.next7Days.sites} s={`${S.longOnes7Days} run 4 hours or longer`} />
+        </div>
       </section>
 
       <section className="strip">
@@ -89,17 +107,24 @@ export default function Overview() {
             const l = v.byDay.get(x.key) ?? []
             const all = v.sitesIn(l), long = v.sitesIn(l.filter((o) => (o.hours ?? 0) >= 4))
             const wd = fmt(x.d, "NSW", { weekday: "short" })
+            const nl = Math.ceil(long / unit), ns = Math.ceil(all / unit) - nl
             return (
               <button key={x.key} className={`day ${i === 0 ? "sel" : ""} ${wd === "Sat" || wd === "Sun" ? "we" : ""}`} title={plural(all, "site")} onClick={() => jump(x.key)}>
-                <div className="bar" style={{ height: `${Math.max((all / v.max) * 100, 3)}%` }}><i style={{ height: `${all ? (long / all) * 100 : 0}%` }} /></div>
+                <div className="n">{all || ""}</div>
+                <div className="stack">
+                  {Array.from({ length: nl }, (_, j) => <i key={`l${j}`} className="fd long" style={{ animationDelay: `${i * 30 + j * 8}ms` }} />)}
+                  {Array.from({ length: ns }, (_, j) => <i key={`s${j}`} className="fd soon" style={{ animationDelay: `${i * 30 + (nl + j) * 8}ms` }} />)}
+                  {all === 0 && <i className="fd clear" />}
+                </div>
                 <div className="lbl">{i === 0 ? "Today" : wd}<b>{fmt(x.d, "NSW", { day: "numeric" })}</b></div>
               </button>
             )
           })}
         </div>
         <div className="legend">
-          <span><i style={{ background: "var(--gold)" }} />4 hours or longer, check fridge stock</span>
-          <span><i style={{ background: "var(--gold-soft)" }} />shorter</span>
+          <span><i className="sw solid" />4 hours or longer, check fridge stock</span>
+          <span><i className="sw soon" />shorter</span>
+          {unit > 1 && <span>each dot is {unit} sites</span>}
         </div>
       </section>
 
@@ -142,9 +167,14 @@ export default function Overview() {
           </section>
           <section className="sec states">
             <div className="head"><h2>By state, next 14 days</h2></div>
-            {v.states.map(([st, s]) => (
-              <div className="st" key={st}><b>{st}</b><div className="track"><i style={{ width: `${(s.size / sm) * 100}%` }} /></div><span>{s.size}</span></div>
-            ))}
+            {v.states.map(([st, s]) => {
+              const n = v.total.get(st) ?? s.size
+              return (
+                <div className="st" key={st}><b>{st}</b>
+                  <div className="ticks" title={`${s.size} of ${n} sites`}>{Array.from({ length: n }, (_, j) => <i key={j} className={j < s.size ? "on" : ""} />)}</div>
+                  <span><b>{s.size}</b> of {n}</span></div>
+              )
+            })}
           </section>
         </aside>
       </div>

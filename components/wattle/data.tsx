@@ -112,6 +112,19 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
   return <PortalCtx.Provider value={{ data, error, me, reload, headers, stateOf, bySite }}>{children}</PortalCtx.Provider>
 }
 
+/** True when the device is in dark mode, like the app; follows changes live. */
+export function useDark() {
+  const [dark, setDark] = useState(false)
+  useEffect(() => {
+    const m = matchMedia("(prefers-color-scheme: dark)")
+    const on = () => setDark(m.matches)
+    on()
+    m.addEventListener("change", on)
+    return () => m.removeEventListener("change", on)
+  }, [])
+  return dark
+}
+
 // ---------- time, in each site's own state ----------
 
 const TZ: Record<string, string> = {
