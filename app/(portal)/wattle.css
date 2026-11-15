@@ -429,3 +429,10 @@
 @media (prefers-reduced-motion:reduce){.wt .ghost .gl i,.wt .ghost .gring{animation:none}}
 .wt .field.waiting .fd,.wt .stack.waiting .fd{animation:wt-glow 2.2s ease-in-out infinite}
 .wt .fig .v .wait{width:12px;height:12px;margin:8px 0}
+.mp-pop .stk{margin-top:8px;display:grid;gap:2px;border-top:1px solid #E6DFD1;padding-top:6px}
+.mp-pop .stk button{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;color:inherit}
+.mp-pop .stk button:hover{color:#8A6400}
+.mp-pop .stk .sw{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.mp-pop .stk .sw.now{background:#F2B300}.mp-pop .stk .sw.now.work{background:radial-gradient(circle,#24211C 0 2px,#F2B300 2.4px)}
+.mp-pop .stk .sw.long{box-shadow:inset 0 0 0 2.6px #F2B300}.mp-pop .stk .sw.soon{box-shadow:inset 0 0 0 1.5px #F2B300}.mp-pop .stk .sw.clear{background:#CFC6B5}
+@media (prefers-color-scheme:dark){.mp-pop .stk{border-color:#2F2A23}.mp-pop .stk button:hover{color:#F2B300}}

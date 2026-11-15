@@ -78,6 +78,8 @@ export default function MapPage() {
   const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null)
   const [on, setOn] = useState({ now: true, plan: true, clear: true })
   const [sel, setSel] = useState<string | null>(null)
+  // clinics in the same building share one spot, so zooming can never pull them apart: tapping lists them instead
+  const [stack, setStack] = useState<string[] | null>(null)
   const dark = useDark()
   const [nets, setNets] = useState(true)
   const [netsIn, setNetsIn] = useState(false)
@@ -177,7 +179,7 @@ export default function MapPage() {
                 onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))}>
                 <b>{ready ? count(k) : <Wait />}</b>
                 <span><i className={`sw ${sw}`} />{l}</span>
-                {k === "now" && ready && count("now") > 0 && <small>{faults} {faults === 1 ? "fault" : "faults"} · {works} planned</small>}
+                {k === "now" && ready && count("now") > 0 && <small>{[faults && `${faults} ${faults === 1 ? "fault" : "faults"}`, works && `${works} planned work`].filter(Boolean).join(" · ")}</small>}
                 {k === "plan" && <small className="q">next 14 days</small>}
                 {k === "clear" && <small className="q">no outage due</small>}
               </button>
@@ -228,7 +230,7 @@ export default function MapPage() {
             mapContainerClassName="gm"
             onLoad={(m) => setMap(m)}
             onIdle={() => { if (map) { setZoom(map.getZoom() ?? 4); setBounds(map.getBounds() ?? null) } }}
-            onClick={() => setSel(null)}
+            onClick={() => { setSel(null); setStack(null) }}
             onTilesLoaded={() => setTiles(true)}
             onDragStart={() => setView("")}
             options={{ styles: dark ? WATTLE_MAP_STYLE_DARK : WATTLE_MAP_STYLE, backgroundColor: dark ? "#1E347B" : "#8DDAF7", disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false, minZoom: 3 }}
@@ -251,6 +253,8 @@ export default function MapPage() {
                 onClick={() => {
                   const bb = new google.maps.LatLngBounds()
                   b.forEach((p) => bb.extend({ lat: p.s.lat, lng: p.s.lng }))
+                  const ne = bb.getNorthEast(), sw = bb.getSouthWest()
+                  if (ne.lat() - sw.lat() < 0.0004 && ne.lng() - sw.lng() < 0.0004) { setSel(null); setStack(b.map((p) => p.s.id)); return }
                   map?.fitBounds(bb, 80)
                 }} />
             })}
@@ -259,6 +263,25 @@ export default function MapPage() {
               return <Marker key={`net-${l.name}`} position={{ lat: l.at[0], lng: l.at[1] }} clickable={false} zIndex={2}
                 icon={{ url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h / 2) }} />
             })}
+            {stack && (() => {
+              const l = stack.map((id) => pins.find((p) => p.s.id === id)).filter((p): p is Pin => !!p)
+              if (!l.length) return null
+              return (
+                <InfoWindow position={{ lat: l[0].s.lat, lng: l[0].s.lng }} onCloseClick={() => setStack(null)} options={{ pixelOffset: new google.maps.Size(0, -18) }}>
+                  <div className="mp-pop">
+                    <b>{l.length} clinics at this address</b>
+                    <div className="m">{l[0].s.address.split(",").slice(-3).join(",").trim()}</div>
+                    <div className="stk">
+                      {l.map((p) => (
+                        <button key={p.s.id} onClick={() => { setStack(null); setSel(p.s.id) }}>
+                          <i className={`sw ${p.st.k}${p.st.k === "now" && p.st.o.kind !== "unplanned" ? " work" : ""}`} />{p.s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </InfoWindow>
+              )
+            })()}
             {selPin && (
               <InfoWindow position={{ lat: selPin.s.lat, lng: selPin.s.lng }} onCloseClick={() => setSel(null)} options={{ pixelOffset: new google.maps.Size(0, -10) }}>
                 <div className="mp-pop">
@@ -266,6 +289,15 @@ export default function MapPage() {
                   <div className="m">{selPin.s.address}</div>
                   <div className="m">{line(selPin.st, data!.at)}</div>
                   {selPin.st.k === "long" && <span className="tag">Check fridge stock</span>}
+                  {(() => {
+                    const same = pins.filter((p) => p.s.id !== selPin.s.id && Math.abs(p.s.lat - selPin.s.lat) < 0.0002 && Math.abs(p.s.lng - selPin.s.lng) < 0.0002)
+                    return same.length > 0 && (
+                      <div className="stk">
+                        <div className="m">Also at this address</div>
+                        {same.map((p) => <button key={p.s.id} onClick={() => setSel(p.s.id)}><i className={`sw ${p.st.k}`} />{p.s.name}</button>)}
+                      </div>
+                    )
+                  })()}
                 </div>
               </InfoWindow>
             )}
