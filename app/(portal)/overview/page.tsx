@@ -10,7 +10,6 @@ import { BackOnGlance, DaysGlance, Fold, GlanceList } from "@/components/wattle/
 import { Opt, Sep } from "@/components/wattle/pick"
 import { FoldBar, MenuHead, PoweredBy, RoundMenu, SearchBar } from "@/components/wattle/kit"
 
-const RANK = { now: 0, long: 1, soon: 2, clear: 3 }
 
 // Dashboard, like the app's: three figures, then sections that fold away, each with a glance that stays on show while
 // it's shut and changes shape as it opens. Out now (how many are still out, stepping down as each is due back), the next
@@ -22,7 +21,7 @@ const DAY = 86400_000
 export default function Dashboard() {
   // Shows at once: the page's frame straight away, every site as a grey dot when the sites arrive, then the outages
   // light it up. Until then numbers are breathing dots and lists are rows of dots (components/wattle/waiting.tsx).
-  const { data: full, early, error, stateOf } = usePortal()
+  const { data: full, early, error } = usePortal()
   const data = full ?? early
   const ready = !!full
   const [filter, setFilter] = useState<{ long: boolean; atSite: boolean; state: string | null }>({ long: false, atSite: false, state: null })
@@ -50,13 +49,20 @@ export default function Dashboard() {
     for (const o of planned) if (o.site.state) states.set(o.site.state, (states.get(o.site.state) ?? new Set()).add(o.site.id))
     const total = new Map<string, number>()
     for (const s of data.sites) if (s.state) total.set(s.state, (total.get(s.state) ?? 0) + 1)
-    return { now, days, planned, byDay, sitesIn, max, off, total, states: [...states].sort((a, b) => b[1].size - a[1].size) }
+    // the three figures, split the way the app splits them so they always add up to every site: any outage under way
+    // (at the site or nearby) first, then planned work at the site in the next 7 days, and the rest are all clear
+    const nowIds = new Set(off.map((o) => o.site.id)), atIds = new Set(off.filter((o) => o.atSite).map((o) => o.site.id))
+    const weekList = planned.filter((o) => o.atSite && !nowIds.has(o.site.id) && new Date(o.starts!).getTime() - now < 7 * DAY)
+    const weekIds = new Set(weekList.map((o) => o.site.id))
+    const figs = {
+      now: nowIds.size, at: atIds.size, week: weekIds.size,
+      long: sitesIn(weekList.filter((o) => (o.hours ?? 0) >= 4)), clear: data.sites.length - nowIds.size - weekIds.size,
+    }
+    return { now, days, planned, byDay, sitesIn, max, off, figs, total, states: [...states].sort((a, b) => b[1].size - a[1].size) }
   }, [data])
-  const field = useMemo(() => (data?.sites ?? []).map((s) => stateOf(s.id).k).sort((a, b) => RANK[a] - RANK[b]), [data, stateOf])
 
   if (error && !data) return <Loading error={error} />
   if (!data || !v) return <Waiting />
-  const S = data.summary
 
   const match = (o: Outage) => {
     if (filter.long && (o.hours ?? 0) < 4) return false
@@ -66,7 +72,6 @@ export default function Dashboard() {
     return !t || [o.site.name, o.site.suburb, o.site.postcode, o.site.code, o.site.number, o.provider].some((x) => x?.toLowerCase().includes(t))
   }
   const agendaDays = v.days.map((x) => x.key).filter((k) => (v.byDay.get(k) ?? []).some(match))
-  const count = (k: string) => field.filter((x) => x === k).length
   const toggle = (k: "long" | "atSite") => setFilter((f) => ({ ...f, [k]: !f[k] }))
   const jump = (key: string) => {
     const i = agendaDays.indexOf(key)
@@ -89,7 +94,7 @@ export default function Dashboard() {
       <FoldBar title="Dashboard" watch={titleRef} />
       <div className="top">
         <div>
-          <h1 ref={titleRef}>{ready ? <>{S.outNow.sites} {S.outNow.sites === 1 ? "site" : "sites"} off now, {S.next7Days.sites} losing power this week</> : `Checking ${data.sites.length} sites for outages`}</h1>
+          <h1 ref={titleRef}>{ready ? <>{v.figs.now ? `${plural(v.figs.now, "site")} near an outage now` : "No outages at your sites right now"}{v.figs.week ? `, ${v.figs.week} with planned work this week` : ""}</> : `Checking ${data.sites.length} sites for outages`}</h1>
         </div>
       </div>
 
@@ -108,9 +113,9 @@ export default function Dashboard() {
       </div>
 
       <div className="dfigs">
-        <div className="now"><b>{ready ? S.outNow.sites : <Wait />}</b><span><i className="sw now" />Off now</span><small>{ready ? `${S.outNow.atSite} at the site itself` : ""}</small></div>
-        <div><b>{ready ? S.next7Days.sites : <Wait />}</b><span><i className="sw long" />This week</span><small>{ready ? `${S.longOnes7Days} run 4 hours or longer` : ""}</small></div>
-        <div><b>{ready ? count("clear") : <Wait />}</b><span><i className="sw clear" />All clear</span><small>no outage in the next 14 days</small></div>
+        <div className="now"><b>{ready ? v.figs.now : <Wait />}</b><span><i className="sw now" />Outage now</span><small>{ready ? (v.figs.now ? (v.figs.at === 0 ? "all nearby, none at the site" : v.figs.at === v.figs.now ? "all at the site itself" : `${v.figs.at} at the site, ${v.figs.now - v.figs.at} nearby`) : "none at or near your sites") : ""}</small></div>
+        <div><b>{ready ? v.figs.week : <Wait />}</b><span><i className="sw long" />Planned this week</span><small>{ready ? (v.figs.week ? `at the site, ${v.figs.long} for 4 hours or longer` : "no planned work at your sites") : ""}</small></div>
+        <div><b>{ready ? v.figs.clear : <Wait />}</b><span><i className="sw clear" />All clear</span><small>nothing under way or due this week</small></div>
       </div>
 
       <div className="folds">
