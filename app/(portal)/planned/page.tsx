@@ -57,6 +57,8 @@ export default function Planned() {
   const until = first ? untilText(new Date(first.starts!).getTime() - new Date(data.at).getTime()) : null
   const states = count(inRange.filter((o) => match(o, "state")), (o) => o.site.state && o.site.state !== "NULL" ? o.site.state : null)
   const nets = count(inRange.filter((o) => match(o, "net")), (o) => netKey(o.provider || o.site.provider))
+  // picking a day (or letting it go) starts the days afresh, so the picked day always opens
+  const pick = (k: string | null) => { setDay(k); setFolded(new Set()) }
   const fold = (k: string) => setFolded((f) => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n })
 
   return (
@@ -102,9 +104,9 @@ export default function Planned() {
       </div>
 
       <div className="pl-body">
-        <Calendar list={list} dayOf={dayOf} at={data.at} day={day} onDay={(k) => setDay(day === k ? null : k)} />
+        <Calendar list={list} dayOf={dayOf} at={data.at} day={day} onDay={(k) => pick(day === k ? null : k)} />
         <div className="pl-days">
-          {day && <button className="pl-only" onClick={() => setDay(null)}>Showing {fmt(new Date(`${ymd(day).replace(/(\d{4})(\d\d)(\d\d)/, "$1-$2-$3")}T12:00:00`), "NSW", { weekday: "long", day: "numeric", month: "long" })}<i aria-hidden>×</i></button>}
+          {day && <button className="pl-only" onClick={() => pick(null)}>Showing {fmt(new Date(`${ymd(day).replace(/(\d{4})(\d\d)(\d\d)/, "$1-$2-$3")}T12:00:00`), "NSW", { weekday: "long", day: "numeric", month: "long" })}<i aria-hidden>×</i></button>}
           {groups.length === 0 && <div className="empty">{day ? "Nothing booked that day." : "Nothing booked that matches."}</div>}
           {groups.map((g) => {
             // like the app: under way, today and tomorrow (and a day picked on the calendar) start open, later days folded
