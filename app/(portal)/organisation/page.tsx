@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
+import { Settings as GearIcon } from "lucide-react"
 import { ConnectionsPanel } from "@/components/connections-panel"
 import { InviteUserDialog } from "@/components/invite-user-dialog"
 import { Loading } from "@/components/wattle/shell"
@@ -58,6 +59,14 @@ export default function Organisation() {
   const mainRef = useRef<HTMLElement>(null), idRef = useRef<HTMLDivElement>(null), tabRef = useRef<HTMLDivElement>(null)
   const ready = !!(data && p)
   const [frame, setFrame] = useState<Element | null>(null)
+  // wide screens: the search docks beside the toggle, and rows spread into columns
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const m = matchMedia("(min-width: 1180px)")
+    const on = () => setWide(m.matches)
+    on(); m.addEventListener("change", on)
+    return () => m.removeEventListener("change", on)
+  }, [])
   useEffect(() => { setFrame(document.querySelector(".wt")) }, [])
   useEffect(() => {
     if (!sheet) return
@@ -167,6 +176,42 @@ export default function Organisation() {
   const pick = (t: Tab) => { setTab(t); toTop() }
   const turn = (set: (n: number) => void) => (n: number) => { set(n); toTop() }
 
+  const search = tab === "sites" ? (
+      <Search value={sq} onChange={setSq} placeholder="Site number, name or suburb"
+        add={admin ? { label: "Add site", onClick: openAdd } : undefined}
+        menu={<RoundMenu label="Filter and sort sites" active={shw !== "all" || sort !== "number" || !!st || !!net}>{(close) => <>
+          <MenuHead>Show</MenuHead>
+          {([["all", "All sites"], ["out", "Without power"], ["planned", "Planned outage"], ["clear", "All clear"]] as const).map(([k, l]) =>
+            <Opt key={k} on={shw === k} onPick={() => { setShw(k); close() }}>{l}</Opt>)}
+          <Sep /><MenuHead>Sort by</MenuHead>
+          {([["number", "Site number"], ["state", "State"], ["name", "Name"], ["status", "Status"]] as const).map(([k, l]) =>
+            <Opt key={k} on={sort === k} onPick={() => { setSort(k); close() }}>{l}</Opt>)}
+          <Sep /><MenuHead>State</MenuHead>
+          <Opt on={!st} onPick={() => { setSt(null); close() }}>All states</Opt>
+          {states.map((x) => <Opt key={x} on={st === x} n={sites.filter(({ s }) => (s.state ?? "").toUpperCase() === x).length} onPick={() => { setSt(x); close() }}>{STATE[x]}</Opt>)}
+          <Sep /><MenuHead>Network</MenuHead>
+          <Opt on={!net} onPick={() => { setNet(null); close() }}>All networks</Opt>
+          {[...byNet].sort((a, b) => b[1] - a[1] || NET[a[0]].name.localeCompare(NET[b[0]].name)).map(([k, n]) =>
+            <Opt key={k} on={net === k} n={n} onPick={() => { setNet(k); close() }}>{NET[k].name}</Opt>)}
+          {(shw !== "all" || sort !== "number" || st || net) && <><Sep /><Opt on={false} onPick={() => { setShw("all"); setSort("number"); setSt(null); setNet(null); close() }}>Reset</Opt></>}
+        </>}</RoundMenu>} />
+  ) : tab === "networks" ? (
+      <Search value={nq} onChange={setNq} placeholder="Network"
+        menu={<RoundMenu label="Sort networks" active={byName}>{(close) => <>
+          <MenuHead>Sort by</MenuHead>
+          <Opt on={!byName} onPick={() => { setByName(false); close() }}>Most sites</Opt>
+          <Opt on={byName} onPick={() => { setByName(true); close() }}>Name</Opt>
+        </>}</RoundMenu>} />
+  ) : (
+      <Search value={tq} onChange={setTq} placeholder="Name"
+        add={admin ? { label: "Invite someone", onClick: () => setInvite(true) } : undefined}
+        menu={<RoundMenu label="Show" active={role !== "all"}>{(close) => <>
+          <MenuHead>Show</MenuHead>
+          {([["all", "Everyone"], ["admin", "Admins"], ["member", "Members"]] as const).map(([k, l]) =>
+            <Opt key={k} on={role === k} onPick={() => { setRole(k); close() }}>{l}</Opt>)}
+        </>}</RoundMenu>} />
+  )
+
   return (
     <main className="org" ref={mainRef}>
       <title>Organisation · Wattle</title>
@@ -206,31 +251,16 @@ export default function Organisation() {
             { label: "Networks", count: Object.keys(NET).length, value: "networks" },
             { label: "Team", count: p.people.length, value: "team" },
           ]} />
+          {wide && search}
         </div>
       </div>
 
       <div className="ocol olist">
         {tab === "sites" && <>
-          <Search value={sq} onChange={setSq} placeholder="Site number, name or suburb"
-            add={admin ? { label: "Add site", onClick: openAdd } : undefined}
-            menu={<RoundMenu label="Filter and sort sites" active={shw !== "all" || sort !== "number" || !!st || !!net}>{(close) => <>
-              <MenuHead>Show</MenuHead>
-              {([["all", "All sites"], ["out", "Without power"], ["planned", "Planned outage"], ["clear", "All clear"]] as const).map(([k, l]) =>
-                <Opt key={k} on={shw === k} onPick={() => { setShw(k); close() }}>{l}</Opt>)}
-              <Sep /><MenuHead>Sort by</MenuHead>
-              {([["number", "Site number"], ["state", "State"], ["name", "Name"], ["status", "Status"]] as const).map(([k, l]) =>
-                <Opt key={k} on={sort === k} onPick={() => { setSort(k); close() }}>{l}</Opt>)}
-              <Sep /><MenuHead>State</MenuHead>
-              <Opt on={!st} onPick={() => { setSt(null); close() }}>All states</Opt>
-              {states.map((x) => <Opt key={x} on={st === x} n={sites.filter(({ s }) => (s.state ?? "").toUpperCase() === x).length} onPick={() => { setSt(x); close() }}>{STATE[x]}</Opt>)}
-              <Sep /><MenuHead>Network</MenuHead>
-              <Opt on={!net} onPick={() => { setNet(null); close() }}>All networks</Opt>
-              {[...byNet].sort((a, b) => b[1] - a[1] || NET[a[0]].name.localeCompare(NET[b[0]].name)).map(([k, n]) =>
-                <Opt key={k} on={net === k} n={n} onPick={() => { setNet(k); close() }}>{NET[k].name}</Opt>)}
-              {(shw !== "all" || sort !== "number" || st || net) && <><Sep /><Opt on={false} onPick={() => { setShw("all"); setSort("number"); setSt(null); setNet(null); close() }}>Reset</Opt></>}
-            </>}</RoundMenu>} />
+          {!wide && search}
           {siteList.length === 0 ? <NoMatch noun="sites" onReset={() => { setSq(""); setShw("all"); setSort("number"); setSt(null); setNet(null) }} /> : <>
             {siteList.length !== sites.length && <div className="ocount">{siteList.length} of {sites.length} sites</div>}
+            {wide && <div className="ohd" aria-hidden><span>Site</span><span>Address</span><span>Network</span></div>}
             <div className="orows" role="list">
               {slice(siteList, sp).map(({ s, k }, i, page) => {
                 const S = (s.state ?? "").toUpperCase()
@@ -241,7 +271,7 @@ export default function Organisation() {
                     <i className={`od ${k}`} aria-label={k === "now" ? "Without power" : k === "clear" ? "All clear" : "Planned outage"} />
                     <span className="orow-tx">
                       <b>{s.number && <em>{s.number}</em>}{s.name}</b>
-                      <span>{[tidy(s.address), netKey(s.provider) ? netName(s.provider) : null].filter(Boolean).join(" · ")}</span>
+                      <span className="orow-m"><span className="ad">{tidy(s.address)}</span>{netKey(s.provider) && <span className="nt">{netName(s.provider)}</span>}</span>
                     </span>
                     <Chev />
                   </Link>
@@ -253,12 +283,7 @@ export default function Organisation() {
         </>}
 
         {tab === "networks" && <>
-          <Search value={nq} onChange={setNq} placeholder="Network"
-            menu={<RoundMenu label="Sort networks" active={byName}>{(close) => <>
-              <MenuHead>Sort by</MenuHead>
-              <Opt on={!byName} onPick={() => { setByName(false); close() }}>Most sites</Opt>
-              <Opt on={byName} onPick={() => { setByName(true); close() }}>Name</Opt>
-            </>}</RoundMenu>} />
+          {!wide && search}
           {netList.length === 0 ? <NoMatch noun="networks" onReset={() => { setNq(""); setByName(false) }} /> : <>
             <div className="orows net" role="list">
               {slice(netList, np).map(([k, n]) => (
@@ -275,13 +300,7 @@ export default function Organisation() {
         </>}
 
         {tab === "team" && <>
-          <Search value={tq} onChange={setTq} placeholder="Name"
-            add={admin ? { label: "Invite someone", onClick: () => setInvite(true) } : undefined}
-            menu={<RoundMenu label="Show" active={role !== "all"}>{(close) => <>
-              <MenuHead>Show</MenuHead>
-              {([["all", "Everyone"], ["admin", "Admins"], ["member", "Members"]] as const).map(([k, l]) =>
-                <Opt key={k} on={role === k} onPick={() => { setRole(k); close() }}>{l}</Opt>)}
-            </>}</RoundMenu>} />
+          {!wide && search}
           {team.length === 0 ? <NoMatch noun="people" onReset={() => { setTq(""); setRole("all") }} /> : <>
             <div className="orows team" role="list">
               {slice(team, tp).map((x) => (
@@ -408,10 +427,7 @@ function NetTile({ k }: { k: NetKey }) {
   )
 }
 
-const Gear = () => (
-  <svg viewBox="0 0 20 20" aria-hidden><circle cx="10" cy="10" r="2.6" />
-    <path d="M10 2.6l1.2 1.9 2.2-.5.6 2.2 2.1.9-.6 2.2 1.5 1.7-1.5 1.7.6 2.2-2.1.9-.6 2.2-2.2-.5L10 17.4l-1.2-1.9-2.2.5-.6-2.2-2.1-.9.6-2.2L3 9l1.5-1.7-.6-2.2 2.1-.9.6-2.2 2.2.5z" /></svg>
-)
+const Gear = () => <GearIcon className="gear" strokeWidth={1.9} aria-hidden />
 const Chev = () => <svg className="chev" viewBox="0 0 10 16" aria-hidden><path d="m2.5 2.5 5 5.5-5 5.5" /></svg>
 
 /** An address without the "NULL" and empty parts some imports leave in it. */
