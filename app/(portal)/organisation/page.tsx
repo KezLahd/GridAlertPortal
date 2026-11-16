@@ -11,7 +11,7 @@ import { fmt, headers, plural, usePortal } from "@/components/wattle/data"
 // Organisation: who's in the company, your own audit emails and alerts, and (for admins) connections and invites.
 // Settings sit in labelled rows on hairlines. Older settings (company details, icons, member edits) stay on /profile.
 
-interface Person { id: string; firstName: string; lastName: string; role: string; status: string; regions: string[]; types: string[]; channels: string[]; audits: string[]; isMe: boolean }
+interface Person { id: string; firstName: string; lastName: string; role: string; status: string; regions: string[]; types: string[]; channels: string[]; audits: string[]; digest: boolean; isMe: boolean }
 interface People { company: { name: string; logo_letters: string | null } | null; meId: string; role: string; people: Person[] }
 
 const TYPES = [["unplanned", "Faults", "Power off without warning"], ["planned", "Planned work under way", "When planned work starts"], ["future", "Planned work coming up", "When the network announces it"]] as const
@@ -31,10 +31,14 @@ export default function Organisation() {
 
   const me = p?.people.find((x) => x.isMe)
   const admin = p?.role === "admin"
+  // the weekly summary only goes out with both the opt-in and email on
+  const weekly = !!(me?.digest && me.channels.includes("email"))
 
-  const save = async (patch: Partial<Pick<Person, "types" | "channels" | "audits">>) => {
+  const save = async (patch: Partial<Pick<Person, "types" | "channels" | "audits" | "digest">>) => {
     if (!p || !me) return
-    setP({ ...p, people: p.people.map((x) => (x.isMe ? { ...x, ...patch } : x)) })
+    // ticking the weekly summary turns email on too, as the server does
+    const local = patch.digest ? { ...patch, channels: me.channels.includes("email") ? me.channels : [...me.channels, "email"] } : patch
+    setP({ ...p, people: p.people.map((x) => (x.isMe ? { ...x, ...local } : x)) })
     const res = await fetch("/api/portal/people", { method: "PATCH", headers: await headers(), body: JSON.stringify(patch) })
     if (!res.ok) { show("Couldn't save that. Try again."); load() } else show("Saved")
   }
@@ -88,9 +92,10 @@ export default function Organisation() {
           <div>
             <div className="opt"><div><b>Daily, 7:00 am</b><span>Outages in the next 3 days, and anything off now</span></div>
               <button className={`tg ${me?.audits.includes("daily") ? "on" : ""}`} aria-label="Daily audit email" onClick={() => me && save({ audits: flip(me.audits, "daily") })} /></div>
-            <div className="opt"><div><b>Weekly, Monday 7:00 am</b><span>Everything planned for the next 14 days</span></div>
-              <button className={`tg ${me?.audits.includes("weekly") ? "on" : ""}`} aria-label="Weekly audit email" onClick={() => me && save({ audits: flip(me.audits, "weekly") })} /></div>
-            <p className="optnote">Each email comes with an Excel file of every site affected, in each site&apos;s local time. We&apos;re switching sending on soon; your choice is saved now.</p>
+            {/* the weekly summary is opt-in: off until you tick it, and it needs email on (ticking it turns email on) */}
+            <div className="opt"><div><b>Weekly, Monday 7:00 am</b><span>Email me a summary of planned outages near my sites</span></div>
+              <button className={`tg ${weekly ? "on" : ""}`} aria-label="Weekly summary email" aria-pressed={weekly} onClick={() => me && save({ digest: !weekly })} /></div>
+            <p className="optnote">Both are off unless you turn them on. The weekly summary is sending now; the daily email is coming soon.</p>
           </div>
           <div className="mail">
             <div className="mh">What tomorrow&apos;s daily email would say</div>

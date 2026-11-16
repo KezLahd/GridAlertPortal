@@ -136,7 +136,7 @@ export async function outages(companyId: string, q: OutageQuery = {}, known?: Si
       const out: any[] = []
       for (let from = 0; ; from += 1000) {
         const { data, error } = await db.from("clinic_outage_impacts")
-          .select("id, clinic_id, provider, kind, score, distance_km, area, cause, starts_at, ends_at")
+          .select("id, clinic_id, provider, kind, score, at_site, distance_km, area, cause, starts_at, ends_at")
           .eq("company_id", companyId).is("ended_at", null).order("starts_at", { ascending: true, nullsFirst: true })
           .range(from, from + 999)
         if (error) throw error
@@ -162,7 +162,9 @@ export async function outages(companyId: string, q: OutageQuery = {}, known?: Si
     if (when === "all" && !live && starts && starts.getTime() > horizon) continue
     const hours = starts && ends ? Math.round(((ends.getTime() - starts.getTime()) / 3600_000) * 10) / 10 : null
     if (q.minHours && (hours === null || hours < q.minHours)) continue
-    const atSite = (r.score ?? 0) >= 80
+    // Wattle's at-site rule, worked out in the database on every refresh (inside the outage area, the same street in the
+    // same suburb, or right by the outage point), shared with the app and the weekly email. Older rows fall back to the score.
+    const atSite = typeof r.at_site === "boolean" ? r.at_site : (r.score ?? 0) >= 80
     if (q.atSiteOnly && !atSite) continue
     list.push({
       id: r.id, site, kind: r.kind, starts, ends, hours, atSite,
