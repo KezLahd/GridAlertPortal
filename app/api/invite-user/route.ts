@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase"
 import { adminsOnly, caller, isAdmin } from "@/lib/session-auth"
 import { NextResponse } from "next/server"
+import { appLink, inviteEmail } from "@/lib/invite-email"
 
 export async function POST(request: Request) {
   try {
@@ -110,6 +111,11 @@ export async function POST(request: Request) {
     })()
     const inviteUrl = `${normalizedAppUrl.replace(/\/$/, "")}/setup-account?token=${invitationToken}`
 
+    const mail = inviteEmail({
+      firstName: first_name, company: company?.name, inviteUrl, appUrl: appLink(),
+      inviter: [admin?.first_name, admin?.last_name].filter(Boolean).join(" "),
+    })
+
     // Send invitation email using Resend
     let emailSent = false
     try {
@@ -122,27 +128,9 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           from: "Wattle <gridalert@mjsons.net>",
           to: email,
-          subject: `You've been invited to ${company?.name || "a company"}'s Wattle portal`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #24211C;">Welcome to Wattle</h2>
-              <p>Hi ${first_name},</p>
-              <p>${admin?.first_name} ${admin?.last_name} has invited you to join <strong>${company?.name}</strong>'s Wattle portal to see power outages near your sites.</p>
-              <p>To complete your account setup, please click the link below:</p>
-              <p style="margin: 30px 0;">
-                <a href="${inviteUrl}" style="background-color: #F2B300; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Account Setup</a>
-              </p>
-              <p>You'll need to:</p>
-              <ul>
-                <li>Set your password</li>
-                <li>Add your mobile number (optional)</li>
-                <li>Configure notification preferences</li>
-              </ul>
-              <p style="margin-top: 30px; color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
-              <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-              <p>Best regards,<br/>The Wattle team</p>
-            </div>
-          `,
+          subject: `You've been invited to ${company?.name || "a company"}'s Wattle`,
+          html: mail.html,
+          text: mail.text,
         }),
       })
 
