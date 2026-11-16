@@ -44,6 +44,8 @@ export interface Site {
   id: string
   name: string
   code: string | null
+  /** the site number as the company shows it: its prefix and the code ("C434"), or "#434" when it has no prefix */
+  number: string | null
   address: string
   suburb: string | null
   postcode: string | null
@@ -71,6 +73,10 @@ export interface Outage {
   provider: string
   cause: string | null
   area: string | null
+  /** the streets the network lists for it, tidied ("Ann St", "Bray St"); empty when it gives none */
+  streets: string[]
+  /** how many customers the network says it cuts off */
+  customers: number | null
 }
 
 const TZ: Record<string, string> = {
@@ -88,6 +94,8 @@ const pin = (lat: unknown, lng: unknown) => {
 export async function sites(companyId: string): Promise<Site[]> {
   const db = createServiceClient()
   const out: Site[] = []
+  const { data: co } = await db.from("companies").select("site_number_prefix").eq("id", companyId).maybeSingle()
+  const prefix = (co?.site_number_prefix ?? "").trim()
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("locations")
       .select("id, institutionname, institutionnickname, institutioncode, addressline1, addressline2, addresssuburb, addresspostcode, addressstate, addresslatitude, addresslongitude, provider")
@@ -99,6 +107,7 @@ export async function sites(companyId: string): Promise<Site[]> {
         id: l.id,
         name: l.institutionnickname || l.institutionname || "Unnamed site",
         code: l.institutioncode ?? null,
+        number: l.institutioncode ? `${prefix || "#"}${l.institutioncode}` : null,
         address: [l.addressline1, l.addressline2, l.addresssuburb, l.addressstate, l.addresspostcode].filter(Boolean).join(", "),
         suburb: l.addresssuburb ?? null,
         postcode: l.addresspostcode ?? null,
@@ -136,7 +145,7 @@ export async function outages(companyId: string, q: OutageQuery = {}, known?: Si
       const out: any[] = []
       for (let from = 0; ; from += 1000) {
         const { data, error } = await db.from("clinic_outage_impacts")
-          .select("id, clinic_id, provider, kind, score, at_site, distance_km, area, cause, starts_at, ends_at")
+          .select("id, clinic_id, incident_id, provider, kind, score, at_site, distance_km, area, cause, starts_at, ends_at")
           .eq("company_id", companyId).is("ended_at", null).order("starts_at", { ascending: true, nullsFirst: true })
           .range(from, from + 999)
         if (error) throw error
@@ -147,6 +156,7 @@ export async function outages(companyId: string, q: OutageQuery = {}, known?: Si
     })(),
   ])
   const byId = new Map(all.map((s) => [s.id, s]))
+  const more = await extras(db, rows)
   const wanted = q.siteIds?.length ? new Set(q.siteIds) : null
 
   const list: Outage[] = []
@@ -171,12 +181,57 @@ export async function outages(companyId: string, q: OutageQuery = {}, known?: Si
       status: r.kind === "unplanned" ? "Out now" : live ? "Planned work under way" : "Planned",
       distanceKm: r.distance_km == null ? null : Number(r.distance_km),
       provider: r.provider, cause: r.cause ?? null, area: r.area ?? null,
+      ...(more.get(`${r.provider}|${r.incident_id}`) ?? { streets: [], customers: null }),
     })
   }
   // out now first, then by start time, then by site
   return list.sort((a, b) =>
     Number(b.status !== "Planned") - Number(a.status !== "Planned") ||
     (a.starts?.getTime() ?? 0) - (b.starts?.getTime() ?? 0) || a.site.name.localeCompare(b.site.name))
+}
+
+// ---------- what the network says each outage cuts off: its streets and customer count (as the app shows them) ----------
+
+const FEEDS: Record<Kind, string[]> = {
+  unplanned: ["unplanned_outages_consolidated"],
+  // a planned outage moves from the future table to the current one when it starts, so look in both
+  planned: ["current_planned_outages_consolidated", "future_planned_outages_consolidated"],
+  future: ["future_planned_outages_consolidated", "current_planned_outages_consolidated"],
+}
+
+async function extras(db: ReturnType<typeof createServiceClient>, rows: any[]) {
+  const out = new Map<string, { streets: string[]; customers: number | null }>()
+  const byTable = new Map<string, Set<string>>()
+  for (const r of rows) {
+    if (!r.incident_id) continue
+    for (const t of FEEDS[r.kind as Kind] ?? []) byTable.set(t, (byTable.get(t) ?? new Set()).add(String(r.incident_id)))
+  }
+  const areaOf = new Map(rows.map((r) => [`${r.provider}|${r.incident_id}`, r.area as string | null]))
+  await Promise.all([...byTable].flatMap(([table, ids]) => {
+    const l = [...ids]
+    return Array.from({ length: Math.ceil(l.length / 150) }, (_, i) => l.slice(i * 150, i * 150 + 150)).map(async (chunk) => {
+      const { data } = await db.from(table).select("incident_id, provider, streets_affected, customers_affected").in("incident_id", chunk)
+      for (const x of data ?? []) {
+        const k = `${x.provider}|${x.incident_id}`
+        if (out.has(k)) continue
+        const n = Number(String(x.customers_affected ?? "").replace(/[^0-9]/g, ""))
+        out.set(k, { streets: streetList(x.streets_affected, areaOf.get(k) ?? null, x.provider), customers: n > 0 ? n : null })
+      }
+    })
+  }))
+  return out
+}
+
+/** "ANN ST, BRAY ST" as ["Ann St", "Bray St"]. Nothing when it only repeats the area, or for SA Power (whose list is suburbs). */
+function streetList(s: string | null, area: string | null, provider: string): string[] {
+  if (!s || /^sa ?power/i.test(provider ?? "")) return []
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, "")
+  if (area && norm(area) === norm(s)) return []
+  const seen = new Set<string>()
+  return s.split(",").map((t) => t.trim())
+    .filter((t) => t && !/^(unknown|n\/?a|tbc|-)( area)?$/i.test(t))
+    .map((t) => (t === t.toUpperCase() ? t.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()) : t))
+    .filter((t) => !seen.has(t.toLowerCase()) && !!seen.add(t.toLowerCase()))
 }
 
 export async function summary(companyId: string) {
@@ -217,13 +272,13 @@ function wall(d: Date | null, state?: string | null): Date | null {
 }
 
 export const EXPORT_HEADERS = [
-  "Site", "Code", "Address", "State", "Status", "Starts", "Ends", "Hours", "4h+ (check fridge stock)",
+  "Site", "Site number", "Address", "State", "Status", "Starts", "Ends", "Hours", "4h+ (check fridge stock)",
   "Where", "Distance (km)", "Network", "Cause", "Area",
 ]
 
 export function exportRows(list: Outage[], forSheet: boolean): Cell[][] {
   return list.map((o) => [
-    o.site.name, o.site.code, o.site.address, o.site.state, o.status,
+    o.site.name, o.site.number, o.site.address, o.site.state, o.status,
     forSheet ? wall(o.starts, o.site.state) : when(o.starts, o.site.state),
     forSheet ? wall(o.ends, o.site.state) : when(o.ends, o.site.state),
     o.hours, (o.hours ?? 0) >= 4 ? "Yes" : "",

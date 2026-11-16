@@ -8,13 +8,13 @@ import { supabase } from "@/lib/supabase"
 // refreshed every five minutes and whenever the tab comes back into view.
 
 export interface Site {
-  id: string; name: string; code: string | null; address: string; suburb: string | null; postcode: string | null
+  id: string; name: string; code: string | null; number?: string | null; address: string; suburb: string | null; postcode: string | null
   state: string | null; provider: string | null; lat: number | null; lng: number | null
 }
 export interface Outage {
   id: number; site: Site; kind: "unplanned" | "planned" | "future"; status: "Out now" | "Planned work under way" | "Planned"
   starts: string | null; ends: string | null; hours: number | null; atSite: boolean; distanceKm: number | null
-  provider: string; cause: string | null; area: string | null
+  provider: string; cause: string | null; area: string | null; streets?: string[]; customers?: number | null
 }
 export interface Summary {
   sites: number

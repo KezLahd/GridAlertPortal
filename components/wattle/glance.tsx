@@ -55,8 +55,10 @@ export function OutageGlance({ o, at, open, sel, onToggle, lead = "day", name, c
           <div className="w"><small>When</small><span>{o.starts ? `${fmt(o.starts, st, { weekday: "short", day: "numeric", month: "short" })} ${time(o.starts, st)}` : "Unknown"}{o.ends ? ` – ${time(o.ends, st)}` : now ? " – no restore time yet" : ""}</span></div>
           <div><small>Where</small><span className={o.atSite ? "g" : ""}>{awayText(o)}</span></div>
           {(o.area || o.site.suburb) && <div><small>Area</small><span>{o.area ? place(o.area) : `${o.site.suburb} ${o.site.state ?? ""}`}</span></div>}
-          {o.cause && <div><small>Cause</small><span>{o.cause}</span></div>}
           <div><small>Network</small><span><NetLink p={o.provider || o.site.provider} /></span></div>
+          {!!o.customers && <div><small>Customers</small><span>{o.customers.toLocaleString("en-AU")}</span></div>}
+          {o.cause && <div className={o.cause.length > 32 ? "w" : ""}><small>Cause</small><span>{o.cause}</span></div>}
+          {!!o.streets?.length && <div className="w"><small>Streets</small><span>{o.streets.join(", ")}</span></div>}
           {long && <div className="w"><small>Fridge</small><span className="g">4 hours or more: check fridge stock</span></div>}
           {stale && <div className="w"><small>Note</small><span>Off for a week with no update; the network&apos;s feed may be stale</span></div>}
           {children && <div className="oga">{children}</div>}

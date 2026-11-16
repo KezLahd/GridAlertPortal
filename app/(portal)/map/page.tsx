@@ -156,7 +156,7 @@ export default function MapPage() {
   const needle = q.trim().toLowerCase()
   const now0 = data ? new Date(data.at).getTime() : 0
   const base = (p: Pin) => (!netF || p.s.provider === netF)
-    && (!needle || `${p.s.name} ${p.s.code ?? ""} ${p.s.suburb ?? ""} ${p.s.postcode ?? ""} ${p.s.address}`.toLowerCase().includes(needle))
+    && (!needle || `${p.s.name} ${p.s.code ?? ""} ${p.s.number ?? ""} ${p.s.suburb ?? ""} ${p.s.postcode ?? ""} ${p.s.address}`.toLowerCase().includes(needle))
     && (kindOf(p) !== "plan" || ((new Date(p.st.o!.starts!).getTime() - now0) < days * 86400_000 && (!longOnly || p.st.k === "long")))
   const shown = (p: Pin) => on[kindOf(p)] && base(p)
   const inBounds = (p: Pin) => !bounds || bounds.contains({ lat: p.s.lat, lng: p.s.lng })

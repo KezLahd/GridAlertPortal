@@ -50,7 +50,7 @@ function Sites() {
     t === "all" || (t === "next" ? x.st.k === "long" || x.st.k === "soon" : t === "fix" ? !!x.fix : x.st.k === t)
   const t = q.trim().toLowerCase()
   const list = all.filter((x) => inTab(x, tab) && (!state || x.s.state === state)
-    && (!t || [x.s.name, x.s.code, x.s.suburb, x.s.postcode, x.s.address, x.s.provider].some((v) => v?.toLowerCase().includes(t))))
+    && (!t || [x.s.name, x.s.code, x.s.number, x.s.suburb, x.s.postcode, x.s.address, x.s.provider].some((v) => v?.toLowerCase().includes(t))))
   const noPin = all.filter((x) => x.s.lat === null).length, noState = all.filter((x) => !x.s.state).length
   const states = [...all.reduce((m, x) => x.s.state ? m.set(x.s.state, (m.get(x.s.state) ?? 0) + 1) : m, new Map<string, number>())].sort((a, b) => b[1] - a[1])
   const cur = all.find((x) => x.s.id === sel)
@@ -125,7 +125,7 @@ function detail(s: Site, st: SiteState, fix: string | null) {
   const o = st.o
   if (st.k === "now") return <>{o!.kind === "unplanned" ? "Fault" : "Planned work"}{o!.atSite ? " at the site" : " nearby"} · {s.suburb ?? ""} {s.state ?? ""}</>
   if (st.k === "long" || st.k === "soon") return <>Planned, {o!.hours ?? "?"} h{st.k === "long" ? " · check fridge" : ""} · {o!.atSite ? "at the site" : "nearby"}</>
-  return <>{s.code ? `#${s.code} · ` : ""}{[s.suburb, s.state && s.state !== "NULL" ? s.state : null, s.postcode].filter(Boolean).join(" ")}</>
+  return <>{s.code ? `${s.number ?? `#${s.code}`} · ` : ""}{[s.suburb, s.state && s.state !== "NULL" ? s.state : null, s.postcode].filter(Boolean).join(" ")}</>
 }
 
 /** The time on the right: when it's back, or when it starts. */
@@ -145,7 +145,7 @@ function Detail({ s, fix, admin, outages, at, onEdit }: { s: Site; fix: string |
   const l = [...outages].sort((a, b) => Number(b.status !== "Planned") - Number(a.status !== "Planned") || new Date(a.starts ?? 0).getTime() - new Date(b.starts ?? 0).getTime())
   return (
     <>
-      <div className="code">{s.code ? `Site #${s.code}` : "Site"}</div>
+      <div className="code">{s.code ? `Site ${s.number ?? `#${s.code}`}` : "Site"}</div>
       <h2>{s.name}</h2>
       <div className="addr">{s.address}</div>
       {fix && <div className="fix"><i>!</i><div><b>{fix}.</b> Add it so outages can be matched to this site.</div></div>}

@@ -61,7 +61,7 @@ export default function Dashboard() {
     if (filter.atSite && !o.atSite) return false
     if (filter.state && o.site.state !== filter.state) return false
     const t = q.trim().toLowerCase()
-    return !t || [o.site.name, o.site.suburb, o.site.postcode, o.site.code, o.provider].some((x) => x?.toLowerCase().includes(t))
+    return !t || [o.site.name, o.site.suburb, o.site.postcode, o.site.code, o.site.number, o.provider].some((x) => x?.toLowerCase().includes(t))
   }
   const agendaDays = v.days.map((x) => x.key).filter((k) => (v.byDay.get(k) ?? []).some(match))
   const count = (k: string) => field.filter((x) => x === k).length

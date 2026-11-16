@@ -70,7 +70,7 @@ const TOOLS = [
 const matches = (s: Site, q?: string) => {
   if (!q) return true
   const n = q.toLowerCase()
-  return [s.name, s.code, s.suburb, s.postcode, s.address].some((v) => (v ?? "").toLowerCase().includes(n))
+  return [s.name, s.code, s.number, s.suburb, s.postcode, s.address].some((v) => (v ?? "").toLowerCase().includes(n))
 }
 
 const MAX = 150
@@ -108,8 +108,8 @@ async function call(name: string, a: any, owner: KeyOwner, origin: string, key: 
     }
     case "list_sites": {
       const list = (await sites(c)).filter((s) => (!a.state || (s.state ?? "").toUpperCase() === String(a.state).toUpperCase()) && matches(s, a.search))
-      const rows = list.slice(0, 300).map((s) => `| ${s.name} | ${s.code ?? ""} | ${s.address} | ${s.provider ?? ""} |`)
-      return `${list.length} sites.\n\n| Site | Code | Address | Network |\n|---|---|---|---|\n${rows.join("\n")}${list.length > 300 ? `\n…and ${list.length - 300} more.` : ""}`
+      const rows = list.slice(0, 300).map((s) => `| ${s.name} | ${s.number ?? ""} | ${s.address} | ${s.provider ?? ""} |`)
+      return `${list.length} sites.\n\n| Site | Site number | Address | Network |\n|---|---|---|---|\n${rows.join("\n")}${list.length > 300 ? `\n…and ${list.length - 300} more.` : ""}`
     }
     case "export_link": {
       const p = new URLSearchParams({ when: a.when ?? "upcoming", days: String(Math.min(Math.max(Number(a.days) || 14, 1), 120)), format: a.format === "csv" ? "csv" : "xlsx", key })
