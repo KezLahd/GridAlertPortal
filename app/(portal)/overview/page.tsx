@@ -36,7 +36,7 @@ export default function Dashboard() {
       const d = new Date(now + i * DAY)
       return { key: dayKey(d, "NSW"), d }
     })
-    const planned = data.outages.filter((o) => o.status === "Planned" && o.starts && new Date(o.starts).getTime() - now < 14 * DAY)
+    const planned = data.outages.filter((o) => o.status === "Planned" && o.atSite && o.starts && new Date(o.starts).getTime() - now < 14 * DAY)
     const byDay = new Map<string, Outage[]>()
     for (const o of planned) {
       const k = dayKey(o.starts!, o.site.state)
@@ -44,18 +44,18 @@ export default function Dashboard() {
     }
     const sitesIn = (l: Outage[]) => new Set(l.map((o) => o.site.id)).size
     const max = Math.max(1, ...days.map((x) => sitesIn(byDay.get(x.key) ?? [])))
-    const off = data.outages.filter((o) => o.status !== "Planned")
+    // only outages at the site itself count as "out now"; ones merely nearby are left out
+    const off = data.outages.filter((o) => o.status !== "Planned" && o.atSite)
     const states = new Map<string, Set<string>>()
     for (const o of planned) if (o.site.state) states.set(o.site.state, (states.get(o.site.state) ?? new Set()).add(o.site.id))
     const total = new Map<string, number>()
     for (const s of data.sites) if (s.state) total.set(s.state, (total.get(s.state) ?? 0) + 1)
-    // the three figures, split the way the app splits them so they always add up to every site: any outage under way
-    // (at the site or nearby) first, then planned work at the site in the next 7 days, and the rest are all clear
-    const nowIds = new Set(off.map((o) => o.site.id)), atIds = new Set(off.filter((o) => o.atSite).map((o) => o.site.id))
+    // the three figures, so they always add up to every site: an outage under way at the site first, then planned work at the site in the next 7 days, and the rest are all clear
+    const nowIds = new Set(off.map((o) => o.site.id))
     const weekList = planned.filter((o) => o.atSite && !nowIds.has(o.site.id) && new Date(o.starts!).getTime() - now < 7 * DAY)
     const weekIds = new Set(weekList.map((o) => o.site.id))
     const figs = {
-      now: nowIds.size, at: atIds.size, week: weekIds.size,
+      now: nowIds.size, week: weekIds.size,
       long: sitesIn(weekList.filter((o) => (o.hours ?? 0) >= 4)), clear: data.sites.length - nowIds.size - weekIds.size,
     }
     return { now, days, planned, byDay, sitesIn, max, off, figs, total, states: [...states].sort((a, b) => b[1].size - a[1].size) }
@@ -94,17 +94,16 @@ export default function Dashboard() {
       <FoldBar title="Dashboard" watch={titleRef} />
       <div className="top">
         <div>
-          <h1 ref={titleRef}>{ready ? <>{v.figs.now ? `${plural(v.figs.now, "site")} near an outage now` : "No outages at your sites right now"}{v.figs.week ? `, ${v.figs.week} with planned work this week` : ""}</> : `Checking ${data.sites.length} sites for outages`}</h1>
+          <h1 ref={titleRef}>{ready ? <>{v.figs.now ? `${plural(v.figs.now, "site")} without power now` : "Power on at every site"}{v.figs.week ? `, ${v.figs.week} with planned work this week` : ""}</> : `Checking ${data.sites.length} sites for outages`}</h1>
         </div>
       </div>
 
       {/* the app's controls: a glass search, the filters in a round glass button, and the export beside them */}
       <div className="ptools">
         <SearchBar value={q} onChange={setQ} placeholder="Search sites, suburbs, postcodes" />
-        {ready && <RoundMenu label="Filter the planned outages" active={filter.long || filter.atSite || !!filter.state}>{(close) => <>
+        {ready && <RoundMenu label="Filter the planned outages" active={filter.long || !!filter.state}>{(close) => <>
           <MenuHead>Show</MenuHead>
           <Opt check on={filter.long} hint="Long enough to put fridge stock at risk" onPick={() => toggle("long")}>4 hours or longer</Opt>
-          <Opt check on={filter.atSite} hint="Not just nearby" onPick={() => toggle("atSite")}>At the site only</Opt>
           <Sep /><MenuHead>State</MenuHead>
           <Opt on={!filter.state} onPick={() => { setFilter((f) => ({ ...f, state: null })); close() }}>Every state</Opt>
           {v.states.map(([st, set]) => <Opt key={st} on={filter.state === st} n={set.size} onPick={() => { setFilter((f) => ({ ...f, state: st })); close() }}>{st}</Opt>)}
@@ -113,7 +112,7 @@ export default function Dashboard() {
       </div>
 
       <div className="dfigs">
-        <div className="now"><b>{ready ? v.figs.now : <Wait />}</b><span><i className="sw now" />Outage now</span><small>{ready ? (v.figs.now ? (v.figs.at === 0 ? "all nearby, none at the site" : v.figs.at === v.figs.now ? "all at the site itself" : `${v.figs.at} at the site, ${v.figs.now - v.figs.at} nearby`) : "none at or near your sites") : ""}</small></div>
+        <div className="now"><b>{ready ? v.figs.now : <Wait />}</b><span><i className="sw now" />Off now</span><small>{ready ? "outage at the site itself" : ""}</small></div>
         <div><b>{ready ? v.figs.week : <Wait />}</b><span><i className="sw long" />Planned this week</span><small>{ready ? (v.figs.week ? `at the site, ${v.figs.long} for 4 hours or longer` : "no planned work at your sites") : ""}</small></div>
         <div><b>{ready ? v.figs.clear : <Wait />}</b><span><i className="sw clear" />All clear</span><small>nothing under way or due this week</small></div>
       </div>
