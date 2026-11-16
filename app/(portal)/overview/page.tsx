@@ -1,13 +1,14 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { SitesExportMenu } from "@/components/sites-export-menu"
 import { Loading } from "@/components/wattle/shell"
 import { GhostRows, Wait } from "@/components/wattle/waiting"
 import { dayKey, fmt, plural, usePortal, type Outage } from "@/components/wattle/data"
 import { BackOnGlance, DaysGlance, Fold, GlanceList } from "@/components/wattle/glance"
-import { Opt, Pick, Sep } from "@/components/wattle/pick"
+import { Opt, Sep } from "@/components/wattle/pick"
+import { FoldBar, MenuHead, PoweredBy, RoundMenu, SearchBar } from "@/components/wattle/kit"
 
 const RANK = { now: 0, long: 1, soon: 2, clear: 3 }
 
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<{ long: boolean; atSite: boolean; state: string | null }>({ long: false, atSite: false, state: null })
   const [q, setQ] = useState("")
   const [showDays, setShowDays] = useState(4)
+  const titleRef = useRef<HTMLHeadingElement>(null)
 
   const v = useMemo(() => {
     if (!data) return null
@@ -84,17 +86,25 @@ export default function Dashboard() {
   return (
     <main className="dash">
       <title>Dashboard · Wattle</title>
+      <FoldBar title="Dashboard" watch={titleRef} />
       <div className="top">
         <div>
-          <h1>{ready ? <>{S.outNow.sites} {S.outNow.sites === 1 ? "site" : "sites"} off now, {S.next7Days.sites} losing power this week</> : `Checking ${data.sites.length} sites for outages`}</h1>
+          <h1 ref={titleRef}>{ready ? <>{S.outNow.sites} {S.outNow.sites === 1 ? "site" : "sites"} off now, {S.next7Days.sites} losing power this week</> : `Checking ${data.sites.length} sites for outages`}</h1>
         </div>
-        <div className="actions">
-          <label className="search">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sites, suburbs, postcodes" />
-          </label>
-          <SitesExportMenu className="btn" label="Export" />
-        </div>
+      </div>
+
+      {/* the app's controls: a glass search, the filters in a round glass button, and the export beside them */}
+      <div className="ptools">
+        <SearchBar value={q} onChange={setQ} placeholder="Search sites, suburbs, postcodes" />
+        {ready && <RoundMenu label="Filter the planned outages" active={filter.long || filter.atSite || !!filter.state}>{(close) => <>
+          <MenuHead>Show</MenuHead>
+          <Opt check on={filter.long} hint="Long enough to put fridge stock at risk" onPick={() => toggle("long")}>4 hours or longer</Opt>
+          <Opt check on={filter.atSite} hint="Not just nearby" onPick={() => toggle("atSite")}>At the site only</Opt>
+          <Sep /><MenuHead>State</MenuHead>
+          <Opt on={!filter.state} onPick={() => { setFilter((f) => ({ ...f, state: null })); close() }}>Every state</Opt>
+          {v.states.map(([st, set]) => <Opt key={st} on={filter.state === st} n={set.size} onPick={() => { setFilter((f) => ({ ...f, state: st })); close() }}>{st}</Opt>)}
+        </>}</RoundMenu>}
+        <SitesExportMenu className="rb glassy" label="Export" iconOnly />
       </div>
 
       <div className="dfigs">
@@ -115,21 +125,6 @@ export default function Dashboard() {
         <Fold title="Next 14 days" value={ready ? String(plannedN) : <Wait />} open
           glance={(open) => <DaysGlance days={strip} open={open && ready} onDay={jump} />}>
           {ready && <>
-            <div className="mp-filters fold-filters">
-              <Pick label="Showing" value={filter.long && filter.atSite ? "4h+ at the site" : filter.long ? "4 hours or longer" : filter.atSite ? "At the site" : "Every outage"} active={filter.long || filter.atSite}>
-                {() => <>
-                  <Opt check on={filter.long} hint="Long enough to put fridge stock at risk" onPick={() => toggle("long")}>4 hours or longer</Opt>
-                  <Opt check on={filter.atSite} hint="Not just nearby" onPick={() => toggle("atSite")}>At the site only</Opt>
-                </>}
-              </Pick>
-              <Pick label="State" value={filter.state ?? "Every state"} active={!!filter.state}>
-                {(close) => <>
-                  <Opt on={!filter.state} onPick={() => { setFilter((f) => ({ ...f, state: null })); close() }}>Every state</Opt>
-                  <Sep />
-                  {v.states.map(([st, set]) => <Opt key={st} on={filter.state === st} n={set.size} onPick={() => { setFilter((f) => ({ ...f, state: st })); close() }}>{st}</Opt>)}
-                </>}
-              </Pick>
-            </div>
             {agendaDays.length === 0 && <div className="empty">Nothing planned that matches.</div>}
             {agendaDays.slice(0, showDays).map((k) => {
               const l = (v.byDay.get(k) ?? []).filter(match).sort((a, b) => new Date(a.starts!).getTime() - new Date(b.starts!).getTime())
@@ -149,6 +144,7 @@ export default function Dashboard() {
 
         <Fold title="Where" value={`${[...v.total.keys()].filter((k) => k && k !== "NULL").length} states`} glance={(open) => <StatesGlance total={v.total} out={v.off} planned={v.states} open={open} />} />
       </div>
+      <PoweredBy />
     </main>
   )
 }

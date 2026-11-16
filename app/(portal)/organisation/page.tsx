@@ -11,7 +11,7 @@ import { useSiteDialogs, useToast } from "@/components/wattle/site-dialogs"
 import { fmt, headers, plural, usePortal, type Site } from "@/components/wattle/data"
 import { NET, netKey, netName, type NetKey } from "@/components/wattle/networks"
 import { Opt, Sep } from "@/components/wattle/pick"
-import { AusDots, GoldToggle, MenuHead, Pager, PoweredBy, RoundMenu, slice } from "@/components/wattle/kit"
+import { AusDots, GoldToggle, MenuHead, Pager, Plus, PoweredBy, RoundMenu, SearchBar, slice } from "@/components/wattle/kit"
 
 // Organisation, as the app has it: a cover in the workspace's colour with every site lit on a dot map of Australia,
 // the workspace icon on its edge, then Sites, Networks and Team on a gold toggle, each with its own search, filters and
@@ -384,13 +384,9 @@ function Search({ value, onChange, placeholder, menu, add }: {
 }) {
   return (
     <div className="osr">
-      <label className="osr-f glassy">
-        <svg viewBox="0 0 16 16" aria-hidden><circle cx="7" cy="7" r="4.6" /><path d="m10.4 10.4 3.4 3.4" /></svg>
-        <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
-        {value && <button onClick={() => onChange("")} aria-label="Clear search">×</button>}
-      </label>
+      <SearchBar value={value} onChange={onChange} placeholder={placeholder} />
       {menu}
-      {add && <button className="rb gold" onClick={add.onClick} aria-label={add.label} title={add.label}><svg viewBox="0 0 20 20" aria-hidden><path d="M10 4.5v11M4.5 10h11" /></svg></button>}
+      {add && <button className="rb gold" onClick={add.onClick} aria-label={add.label} title={add.label}><Plus /></button>}
     </div>
   )
 }

@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Loading } from "@/components/wattle/shell"
 import { dayKey, fmt, plural, time, usePortal, type Outage } from "@/components/wattle/data"
 import { GlanceList } from "@/components/wattle/glance"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
-import { Opt, Pick, Sep } from "@/components/wattle/pick"
+import { Opt, Sep } from "@/components/wattle/pick"
+import { FoldBar, MenuHead, PoweredBy, RoundMenu, SearchBar } from "@/components/wattle/kit"
 
 // Planned, like the app's tab: the work networks have booked at or near your sites. A month calendar (Monday first,
 // today ringed, a gold dot where work lands on one of your sites, grey where it's only nearby; pick a day to see just
@@ -21,6 +22,8 @@ export default function Planned() {
   const [net, setNet] = useState<NetKey | null>(null)
   const [day, setDay] = useState<string | null>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
+  const [q, setQ] = useState("")
+  const titleRef = useRef<HTMLHeadingElement>(null)
 
   const all = useMemo(() => (data?.outages ?? []).filter((o) => o.status !== "Out now" && o.starts)
     .sort((a, b) => new Date(a.starts!).getTime() - new Date(b.starts!).getTime()), [data])
@@ -30,7 +33,9 @@ export default function Planned() {
   const underWay = (o: Outage) => o.status === "Planned work under way"
   const dayOf = (o: Outage) => underWay(o) ? dayKey(data.at, o.site.state) : dayKey(o.starts!, o.site.state)
   const inRange = all.filter((o) => near || o.atSite)
+  const t = q.trim().toLowerCase().replace(/^#/, "")
   const match = (o: Outage, skip?: "state" | "net") => (!long || (o.hours ?? 0) >= 4)
+    && (!t || [o.site.name, o.site.suburb, o.site.postcode, o.site.number, o.site.code, o.area].some((x) => x?.toLowerCase().replace(/^#/, "").includes(t)))
     && (skip === "state" || !state || o.site.state === state)
     && (skip === "net" || !net || netKey(o.provider || o.site.provider) === net)
   const list = inRange.filter((o) => match(o))
@@ -64,8 +69,9 @@ export default function Planned() {
   return (
     <main className="plan">
       <title>Planned · Wattle</title>
+      <FoldBar title="Planned" watch={titleRef} />
       <div className="top">
-        <div><h1>{list.length ? <>{plural(list.length, "outage")} booked {near ? "at or near" : "at"} your sites</> : `Nothing planned ${near ? "near" : "at"} your sites`}</h1></div>
+        <div><h1 ref={titleRef}>{list.length ? <>{plural(list.length, "outage")} booked {near ? "at or near" : "at"} your sites</> : `Nothing planned ${near ? "near" : "at"} your sites`}</h1></div>
       </div>
 
       <div className="dfigs pl-figs">
@@ -74,33 +80,23 @@ export default function Planned() {
         {first && <div><b>{until}</b><span>To the first</span><small>{first.site.name}, {fmt(first.starts!, first.site.state, { weekday: "short" })} {time(first.starts!, first.site.state)}</small></div>}
       </div>
 
-      <div className="mp-filters pl-filters">
-        <Pick label="How close" value={near ? "At or near your sites" : "At your sites"} active={near}>
-          {(close) => <>
-            <Opt on={!near} n={all.filter((o) => o.atSite).length} hint="Work on the site's own street or supply" onPick={() => { setNear(false); close() }}>At your sites</Opt>
-            <Opt on={near} n={all.length} hint="Anything the network has booked close by" onPick={() => { setNear(true); close() }}>At or near your sites</Opt>
-          </>}
-        </Pick>
-        <Pick label="How long" value={long ? "4 hours or longer" : "Any length"} active={long}>
-          {(close) => <>
-            <Opt on={!long} onPick={() => { setLong(false); close() }}>Any length</Opt>
-            <Opt on={long} hint="Long enough to put fridge stock at risk" onPick={() => { setLong(true); close() }}>4 hours or longer</Opt>
-          </>}
-        </Pick>
-        <Pick label="State" value={state ?? "Every state"} active={!!state}>
-          {(close) => <>
-            <Opt on={!state} onPick={() => { setState(null); close() }}>Every state</Opt>
-            <Sep />
-            {states.map(([st, n]) => <Opt key={st} on={state === st} n={n} onPick={() => { setState(st); close() }}>{st}</Opt>)}
-          </>}
-        </Pick>
-        <Pick label="Network" value={net ? NET[net].name : "Every network"} active={!!net} wide>
-          {(close) => <>
-            <Opt on={!net} onPick={() => { setNet(null); close() }}>Every network</Opt>
-            <Sep />
-            {nets.map(([k, n]) => <Opt key={k} on={net === k} n={n} sw={<i className="netsw" style={{ background: NET[k].tint }} />} onPick={() => { setNet(k); close() }}>{NET[k].name}</Opt>)}
-          </>}
-        </Pick>
+      {/* the app's controls: a glass search, and the filters in a round glass button */}
+      <div className="ptools">
+        <SearchBar value={q} onChange={setQ} placeholder="Site number, name or suburb" />
+        <RoundMenu label="Filter planned outages" active={near || long || !!state || !!net}>{(close) => <>
+          <MenuHead>How close</MenuHead>
+          <Opt on={!near} n={all.filter((o) => o.atSite).length} hint="Work on the site's own street or supply" onPick={() => { setNear(false); close() }}>At your sites</Opt>
+          <Opt on={near} n={all.length} hint="Anything the network has booked close by" onPick={() => { setNear(true); close() }}>At or near your sites</Opt>
+          <Sep /><MenuHead>How long</MenuHead>
+          <Opt on={!long} onPick={() => { setLong(false); close() }}>Any length</Opt>
+          <Opt on={long} hint="Long enough to put fridge stock at risk" onPick={() => { setLong(true); close() }}>4 hours or longer</Opt>
+          <Sep /><MenuHead>State</MenuHead>
+          <Opt on={!state} onPick={() => { setState(null); close() }}>Every state</Opt>
+          {states.map(([st, n]) => <Opt key={st} on={state === st} n={n} onPick={() => { setState(st); close() }}>{st}</Opt>)}
+          <Sep /><MenuHead>Network</MenuHead>
+          <Opt on={!net} onPick={() => { setNet(null); close() }}>Every network</Opt>
+          {nets.map(([k, n]) => <Opt key={k} on={net === k} n={n} sw={<i className="netsw" style={{ background: NET[k].tint }} />} onPick={() => { setNet(k); close() }}>{NET[k].name}</Opt>)}
+        </>}</RoundMenu>
       </div>
 
       <div className="pl-body">
@@ -126,6 +122,7 @@ export default function Planned() {
           })}
         </div>
       </div>
+      <PoweredBy />
     </main>
   )
 }

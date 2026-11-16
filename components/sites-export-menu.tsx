@@ -16,7 +16,7 @@ const RANGES = [
   { label: "Next 28 days", when: "all", days: 28 },
 ] as const
 
-export function SitesExportMenu({ className, label = "Your sites" }: { className?: string; label?: string }) {
+export function SitesExportMenu({ className, label = "Your sites", iconOnly }: { className?: string; label?: string; iconOnly?: boolean }) {
   const [range, setRange] = useState(2)
   const [longOnly, setLongOnly] = useState(false)
   const [atSite, setAtSite] = useState(false)
@@ -43,9 +43,10 @@ export function SitesExportMenu({ className, label = "Your sites" }: { className
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className={className ?? "inline-flex h-9 items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-white px-3 text-sm font-medium text-[#24211C] hover:bg-[#F7F3EA]"}>
-          <Download className="h-4 w-4" />
-          {label}
+        <button className={className ?? "inline-flex h-9 items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-white px-3 text-sm font-medium text-[#24211C] hover:bg-[#F7F3EA]"}
+          aria-label={iconOnly ? label : undefined} title={iconOnly ? label : undefined}>
+          <Download className={iconOnly ? undefined : "h-4 w-4"} />
+          {!iconOnly && label}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 border-[#E6DFD1] bg-[#FBF8F2] p-4 text-[#24211C]">

@@ -51,7 +51,9 @@ export function Pager({ page, total, noun, go }: { page: number; total: number; 
 }
 
 /** A round glass button that opens a menu under it (the list's filters). Its icon turns gold while a filter is on. */
-export function RoundMenu({ label, active, children }: { label: string; active?: boolean; children: (close: () => void) => React.ReactNode }) {
+export function RoundMenu({ label, active, gold, icon, children }: {
+  label: string; active?: boolean; gold?: boolean; icon?: React.ReactNode; children: (close: () => void) => React.ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -64,10 +66,52 @@ export function RoundMenu({ label, active, children }: { label: string; active?:
   }, [open])
   return (
     <div className="rmenu" ref={ref}>
-      <button className={`rb glassy${active ? " act" : ""}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <svg viewBox="0 0 20 20" aria-hidden><path d="M4 6.5h12M6.5 10h7M9 13.5h2" /></svg>
+      <button className={`rb ${gold ? "gold" : "glassy"}${active ? " act" : ""}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {icon ?? <svg viewBox="0 0 20 20" aria-hidden><path d="M4 6.5h12M6.5 10h7M9 13.5h2" /></svg>}
       </button>
       {open && <div className="pkm rmenu-m" role="menu">{children(() => setOpen(false))}</div>}
+    </div>
+  )
+}
+
+/** A glass search field in a pill, the app's: a magnifier, the field, and an × to clear it. */
+export function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <label className="osr-f glassy">
+      <svg viewBox="0 0 16 16" aria-hidden><circle cx="7" cy="7" r="4.6" /><path d="m10.4 10.4 3.4 3.4" /></svg>
+      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+      {value && <button onClick={() => onChange("")} aria-label="Clear search">×</button>}
+    </label>
+  )
+}
+
+/** The plus, for the gold add button. */
+export const Plus = () => <svg viewBox="0 0 20 20" aria-hidden><path d="M10 4.5v11M4.5 10h11" /></svg>
+
+/** A page's slim bar: once its big title has scrolled up out of sight, the title comes back small in the middle of a
+ *  bar at the top, on the page colour with a soft fade under it rather than a line. `watch` is the big title. */
+export function FoldBar({ title, watch, right }: { title: string; watch: React.RefObject<HTMLElement | null>; right?: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const on = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const r = watch.current?.getBoundingClientRect(), el = ref.current
+        if (!r || !el) return
+        // nothing until the title starts to leave the top of the window; fully in 40px later
+        const t = Math.min(1, Math.max(0, (10 - r.top) / 40))
+        el.style.setProperty("--t", t.toFixed(3))
+        el.classList.toggle("on", t > 0.6)
+      })
+    }
+    on()
+    addEventListener("scroll", on, { passive: true }); addEventListener("resize", on)
+    return () => { cancelAnimationFrame(raf); removeEventListener("scroll", on); removeEventListener("resize", on) }
+  }, [watch])
+  return (
+    <div className="fb-pin" ref={ref}>
+      <div className="fb"><span>{title}</span>{right && <div className="fb-r">{right}</div>}</div>
     </div>
   )
 }

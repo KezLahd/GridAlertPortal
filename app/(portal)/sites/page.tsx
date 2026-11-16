@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { SitesExportMenu } from "@/components/sites-export-menu"
@@ -9,7 +9,8 @@ import { useSiteDialogs, useToast } from "@/components/wattle/site-dialogs"
 import { fmt, plural, since, time, usePortal, type Outage, type Site, type SiteState } from "@/components/wattle/data"
 import { backAt, DayBar, GlanceList } from "@/components/wattle/glance"
 import { NetLink, netName, netTint } from "@/components/wattle/networks"
-import { Opt, Pick, Sep } from "@/components/wattle/pick"
+import { Opt } from "@/components/wattle/pick"
+import { FoldBar, GoldToggle, MenuHead, Plus, RoundMenu, SearchBar } from "@/components/wattle/kit"
 
 // Sites: every clinic and pharmacy, sorted so the ones with the power off come first, then by the soonest outage.
 // Tabs by status, a "needs fixing" tab for sites with no map pin or no state (outages can't be matched to them), and a
@@ -37,6 +38,7 @@ function Sites() {
   const { show, toast } = useToast()
   const { openAdd, openImport, openEdit, dialogs } = useSiteDialogs(show)
   const admin = data?.role === "admin"
+  const titleRef = useRef<HTMLHeadingElement>(null)
 
   const all = useMemo(() => (data?.sites ?? []).map((s) => ({ s, st: stateOf(s.id), fix: needsFix(s) }))
     .sort((a, b) => RANK[a.st.k] - RANK[b.st.k]
@@ -60,35 +62,29 @@ function Sites() {
     <main className="sts">
       <title>Sites · Wattle</title>
       <section className="st-main">
+        <FoldBar title="Sites" watch={titleRef} />
         <div className="top">
-          <div><div className="eyebrow">{data.company} · every clinic and pharmacy you watch</div><h1>Sites</h1></div>
-          {admin && <div className="actions"><button className="btn hide-s" onClick={openImport}>Import CSV</button><button className="btn gold" onClick={openAdd}>+ Add site</button></div>}
+          <div><div className="eyebrow">{data.company} · every clinic and pharmacy you watch</div><h1 ref={titleRef}>Sites</h1></div>
         </div>
-        <div className="tabs">
-          {([["all", "All"], ["now", "Off now"], ["next", "Next 14 days"], ["clear", "All clear"], ["fix", "Needs fixing"]] as const).map(([k, l]) => (
-            <button key={k} className={`tab ${k === tab ? "on" : ""} ${k === "fix" ? "warn" : ""}`} onClick={() => setTab(k)}>{l}<b>{all.filter((x) => inTab(x, k)).length}</b></button>
-          ))}
-        </div>
+        {tab === "fix"
+          ? <button className="pl-only" onClick={() => setTab("all")}>Showing sites that need fixing<i aria-hidden>×</i></button>
+          : <GoldToggle label="Which sites" value={tab} onChange={setTab} options={([["all", "All"], ["now", "Off now"], ["next", "Next 14 days"], ["clear", "All clear"]] as const).map(([k, l]) => ({ label: l, count: all.filter((x) => inTab(x, k)).length, value: k }))} />}
         {(noPin > 0 || noState > 0) && tab !== "fix" && (
           <div className="fix"><i>!</i><div><b>{[noPin && plural(noPin, "site") + " with no map pin", noState && `${noState} with no state`].filter(Boolean).join(" and ")}</b>, so outages can&apos;t be matched to them yet.</div><button onClick={() => setTab("fix")}>Fix them</button></div>
         )}
-        <div className="tools">
-          <label className="mp-find st-find">
-            <svg viewBox="0 0 16 16" aria-hidden><circle cx="7" cy="7" r="4.6" /><path d="m10.4 10.4 3.4 3.4" /></svg>
-            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code, suburb or postcode" aria-label="Search sites" />
-            {q && <button onClick={() => setQ("")} aria-label="Clear search">×</button>}
-          </label>
-          <div className="mp-filters st-filters hide-s">
-            <Pick label="State" value={state ? (state === "NULL" ? "No state" : state) : "Every state"} active={!!state}>
-              {(close) => <>
-                <Opt on={!state} n={all.length} onPick={() => { setState(null); close() }}>Every state</Opt>
-                <Sep />
-                {states.map(([st, n]) => <Opt key={st} on={state === st} n={n} onPick={() => { setState(st); close() }}>{st === "NULL" ? "No state" : st}</Opt>)}
-              </>}
-            </Pick>
-          </div>
-          <div className="sp" />
-          <span className="hide-s"><SitesExportMenu className="btn" label="Export" /></span>
+        {/* the app's controls: a glass search, the state filter and export in round glass buttons, the gold + to add */}
+        <div className="ptools">
+          <SearchBar value={q} onChange={setQ} placeholder="Site number, name, suburb or postcode" />
+          <RoundMenu label="Filter by state" active={!!state}>{(close) => <>
+            <MenuHead>State</MenuHead>
+            <Opt on={!state} n={all.length} onPick={() => { setState(null); close() }}>Every state</Opt>
+            {states.map(([st, n]) => <Opt key={st} on={state === st} n={n} onPick={() => { setState(st); close() }}>{st === "NULL" ? "No state" : st}</Opt>)}
+          </>}</RoundMenu>
+          <SitesExportMenu className="rb glassy" label="Export" iconOnly />
+          {admin && <RoundMenu label="Add sites" gold icon={<Plus />}>{(close) => <>
+            <Opt on={false} hint="One site, by its address" onPick={() => { close(); openAdd() }}>Add a site</Opt>
+            <Opt on={false} hint="Many at once, from a spreadsheet" onPick={() => { close(); openImport() }}>Import a CSV</Opt>
+          </>}</RoundMenu>}
         </div>
         <div className="srs" role="list">
           {list.slice(0, limit).map((x) => (
