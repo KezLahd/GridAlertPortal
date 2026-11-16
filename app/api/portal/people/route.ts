@@ -35,6 +35,8 @@ export async function GET(req: Request) {
       // the weekly summary is opt-in: on only once you've ticked it (only your own is shown)
       digest: p.user_id === me.userId && !!p.email_digest_opt_in_at,
       letters: p.icon_letters ?? null,
+      iconBg: p.icon_bg_color ?? null,
+      iconFg: p.icon_text_color ?? null,
       isMe: p.user_id === me.userId,
     })),
   })

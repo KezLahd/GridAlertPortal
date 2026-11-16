@@ -31,8 +31,9 @@ function Sites() {
   const [state, setState] = useState<string | null>(null)
   const [q, setQ] = useState("")
   const [limit, setLimit] = useState(PAGE)
-  const [sel, setSel] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  // ?site=… (from Organisation's list) opens that site's panel
+  const [sel, setSel] = useState<string | null>(params.get("site"))
+  const [open, setOpen] = useState(!!params.get("site"))
   const { show, toast } = useToast()
   const { openAdd, openImport, openEdit, dialogs } = useSiteDialogs(show)
   const admin = data?.role === "admin"
