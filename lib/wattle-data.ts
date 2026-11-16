@@ -94,14 +94,16 @@ const pin = (lat: unknown, lng: unknown) => {
 export async function sites(companyId: string): Promise<Site[]> {
   const db = createServiceClient()
   const out: Site[] = []
-  const { data: co } = await db.from("companies").select("site_number_prefix").eq("id", companyId).maybeSingle()
-  const prefix = (co?.site_number_prefix ?? "").trim()
+  // the company's site-number prefix, asked alongside the first page of sites rather than before it
+  const prefixP = db.from("companies").select("site_number_prefix").eq("id", companyId).maybeSingle()
+    .then(({ data }) => (data?.site_number_prefix ?? "").trim(), () => "")
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("locations")
       .select("id, institutionname, institutionnickname, institutioncode, addressline1, addressline2, addresssuburb, addresspostcode, addressstate, addresslatitude, addresslongitude, provider")
       .eq("company_id", companyId).or("institutionstatus.is.null,institutionstatus.eq.ACTIVE") // retired, reserved and inactive sites are left out
       .order("institutionname").range(from, from + 999)
     if (error) throw error
+    const prefix = await prefixP
     for (const l of data ?? []) {
       out.push({
         id: l.id,
