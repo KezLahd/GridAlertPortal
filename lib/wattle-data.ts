@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto"
+import { after, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase"
 import { xlsx, type Cell } from "@/lib/xlsx"
 
@@ -17,18 +18,53 @@ export function newKey() {
 
 export interface KeyOwner { keyId: string; companyId: string; companyName: string }
 
-/** Finds the company a key belongs to, or null for a wrong or revoked key. */
-export async function companyForKey(key: string | null | undefined): Promise<KeyOwner | null> {
+/** The key's row, revoked or not (a revoked key's calls are still logged against it), or null for an unknown key. */
+async function findKey(key: string | null | undefined): Promise<(KeyOwner & { revoked: boolean }) | null> {
   if (!key || !key.startsWith("wtl_") || key.length < 40) return null
-  const db = createServiceClient()
-  const { data } = await db.from("api_keys").select("id, company_id, last_used_at, companies(name)")
-    .eq("key_hash", hashKey(key)).is("revoked_at", null).maybeSingle()
+  const { data } = await createServiceClient().from("api_keys").select("id, company_id, revoked_at, companies(name)")
+    .eq("key_hash", hashKey(key)).maybeSingle()
   if (!data) return null
-  // note the use, at most every five minutes
-  if (!data.last_used_at || Date.now() - new Date(data.last_used_at).getTime() > 5 * 60_000) {
-    await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id)
+  return { keyId: data.id, companyId: data.company_id, companyName: (data as any).companies?.name ?? "", revoked: !!data.revoked_at }
+}
+
+/**
+ * Runs one request made with an API key and logs it with record_api_key_use: the endpoint, caller's IP and agent,
+ * status and time taken, failures included, so the console can flag errors, bursts and new IPs. That also sets the
+ * key's last_used_at. The log is written after the response goes out, and a failed log never changes the response.
+ * A key that matches no row can't be logged (there's no key to log it against).
+ * `endpoint` must never contain the key (the Claude connection has it in its path).
+ */
+export async function keyed(
+  req: Request, key: string | null | undefined, endpoint: string,
+  fn: (owner: KeyOwner) => Promise<Response>, denied: () => Response,
+): Promise<Response> {
+  const started = Date.now()
+  const k = await findKey(key).catch(() => null)
+  let res: Response
+  if (!k || k.revoked) res = denied()
+  else {
+    try { res = await fn({ keyId: k.keyId, companyId: k.companyId, companyName: k.companyName }) } catch (e) {
+      console.error("[keyed]", endpoint, e)
+      res = NextResponse.json({ error: "Something went wrong reading the data." }, { status: 500 })
+    }
   }
-  return { keyId: data.id, companyId: data.company_id, companyName: (data as any).companies?.name ?? "" }
+  if (k) {
+    const row = {
+      p_key: k.keyId,
+      p_endpoint: endpoint,
+      p_ip: (req.headers.get("x-forwarded-for")?.split(",")[0] ?? req.headers.get("x-real-ip") ?? "").trim(),
+      p_agent: req.headers.get("user-agent") ?? "",
+      p_status: res.status,
+      p_ms: Date.now() - started,
+    }
+    after(async () => {
+      try {
+        const { error } = await createServiceClient().rpc("record_api_key_use", row as any)
+        if (error) console.error("[keyed] log", error.message)
+      } catch (e) { console.error("[keyed] log", e) }
+    })
+  }
+  return res
 }
 
 /** The key from `Authorization: Bearer …`, `x-api-key`, or (for links in emails and Claude) `?key=`. */

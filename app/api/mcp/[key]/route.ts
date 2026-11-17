@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { companyForKey, keyFrom, outages, sites, summary, when, type KeyOwner, type Outage, type Site } from "@/lib/wattle-data"
+import { keyed, keyFrom, outages, sites, summary, when, type KeyOwner, type Outage, type Site } from "@/lib/wattle-data"
 
 // The Claude connection: a read-only MCP server over Streamable HTTP, stateless, JSON responses.
 // Add it in Claude as a custom connector with the URL https://<portal>/api/mcp/<key> (the key is made in the portal
@@ -155,19 +155,21 @@ async function handle(msg: any, owner: KeyOwner, origin: string, key: string): P
 export async function POST(req: Request, ctx: { params: Promise<{ key: string }> }) {
   const { key: pathKey } = await ctx.params
   const key = keyFrom(req, pathKey)
-  const owner = await companyForKey(key)
-  if (!owner || !key) return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or revoked key" } }, { status: 401 })
-  let body: any
-  try { body = await req.json() } catch {
-    return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 })
-  }
-  const origin = new URL(req.url).origin
-  if (Array.isArray(body)) {
-    const out = (await Promise.all(body.map((m) => handle(m, owner, origin, key)))).filter(Boolean)
-    return out.length ? NextResponse.json(out) : new NextResponse(null, { status: 202 })
-  }
-  const out = await handle(body, owner, origin, key)
-  return out ? NextResponse.json(out) : new NextResponse(null, { status: 202 })
+  const denied = () => NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or revoked key" } }, { status: 401 })
+  // the key is in this route's path, so it's logged as /api/mcp, never with the path
+  return keyed(req, key, "/api/mcp", async (owner) => {
+    let body: any
+    try { body = await req.json() } catch {
+      return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 })
+    }
+    const origin = new URL(req.url).origin
+    if (Array.isArray(body)) {
+      const out = (await Promise.all(body.map((m) => handle(m, owner, origin, key!)))).filter(Boolean)
+      return out.length ? NextResponse.json(out) : new NextResponse(null, { status: 202 })
+    }
+    const out = await handle(body, owner, origin, key!)
+    return out ? NextResponse.json(out) : new NextResponse(null, { status: 202 })
+  }, denied)
 }
 
 // No server-to-client stream and no sessions in this server.

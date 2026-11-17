@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
 import type { MemberRecord } from "@/components/company-members-table"
 import { googleMapsApiKey } from "@/lib/config"
@@ -15,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { CompanyMembersTable } from "@/components/company-members-table"
-import { CreateCompanyDialog } from "@/components/create-company-dialog"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ToastContainer, type Toast } from "@/components/ui/toast"
@@ -1000,80 +1000,6 @@ export default function ProfilePage() {
     setSaving(false)
   }
 
-  const createCompany = async (data: {
-    name: string
-    location: string
-    latitude: number
-    longitude: number
-    logoLetters: string
-    logoBgColor: string
-    logoTextColor: string
-  }) => {
-    if (!profile) return
-
-    setSaving(true)
-    setError(null)
-
-    const { data: newCompany, error: companyError } = await supabase
-      .from("companies")
-      .insert({
-        name: data.name,
-        location: data.location,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        logo_letters: data.logoLetters,
-        logo_bg_color: data.logoBgColor,
-        logo_text_color: data.logoTextColor,
-      })
-      .select("id,name,location,latitude,longitude,logo_letters,logo_bg_color,logo_text_color")
-      .single()
-
-    if (companyError || !newCompany) {
-      setError(companyError?.message || "Unable to create company.")
-      setSaving(false)
-      throw new Error(companyError?.message || "Unable to create company.")
-    }
-
-    await supabase.from("user_profiles").upsert(
-      {
-        user_id: profile.user_id,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        email: profile.email,
-        mobile: profile.mobile,
-        company_id: newCompany.id,
-        role: "admin",
-        notify_outage_types: profile.notify_outage_types,
-        notify_providers: profile.notify_providers,
-        notify_channels: profile.notify_channels,
-        region_access: profile.region_access ?? [],
-      },
-      { onConflict: "user_id" },
-    )
-
-    setProfile((p) =>
-      p
-        ? {
-            ...p,
-            company: {
-              id: newCompany.id,
-              name: newCompany.name,
-              location: newCompany.location,
-              latitude: newCompany.latitude,
-              longitude: newCompany.longitude,
-              logoLetters: newCompany.logo_letters,
-              logoBgColor: newCompany.logo_bg_color,
-              logoTextColor: newCompany.logo_text_color,
-            },
-            company_id: newCompany.id,
-            role: "admin",
-          }
-        : p,
-    )
-    await fetchCompanyMembers(newCompany.id)
-    setSaving(false)
-  }
-
   const handleUpdateCompanyIcon = async (letters: string, bgColor: string, textColor: string) => {
     if (!profile?.company?.id) return
 
@@ -1463,7 +1389,7 @@ export default function ProfilePage() {
                 <h1 className="text-2xl font-bold text-white md:text-foreground">My Profile</h1>
                 <p className="text-gray-400 md:text-muted-foreground text-sm">Manage your preferences and notification settings</p>
               </div>
-              <CreateCompanyDialog onCreateCompany={createCompany} saving={saving} mapsLoaded={mapsLoaded} />
+              <Button asChild variant="outline"><Link href="/join">Join with an access code</Link></Button>
             </div>
 
             {error && (
@@ -1612,17 +1538,12 @@ export default function ProfilePage() {
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-orange-500" />
-                    <CardTitle className="text-lg text-white md:text-foreground">Create a Company</CardTitle>
+                    <CardTitle className="text-lg text-white md:text-foreground">Join an organisation</CardTitle>
                   </div>
-                  <CardDescription className="text-gray-400 md:text-muted-foreground">Invite team members and manage access</CardDescription>
+                  <CardDescription className="text-gray-400 md:text-muted-foreground">Wattle is invite-only: use your invitation email, or an access code</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <CreateCompanyDialog
-                    onCreateCompany={createCompany}
-                    saving={saving}
-                    mapsLoaded={mapsLoaded}
-                    trigger={<Button className="w-full">Get Started</Button>}
-                  />
+                  <Button asChild className="w-full"><Link href="/join">Enter an access code</Link></Button>
                 </CardContent>
               </Card>
             </div>

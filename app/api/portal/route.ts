@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { caller, signInFirst } from "@/lib/session-auth"
+import { caller, noOrganisation, signedInUser, signInFirst } from "@/lib/session-auth"
 import { outages, sites, summaryOf } from "@/lib/wattle-data"
 
 // Everything the portal's Overview, Map and Sites pages show for the signed-in member's company, in one call:
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
   const me = await caller(req)
-  if (!me) return signInFirst()
+  if (!me) return (await signedInUser(req)) ? noOrganisation() : signInFirst()
   try {
     // ?part=sites: just the sites, so the map can put pins down while the outages are still on their way
     const part = new URL(req.url).searchParams.get("part")

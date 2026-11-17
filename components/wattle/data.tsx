@@ -73,6 +73,7 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
     full = true
     if (res.status === 401) { router.replace("/login"); return }
     const j = await res.json().catch(() => ({}))
+    if (res.status === 403 && j.noOrg) { router.replace("/join"); return }
     if (!res.ok) { setError(j.error ?? "Couldn't load your sites."); return }
     setError(null)
     loaded.current = true
