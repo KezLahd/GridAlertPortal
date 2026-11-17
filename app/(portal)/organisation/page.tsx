@@ -19,7 +19,7 @@ import { AusDots, GoldToggle, MenuHead, Pager, Plus, PoweredBy, RoundMenu, Searc
 // alerts, audit emails and connections are behind the gear (or your initials), as the app's Settings are.
 
 interface Person { id: string; firstName: string; lastName: string; role: string; status: string; regions: string[]; types: string[]; channels: string[]; audits: string[]; digest: boolean; isMe: boolean; iconBg?: string | null; iconFg?: string | null }
-interface People { company: { name: string; logo_letters: string | null; logo_bg_color?: string | null; logo_text_color?: string | null } | null; meId: string; role: string; people: Person[] }
+interface People { company: { name: string; logo_letters: string | null; logo_bg_color?: string | null; logo_text_color?: string | null; logo_url?: string | null } | null; meId: string; role: string; people: Person[] }
 
 type Tab = "sites" | "networks" | "team"
 type Show = "all" | "out" | "planned" | "clear"
@@ -172,7 +172,7 @@ export default function Organisation() {
   const facts = [plural(sites.length, "site"), plural(states.length, "state"), plural(p.people.length, "person", "people")].join(" · ")
   const myInitials = `${who?.firstName?.[0] ?? me?.firstName[0] ?? ""}${who?.lastName?.[0] ?? me?.lastName[0] ?? ""}`.toUpperCase() || "?"
   const cover = coverColour(p.company?.logo_bg_color, p.company?.logo_text_color)
-  const icon = (size: number) => <WorkspaceIcon letters={letters} bg={p.company?.logo_bg_color} fg={p.company?.logo_text_color} size={size} />
+  const icon = (size: number) => <WorkspaceIcon letters={letters} bg={p.company?.logo_bg_color} fg={p.company?.logo_text_color} photo={p.company?.logo_url} size={size} />
   const pick = (t: Tab) => { setTab(t); toTop() }
   const turn = (set: (n: number) => void) => (n: number) => { set(n); toTop() }
 
@@ -331,6 +331,7 @@ export default function Organisation() {
           <button className="rb glassy" onClick={() => setSheet(false)} aria-label="Close settings"><svg viewBox="0 0 20 20" aria-hidden><path d="m6 6 8 8M14 6l-8 8" /></svg></button>
         </div>
         <div className="osheet-b">
+          {admin && <PhotoPicker icon={icon(56)} has={!!p.company?.logo_url} done={load} />}
           <div className="olab">Your alerts</div>
           <p className="onote">What you hear about the moment it changes, for the sites in your states.</p>
           {TYPES.map(([k, l, s]) => <Toggle key={k} label={l} sub={s} on={!!me?.types.includes(k)} onClick={() => me && save({ types: flip(me.types, k) })} />)}
@@ -402,9 +403,54 @@ function Toggle({ label, sub, on, onClick }: { label: string; sub?: string; on: 
   )
 }
 
+/** Admins set the workspace photo here, as in the app: cropped to the middle square, 512 px, JPEG. */
+function PhotoPicker({ icon, has, done }: { icon: React.ReactNode; has: boolean; done: () => void }) {
+  const file = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null)
+  const send = async (init: RequestInit) => {
+    setBusy(true); setErr(null)
+    const res = await fetch("/api/portal/workspace-icon", { ...init, headers: { ...(await headers()), ...(init.headers ?? {}) } })
+    if (!res.ok) setErr((await res.json().catch(() => null))?.error ?? "That didn't work. Try again.")
+    else await done()
+    setBusy(false)
+  }
+  const pick = async (f: File | undefined) => {
+    if (!f) return
+    try {
+      const img = await createImageBitmap(f)
+      const side = Math.min(img.width, img.height), c = document.createElement("canvas")
+      c.width = c.height = 512
+      c.getContext("2d")!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 512, 512)
+      const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.85))
+      if (blob) await send({ method: "POST", body: blob, headers: { "content-type": "image/jpeg" } })
+    } catch { setErr("That file isn't a photo Wattle can read.") }
+    if (file.current) file.current.value = ""
+  }
+  return <>
+    <div className="olab">Workspace icon</div>
+    <div className="ophoto">
+      {icon}
+      <div>
+        <button className="ophoto-b" disabled={busy} onClick={() => file.current?.click()}>{busy ? "Saving…" : has ? "Change photo" : "Choose photo"}</button>
+        {has && !busy && <button className="ophoto-b soft" onClick={() => send({ method: "DELETE" })}>Remove photo</button>}
+        <span>{err ?? "Shown for everyone in your workspace, in the app and here. Without one, your letters show."}</span>
+      </div>
+      <input ref={file} type="file" accept="image/jpeg,image/png,image/heic" hidden onChange={(e) => pick(e.target.files?.[0])} />
+    </div>
+  </>
+}
+
 /** The workspace's letters on its colour, lit from above like an app icon. */
-function WorkspaceIcon({ letters, bg, fg, size }: { letters: string; bg?: string | null; fg?: string | null; size: number }) {
+function WorkspaceIcon({ letters, bg, fg, photo, size }: { letters: string; bg?: string | null; fg?: string | null; photo?: string | null; size: number }) {
   const b = hex(bg) ?? "#24211C", f = hex(fg) ?? "#F2B300"
+  const [broken, setBroken] = useState(false)
+  // the photo the app set fills the same rounded square, with a fine rim; the letters stay as the fallback
+  if (photo && !broken) return (
+    <span className="wsi wsi-ph" style={{ width: size, height: size, borderRadius: size * 0.27 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={photo} alt="" onError={() => setBroken(true)} />
+    </span>
+  )
   return (
     <span className="wsi" style={{ width: size, height: size, borderRadius: size * 0.27, ["--b" as string]: b, color: f, fontSize: size * ({ 1: 0.58, 2: 0.44, 3: 0.33 }[letters.length] ?? 0.4) }}>
       {letters}

@@ -1163,3 +1163,15 @@
   .wt .sr{grid-template-columns:14px minmax(0,1fr) auto}
   .wt .sr .h-s{display:none}
 }
+/* a workspace photo in place of the letters: clipped to the same rounded square, with a fine rim */
+.wt .wsi.wsi-ph{position:relative;overflow:hidden;background:var(--g-hair,rgba(0,0,0,.06));box-shadow:none;text-shadow:none}
+.wt .wsi.wsi-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.wt .wsi.wsi-ph::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.25);pointer-events:none}
+@media (prefers-color-scheme:dark){.wt .wsi.wsi-ph::after{box-shadow:inset 0 0 0 .5px rgba(255,255,255,.16)}}
+.wt .ophoto{display:flex;gap:16px;align-items:center;margin:4px 0 8px}
+.wt .ophoto>div{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wt .ophoto>div>span{flex-basis:100%;font-size:12.5px;color:var(--muted);line-height:1.4}
+.wt .ophoto-b{all:unset;cursor:pointer;font-family:var(--rounded);font-weight:600;font-size:13.5px;padding:7px 14px;border-radius:999px;background:var(--gold);color:#24211C}
+.wt .ophoto-b.soft{background:transparent;color:var(--muted)}
+.wt .ophoto-b:disabled{opacity:.6;cursor:default}
+.wt .ophoto-b:focus-visible{outline:2px solid var(--gold);outline-offset:2px}

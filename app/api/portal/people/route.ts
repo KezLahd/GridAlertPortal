@@ -17,9 +17,16 @@ export async function GET(req: Request) {
     .select("user_id, first_name, last_name, role, status, region_access, notify_outage_types, notify_channels, audit_emails, email_digest_opt_in_at, icon_letters, icon_bg_color, icon_text_color")
     .eq("company_id", me.companyId).order("first_name")
   if (error) return NextResponse.json({ error: "Couldn't load the people in your organisation." }, { status: 500 })
-  const { data: co } = await me.db.from("companies").select("id, name, logo_letters, logo_bg_color, logo_text_color").eq("id", me.companyId).maybeSingle()
+  const { data: co } = await me.db.from("companies").select("id, name, logo_letters, logo_bg_color, logo_text_color, logo_path").eq("id", me.companyId).maybeSingle()
+  // the workspace photo, if the app set one: a private bucket, so a signed link for an hour (only from this company's folder)
+  let logoUrl: string | null = null
+  const path = (co as any)?.logo_path as string | null | undefined
+  if (path && path.startsWith(`${me.companyId}/`)) {
+    const { data: signed } = await me.db.storage.from("workspace-icons").createSignedUrl(path, 3600)
+    logoUrl = signed?.signedUrl ?? null
+  }
   return NextResponse.json({
-    company: co,
+    company: co ? { ...co, logo_url: logoUrl } : co,
     meId: me.userId,
     role: me.role,
     people: (data ?? []).map((p: any) => ({
