@@ -1,156 +1,299 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
+import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
 import styles from "./landing.module.css"
 
-// Wattle landing. Paper, ink and one gold; SF Pro Rounded for titles, SF Pro for text; no cards, figures as type.
-// The app is coming to the App Store (iPhone, iPad and Mac); until then this page shows it off with real screens
-// (sample sites), and the web portal is for people already on Wattle.
+// Wattle landing, round two. One story, in order: every network in one place → told the moment a site loses power →
+// planned work days ahead → the whole group sees the same thing. Paper, ink and one gold; rounded type for titles;
+// no cards. Motion is quiet (fade and rise, the map filling in on scroll, screens crossfading) and all of it stops
+// for prefers-reduced-motion, which shows the end state and stills instead of the clips.
 
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
+const V = "/landing/v2"
 
-/** A screen from the app, in a phone's rounded shape with a soft gold bloom behind it. `dark` swaps in the dark one. */
-function Screen({ src, dark, alt, tilt, eager }: { src: string; dark?: string; alt: string; tilt?: "l" | "r"; eager?: boolean }) {
+// Each network's tint, the same as the portal's map.
+const NET_C: Record<string, string> = {
+  "Ausgrid": "#3B7FC4", "Endeavour Energy": "#2E9E6B", "Essential Energy": "#8A6FD1", "Evoenergy": "#D9467A",
+  "Energex": "#D9467A", "Ergon Energy": "#1F9DA3", "Jemena": "#C0563A", "CitiPower": "#D9467A", "AusNet Services": "#6C8A3A",
+  "United Energy": "#3B7FC4", "Powercor": "#8A6FD1", "Western Power": "#3B7FC4", "Horizon Power": "#C0563A",
+  "SA Power Networks": "#2E9E6B", "TasNetworks": "#1F9DA3", "Power and Water": "#6C8A3A",
+}
+// names drawn on the map itself; the small metro networks are named in the caption instead
+const ON_MAP = new Set(["Essential Energy", "Ergon Energy", "SA Power Networks", "Power and Water", "Western Power", "Horizon Power", "TasNetworks", "Powercor", "AusNet Services"])
+
+function useMedia(q: string) {
+  const [on, setOn] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches)
+  useEffect(() => {
+    const m = window.matchMedia(q)
+    const f = () => setOn(m.matches)
+    f(); m.addEventListener("change", f)
+    return () => m.removeEventListener("change", f)
+  }, [q])
+  return on
+}
+
+/** A clip from the app, shown as the phone's own screen (no drawn frame). A still instead when motion is off. */
+function Clip({ src, poster, alt, still, eager }: { src?: string; poster: string; alt: string; still: boolean; eager?: boolean }) {
   return (
-    <div className={`${styles.screen} ${tilt === "l" ? styles.tiltL : tilt === "r" ? styles.tiltR : ""}`}>
-      <span className={styles.bloom} aria-hidden />
-      <picture>
-        {dark && <source srcSet={dark} media="(prefers-color-scheme: dark)" />}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} width={600} height={1304} loading={eager ? "eager" : "lazy"} />
-      </picture>
+    <div className={styles.screen}>
+      <span className={styles.glow} aria-hidden />
+      {src && !still
+        ? <video src={src} poster={poster} autoPlay muted loop playsInline preload={eager ? "auto" : "metadata"} aria-label={alt} />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img src={poster} alt={alt} loading={eager ? "eager" : "lazy"} />}
     </div>
   )
 }
 
-const features: { id: string; kicker: string; title: string; body: string; points: string[]; src: string; dark?: string; alt: string }[] = [
+/** Australia, network by network: the areas fill in one at a time as the section scrolls past, then outages pulse. */
+function NetworkMap({ still }: { still: boolean }) {
+  const ref = useRef<HTMLElement>(null)
+  const [lit, setLit] = useState(still ? NETS.length : 0)
+  const [dots, setDots] = useState(still)
+
+  useEffect(() => {
+    if (still) { setLit(NETS.length); setDots(true); return }
+    let raf = 0
+    const tick = () => {
+      raf = 0
+      const el = ref.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      const span = Math.max(1, r.height - window.innerHeight)
+      const p = Math.min(1, Math.max(0, -r.top / span))
+      setLit(Math.min(NETS.length, Math.floor(p / 0.78 * NETS.length + (p > 0.02 ? 1 : 0))))
+      setDots(p > 0.82)
+    }
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick) }
+    tick()
+    window.addEventListener("scroll", on, { passive: true })
+    window.addEventListener("resize", on)
+    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf) }
+  }, [still])
+
+  const last = NETS[Math.max(0, lit - 1)]
+  return (
+    <section ref={ref} className={`${styles.netSection} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
+      <div className={styles.netSticky}>
+        <div className={styles.netText}>
+          <span className={styles.kicker}>Every network</span>
+          <h2 id="nets-title" className={styles.h2}>Sixteen networks. One place to look.</h2>
+          <p className={styles.body}>
+            Each of Australia&apos;s sixteen electricity networks runs its own outage map. Wattle reads every one of
+            them, every few minutes, so you don&apos;t have to.
+          </p>
+          <p className={styles.netNow} aria-live="polite">
+            {lit === 0 ? <span className={styles.faint}>Scroll to light them up</span>
+              : lit < NETS.length ? <><i style={{ background: NET_C[last.name] }} />{last.name}<span className={styles.faint}> · {lit} of {NETS.length}</span></>
+              : <><i style={{ background: "var(--gold)" }} />All {NETS.length}, in one place</>}
+          </p>
+        </div>
+        <svg className={styles.netMap} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} role="img"
+          aria-label="A map of Australia divided into its sixteen electricity network areas">
+          {NETS.map((n, i) => (
+            <path key={n.name} d={n.d} className={i < lit ? styles.netOn : styles.netOff}
+              style={{ ["--c" as any]: NET_C[n.name] }} />
+          ))}
+          {NETS.map((n, i) => ON_MAP.has(n.name) && (
+            <text key={n.name} x={n.at[0]} y={n.at[1]} className={`${styles.netLabel} ${i < lit ? styles.shown : ""}`}>{n.name}</text>
+          ))}
+          {OUTAGE_DOTS.map((d, i) => (
+            <g key={d.name} className={`${styles.outage} ${dots ? styles.shown : ""}`} style={{ ["--d" as any]: `${i * 0.35}s` }}>
+              <circle cx={d.at[0]} cy={d.at[1]} r="22" className={styles.pulse} />
+              <circle cx={d.at[0]} cy={d.at[1]} r="7.5" className={styles.core} />
+            </g>
+          ))}
+        </svg>
+      </div>
+    </section>
+  )
+}
+
+const steps = [
   {
-    id: "dashboard", kicker: "Dashboard", title: "Every site, at a glance.",
-    body: "A light bulb with a wattle sprig inside it shows how many of your sites have power. Under it, where the outages are by state, and what's off now with a timeline of when each site is due back.",
-    points: ["Off now and coming up this week", "Outages by state on a map of Australia", "When each site gets power back"],
-    src: "/landing/dashboard-dark.jpg", dark: "/landing/dashboard-light.jpg", alt: "The Wattle dashboard: a light bulb with a wattle sprig inside, two sites out in Victoria",
+    kicker: "Dashboard", title: "Every site, at a glance.",
+    body: "Open Wattle and the bulb lights up with the sites that have power. Anything off now sits right under it, with when it's due back.",
+    src: `${V}/dashboard-dark.mp4`, poster: `${V}/dashboard-dark.jpg`, alt: "The Wattle app opening: the bulb lights up, then the sites that are out now",
   },
   {
-    id: "map", kicker: "Map", title: "See the outage, and your clinic inside it.",
-    body: "Every site on one map with the outage areas the networks publish drawn over the top, so you can see whether a clinic is inside an outage or just next to one.",
-    points: ["Outage areas as the network draws them", "Network boundaries, state by state", "Search for any site, suburb or postcode"],
-    src: "/landing/map.jpg", alt: "The Wattle map: an outage area over South Yarra with two sample clinics",
+    kicker: "Planned", title: "Planned outages, days ahead.",
+    body: "The networks book work weeks out. Wattle puts it on a calendar against your sites, with how long each runs, so there's time to move the fridge stock or the appointments.",
+    poster: `${V}/planned.jpg`, alt: "The Planned screen: outages booked this week on a calendar",
   },
   {
-    id: "planned", kicker: "Planned", title: "Know about planned work days ahead.",
-    body: "A calendar of the outages the networks have booked at your sites, so there's time to move appointments or stock. What's under way now sits underneath, with its start and finish times.",
-    points: ["A month calendar, with each booked day marked", "How long each outage runs", "Under way now, with times"],
-    src: "/landing/planned.jpg", alt: "The Planned screen: four outages this week on a November calendar",
-  },
-  {
-    id: "organisation", kicker: "Organisation", title: "Your sites, your networks, your team.",
-    body: "Everything about your group in one place, under a dotted map of Australia lit up where your sites are. Add clinics, see which networks supply them, and invite the people who need to know.",
-    points: ["Sites, networks and team, a tap apart", "A map lit up where your sites are", "Admins and members, each with their own alerts"],
-    src: "/landing/organisation.jpg", dark: "/landing/organisation-dark.jpg", alt: "The Organisation screen for a sample group of 13 sites",
+    kicker: "Organisation", title: "Your sites, networks and team.",
+    body: "Add each clinic once. Wattle works out its network, and everyone you invite sees the same map, the same alerts and the same planned work.",
+    poster: `${V}/organisation-dark.jpg`, alt: "The Organisation screen for a sample group of sites",
   },
 ]
 
-export default function Landing() {
+/** Desktop: one phone pinned while three short steps scroll past; its screen crossfades to match. */
+function StickyPhone({ still }: { still: boolean }) {
+  const [at, setAt] = useState(0)
+  const refs = useRef<(HTMLDivElement | null)[]>([])
+  useEffect(() => {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) setAt(Number((e.target as HTMLElement).dataset.i))
+    }), { rootMargin: "-45% 0px -45% 0px" })
+    refs.current.forEach((el) => el && io.observe(el))
+    return () => io.disconnect()
+  }, [])
   return (
-    <main className={styles.page}>
-      <nav className={styles.nav}>
-        <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={30} /></Link>
-        <div className={styles.navRight}>
-          <a href="#features" className={styles.navLink}>Features</a>
-          <a href="#alerts" className={styles.navLink}>Alerts</a>
-          <Link href="/login" className={styles.signIn}>Sign in</Link>
-        </div>
-      </nav>
-
-      <section className={styles.hero}>
-        <div className={styles.heroText}>
-          <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
-          <h1 className={styles.title}>Know when the power goes out at your clinics.</h1>
-          <p className={styles.lede}>
-            Wattle watches Australia&apos;s electricity networks for every clinic and pharmacy you run. It tells you
-            when an outage reaches one, and about planned work before it starts, so you hear about it before the
-            fridge alarm does.
-          </p>
-          <p className={styles.devices}>For iPhone, iPad and Mac</p>
-          <div className={styles.ctas}>
-            <a href={MAIL} className={styles.primary}>Get in touch</a>
-            <Link href="/login" className={styles.secondary}>Sign in to the web portal</Link>
+    <section className={styles.app} aria-label="The app">
+      <div className={styles.appSteps}>
+        {steps.map((s, i) => (
+          <div key={s.title} ref={(el) => { refs.current[i] = el }} data-i={i} className={`${styles.step} ${at === i ? styles.stepOn : ""}`}>
+            <span className={styles.kicker}>{s.kicker}</span>
+            <h2 className={styles.h2}>{s.title}</h2>
+            <p className={styles.body}>{s.body}</p>
           </div>
-        </div>
-        <div className={styles.heroShot}>
-          <Screen src="/landing/dashboard-light.jpg" dark="/landing/dashboard-dark.jpg" alt="The Wattle app's dashboard on an iPhone" eager />
-        </div>
-      </section>
-
-      <section className={styles.figures} aria-label="What Wattle watches">
-        <div><b>15</b><span>electricity networks, read every few minutes</span></div>
-        <div><b>3</b><span>kinds of outage: faults, planned work under way, and work booked ahead</span></div>
-        <div><b>1</b><span>place to see all of it, for everyone in your group</span></div>
-      </section>
-
-      <div id="features">
-        {features.map((f, i) => (
-          <section key={f.id} id={f.id} className={`${styles.feature} ${i % 2 ? styles.flip : ""}`}>
-            <div className={styles.featureText}>
-              <span className={styles.kicker}>{f.kicker}</span>
-              <h2 className={styles.featureTitle}>{f.title}</h2>
-              <p className={styles.featureBody}>{f.body}</p>
-              <ul className={styles.points}>{f.points.map((p) => <li key={p}>{p}</li>)}</ul>
-            </div>
-            <Screen src={f.src} dark={f.dark} alt={f.alt} tilt={i % 2 ? "l" : "r"} />
-          </section>
         ))}
       </div>
+      <div className={styles.appPhone}>
+        <div className={styles.stack}>
+          {steps.map((s, i) => (
+            <div key={s.title} className={`${styles.layer} ${at === i ? styles.layerOn : ""}`} aria-hidden={at !== i}>
+              <Clip src={s.src} poster={s.poster} alt={s.alt} still={still} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
-      <section id="alerts" className={styles.alerts}>
-        <span className={styles.kicker}>Sign-in and alerts</span>
-        <h2 className={styles.featureTitle}>Quick to get in. Told the moment it matters.</h2>
-        <dl className={styles.alertList}>
-          <div><dt>Passkeys with Face ID</dt><dd>Sign in with a glance, with no password to remember or reset.</dd></div>
-          <div><dt>Alerts for faults</dt><dd>A push notification when the network reports the power off at one of your sites.</dd></div>
-          <div><dt>Alerts for planned work</dt><dd>When the network announces booked work, and again when it starts.</dd></div>
-          <div><dt>How Close</dt><dd>Choose how close an outage has to be to a site before Wattle tells you.</dd></div>
-        </dl>
-      </section>
+/** Phones: the same three steps as a swipe carousel, one phone at a time, with dots. */
+function Carousel({ still }: { still: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState(0)
+  const onScroll = () => {
+    const el = ref.current
+    if (!el) return
+    const w = (el.firstElementChild as HTMLElement | null)?.offsetWidth ?? el.clientWidth
+    setAt(Math.round(el.scrollLeft / (w + 16)))
+  }
+  const go = (i: number) => {
+    const el = ref.current, c = el?.children[i] as HTMLElement | undefined
+    if (el && c) el.scrollTo({ left: c.offsetLeft - el.offsetLeft - 24, behavior: still ? "auto" : "smooth" })
+  }
+  return (
+    <section className={styles.carouselWrap} aria-label="The app" data-rise>
+      <div ref={ref} className={styles.carousel} onScroll={onScroll}>
+        {steps.map((s) => (
+          <div key={s.title} className={styles.slide}>
+            <Clip src={s.src} poster={s.poster} alt={s.alt} still={still} />
+            <span className={styles.kicker}>{s.kicker}</span>
+            <h2 className={styles.h3}>{s.title}</h2>
+            <p className={styles.small}>{s.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className={styles.dots} role="tablist">
+        {steps.map((s, i) => (
+          <button key={s.title} role="tab" aria-selected={at === i} aria-label={s.title} className={at === i ? styles.dotOn : ""} onClick={() => go(i)} />
+        ))}
+      </div>
+    </section>
+  )
+}
 
-      <section className={`${styles.feature} ${styles.flip}`} id="devices">
-        <div className={styles.featureText}>
-          <span className={styles.kicker}>Look and devices</span>
-          <h2 className={styles.featureTitle}>Light by day, dark by night. On your Mac too.</h2>
-          <p className={styles.featureBody}>
-            Wattle can follow your iPhone between light and dark, or stay the way you like it. It&apos;s built for
-            iPhone and iPad, with a native Mac app for the desk, all on the same account.
+const plans = [
+  { mark: `${V}/tier.seed.png`, name: "Wattle Seed", price: "Free", per: "", line: "Up to 5 sites, with outages checked every 30 minutes." },
+  { mark: `${V}/tier.bloom.png`, name: "Wattle Bloom", price: "$5.99", per: "a month per person, or $51.99 a year", line: "Up to 100 sites, live outages, push alerts and a weekly planned-work digest." },
+  { mark: `${V}/tier.gold.png`, name: "Wattle Gold", price: "$14.99", per: "a month per person, coming later", line: "Up to 1,000 sites, with exports, API connections and AI monitoring." },
+]
+
+export default function Landing() {
+  const still = useMedia("(prefers-reduced-motion: reduce)")
+  const wide = useMedia("(min-width: 900px)")
+  const root = useRef<HTMLElement>(null)
+
+  // fade and rise as things come into view
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    el.classList.add(styles.js)
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add(styles.in); io.unobserve(e.target) }
+    }), { rootMargin: "0px 0px -8% 0px" })
+    el.querySelectorAll("[data-rise]").forEach((n) => io.observe(n))
+    return () => io.disconnect()
+  }, [wide])
+
+  return (
+    <main ref={root} className={styles.page}>
+      <div className={styles.wrap}>
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>
+          <Link href="/login" className={styles.signIn}>Sign in</Link>
+        </nav>
+
+        <section className={styles.hero}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${V}/wattle-head.png`} alt="" aria-hidden className={styles.head} />
+          <div className={styles.heroText} data-rise>
+            <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
+            <h1 className={styles.title}>Know the moment your sites lose power.</h1>
+            <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
+            <div className={styles.ctas}>
+              <a href={MAIL} className={styles.primary}>Get in touch</a>
+              <Link href="/login" className={styles.quiet}>Sign in to the web portal</Link>
+            </div>
+          </div>
+          <div className={styles.heroShot} data-rise>
+            <Clip src={`${V}/alert-lockscreen.mp4`} poster={`${V}/alert-lockscreen.jpg`} still={still} eager
+              alt="Wattle alerts arriving on an iPhone lock screen: a power outage near Bondi Junction Pharmacy, then power back" />
+          </div>
+        </section>
+      </div>
+
+      <div className={styles.wrap}><NetworkMap still={still} /></div>
+
+      <div className={styles.wrap}>
+        {wide ? <StickyPhone still={still} /> : <Carousel still={still} />}
+
+        <section className={styles.groups} data-rise>
+          <h2 className={styles.h2}>Running a pharmacy chain or a clinic group?</h2>
+          <p className={styles.body}>
+            Put every site on Wattle and the whole group works from the same picture: what&apos;s off now, what&apos;s
+            booked, and who&apos;s been told. Admins choose who hears about which sites. Also on iPad and Mac, and on
+            the web from any computer.
           </p>
-          <ul className={styles.points}>
-            <li>Light, dark, or automatic</li>
-            <li>iPhone, iPad and a native Mac app</li>
-            <li>The web portal, from any computer</li>
-          </ul>
-        </div>
-        <Screen src="/landing/settings-appearance.jpg" alt="The Appearance setting: Auto, Light and Dark" tilt="l" />
-      </section>
-
-      <section className={styles.final}>
-        <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
-        <h2 className={styles.finalTitle}>Running a group of clinics or pharmacies?</h2>
-        <p className={styles.lede}>Talk to us about putting your sites on Wattle.</p>
-        <div className={styles.ctas}>
           <a href={MAIL} className={styles.primary}>Get in touch</a>
-          <Link href="/login" className={styles.secondary}>Sign in</Link>
-        </div>
-      </section>
+        </section>
 
-      <footer className={styles.footer}>
-        <span>© 2026 Arctiq Services · Wattle · Sydney</span>
-        <a href="https://arctiqservices.com.au" target="_blank" rel="noopener noreferrer" className={styles.pby}>
-          Powered by <span className={styles.aq}><b>Arct</b><em>IQ</em></span>
-        </a>
-        <span>
-          Another{" "}
-          <a href="https://instagram.com/kieranjxn" target="_blank" rel="noopener noreferrer" className={styles.kez}>Kez Curation ↗</a>
-        </span>
-      </footer>
+        <section className={styles.plans} aria-labelledby="plans-title">
+          <h2 id="plans-title" className={styles.h2} data-rise>Plans</h2>
+          <div className={styles.planRow}>
+            {plans.map((p) => (
+              <div key={p.name} className={styles.plan} data-rise>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.mark} alt="" width={88} height={88} loading="lazy" />
+                <div>
+                  <h3 className={styles.planName}>{p.name}</h3>
+                  <p className={styles.price}>{p.price}{p.per && <span> {p.per}</span>}</p>
+                  <p className={styles.small}>{p.line}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <footer className={styles.footer}>
+          <span>© 2026 Arctiq Services · Sydney</span>
+          <a href={MAIL}>Contact</a>
+          <a href="https://arctiqservices.com.au" target="_blank" rel="noopener noreferrer" className={styles.pby}>
+            Powered by <span className={styles.aq}><b>Arct</b><em>IQ</em></span>
+          </a>
+          <span>
+            Another{" "}
+            <a href="https://instagram.com/kieranjxn" target="_blank" rel="noopener noreferrer" className={styles.kez}>Kez Curation ↗</a>
+          </span>
+        </footer>
+      </div>
     </main>
   )
 }
