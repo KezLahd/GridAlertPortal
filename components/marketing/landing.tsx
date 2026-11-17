@@ -232,18 +232,18 @@ export default function Landing() {
         </nav>
 
         <section className={styles.hero}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${V}/wattle-head.png`} alt="" aria-hidden className={styles.head} />
           <div className={styles.heroText} data-rise>
             <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
             <h1 className={styles.title}>Know the moment your sites lose power.</h1>
             <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
             <div className={styles.ctas}>
               <a href={MAIL} className={styles.primary}>Get in touch</a>
-              <Link href="/login" className={styles.quiet}>Sign in to the web portal</Link>
+              <Link href="/login" className={styles.ghost}>Sign in to the web portal</Link>
             </div>
           </div>
           <div className={styles.heroShot} data-rise>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${V}/wattle-head.png`} alt="" aria-hidden className={styles.head} />
             <Clip src={`${V}/alert-lockscreen.mp4`} poster={`${V}/alert-lockscreen.jpg`} still={still} eager
               alt="Wattle alerts arriving on an iPhone lock screen: a power outage near Bondi Junction Pharmacy, then power back" />
           </div>
