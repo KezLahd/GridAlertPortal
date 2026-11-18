@@ -8,6 +8,8 @@ const LETTERS = { w: "M19.44 72.43Q16.38 72.43 14.58 70.92Q12.79 69.41 11.84 66.
 export const TIE_VIEW = { w: 283.73, h: 72.48 }
 /** where in the moment (0 to 1) the t's meet; the rest is the bounce */
 export const MEET = 0.62
+/** where the pull starts: before it the wire draws out from the middle to the t's, then the other letters come in */
+export const PULL = 0.3
 
 const STEM = 12.17, BAR = 11.19, ARM = 22.695, T1 = 142.785, T2 = 193.28, BASE = 71.45, TOP = 5, CY = 24.28
 const YL = BASE - (BASE - 18.68) * 0.45, HB = YL - (TOP + STEM / 2), HC = YL - CY, WW = BAR * 0.22
@@ -35,7 +37,7 @@ export function makeTie(svg: SVGSVGElement) {
   }
   // drawing order: the wires pass in front of the right t and behind the left one
   const w = letter(LETTERS.w), a = letter(LETTERS.a), p2 = pole()
-  const wires = [0, 1].map(() => el("path", svg, { fill: "none", "stroke-width": WW.toFixed(2), "stroke-linecap": "round" }))
+  const wires = [0, 1].map(() => el("path", svg, { fill: "none", "stroke-width": WW.toFixed(2), "stroke-linecap": "round", pathLength: "1" }))
   const p1 = pole(), l = letter(LETTERS.l), e = letter(LETTERS.e)
   const flash = el("circle", svg, { fill: GOLD })
   const sparks = Array.from({ length: 14 }, () => el("circle", svg, { fill: GOLD }))
@@ -63,24 +65,25 @@ export function makeTie(svg: SVGSVGElement) {
   /** u: 0 to 1 through the moment; reach: how far apart the halves start, in the mark's own units */
   return (u: number, reach: number) => {
     const GAP = Math.max(60, reach)
-    const inn = seg(u, 0, 0.12)
-    // the wire takes up its slack and goes gold, then drags the halves in: a hard pull at first, quicker and quicker as
+    // first the wire, drawn out from the middle to both t's; the t's come in as it reaches them; then the other letters
+    const draw = easeOut(seg(u, 0, 0.12), 2), poles = seg(u, 0.09, 0.14), inn = seg(u, 0.12, 0.24)
+    // then it takes up its slack and goes gold, and drags the halves in: a hard pull at first, quicker and quicker as
     // they near. They meet in the middle of the word at MEET, knock with a flash, bounce apart twice and settle
-    const slack = 1 - easeOut(seg(u, 0.06, 0.18), 2)
-    const k = seg(u, 0.18, MEET)
+    const slack = 1 - easeOut(seg(u, 0.2, PULL), 2)
+    const k = seg(u, PULL, MEET)
     const tb = (Math.max(0, u - MEET) / (1 - MEET)) * 0.9            // seconds after they meet, as the app counts them
     let gap: number, lean: number
     if (u < MEET) { gap = GAP * (1 - Math.pow(k, 2.2)); lean = STEM * 0.9 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 1.3)) }
     else { gap = GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
     const L = -gap / 2, R = gap / 2
     reveal(w, 2, inn, L); reveal(a, 1, inn, L); reveal(l, 1, inn, R); reveal(e, 2, inn, R)
-    const to = clamp(inn * 1.6).toFixed(3)
+    const to = poles.toFixed(3)
     p1.g.setAttribute("opacity", to); p2.g.setAttribute("opacity", to)
     drawPole(p1, T1 + L, 1, lean); drawPole(p2, T2 + R, -1, lean)
 
     // two wires: between the facing crossbar ends, and between the middles of the poles
-    const wire = clamp((inn - 0.4) / 0.4) * (1 - seg(tb, 0, 0.35))
-    const gold = seg(u, 0.12, 0.18)
+    const wire = (draw > 0 ? 1 : 0) * (1 - seg(tb, 0, 0.35))
+    const gold = seg(u, 0.24, PULL)
     const ends: [number, number][][] = [
       [onBar(T1 + L, 1, ARM - BAR / 2, lean), onBar(T2 + R, -1, -(ARM - BAR / 2), lean)],
       [bendAt(T1 + L, 1, HC + (YL - TOP - HC) * 0.5, lean), bendAt(T2 + R, -1, HC + (YL - TOP - HC) * 0.5, lean)],
@@ -91,6 +94,8 @@ export function makeTie(svg: SVGSVGElement) {
       path.setAttribute("d", `M${p[0].toFixed(2)} ${p[1].toFixed(2)}Q${((p[0] + q[0]) / 2).toFixed(2)} ${(Math.max(p[1], q[1]) + 2 * sag).toFixed(2)} ${q[0].toFixed(2)} ${q[1].toFixed(2)}`)
       path.setAttribute("stroke", gold > 0.5 ? GOLD : INK)
       path.setAttribute("opacity", wire.toFixed(3))
+      // drawn from its middle outwards
+      path.setAttribute("stroke-dasharray", draw >= 1 ? "none" : `0 ${(0.5 - draw / 2).toFixed(4)} ${draw.toFixed(4)} 2`)
     })
 
     // the knock: a gold flash where they meet, and sparks flying out and falling

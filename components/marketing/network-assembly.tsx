@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW } from "./network-map-data"
 import styles from "./network-assembly.module.css"
-import { makeTie, TIE_VIEW, MEET as TIE_MEET } from "./brand-tie"
+import { makeTie, TIE_VIEW, MEET as TIE_MEET, PULL as TIE_PULL } from "./brand-tie"
 import { STITCHES } from "./network-stitches"
 
 // The page's story, told on one map of Australia as you scroll. Every step is tied to the scroll position (smoothed
@@ -46,7 +46,7 @@ type Span = [number, number]
 // It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
 const TIP: Span = [0.004, 0.066], TIP0 = 0.28
 const DROPS: Span = [0.07, 0.4], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.6]
-const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1]
+const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
 // each company lands in the first 80% of its slot and sits there for the rest, so there's time to read it. The drops
 // get more of the real scroll than their share of the timeline: about 45% of a screen each, out of a 1350vh section
@@ -58,9 +58,9 @@ const warp = (r: number) => r < RAW_DROPS[0] ? (r / RAW_DROPS[0]) * DROPS[0]
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
 // The map steps down and back a little while the headline is up (ROOM), to leave it space.
-const TIE: Span = [0.6, 0.74], TIE_OUT: Span = [0.775, 0.8]
-const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * 0.18, MEET]
-const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56], ROOM_OUT: Span = [0.775, 0.805]
+const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.81, 0.83]
+const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * TIE_PULL, MEET]
+const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56], ROOM_OUT: Span = [0.81, 0.835]
 
 // the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
 // it; the last one carries the wordmark above it
@@ -76,8 +76,8 @@ const WORDS: Words[] = [
   // as the country turns to face you, then as it breaks apart
   { lines: [{ text: "**15** companies.", inn: [0.404, 0.42] }, { text: "**15** websites.", inn: [0.447, 0.462] }], at: "top", out: [0.49, 0.5] },
   // as the dots turn gold
-  { lines: [{ text: "**15** networks. **1** map.", inn: [0.855, 0.875] }], at: "bottomLeft", out: [0.91, 0.93] },
-  { lines: [{ text: "Never be the last to know.", inn: [0.94, 0.975] }], sub: { text: "Every site you run, on every network, in one app.", inn: [0.955, 0.985] }, brand: true, at: "centre", out: [2, 3] },
+  { lines: [{ text: "**15** networks. **1** map.", inn: [0.88, 0.9] }], at: "bottomLeft", out: [0.925, 0.94] },
+  { lines: [{ text: "Never be the last to know.", inn: [0.95, 0.98] }], sub: { text: "Every site you run, on every network, in one app.", inn: [0.962, 0.99] }, brand: true, at: "centre", out: [2, 3] },
 ]
 /** a line with its **numbers** set big and bold */
 function Rich({ text }: { text: string }) {
@@ -434,6 +434,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           tie(tu, mw > 0 ? Math.min(TIE_VIEW.w * 1.1, (room * TIE_VIEW.w) / mw) : 200)
         }
         if (tieWords.current) tieWords.current.style.opacity = ease(seg(p, [VINES[0] + 0.003, VINES[0] + 0.015])).toFixed(3)
+        // while the sprigs spread the line sits lower, where the wordmark will be; once they've joined everything up it
+        // moves up, and the wordmark is drawn under it
+        if (tieRow.current) tieRow.current.style.transform = `translateY(${((mk?.height ?? 0) * (1 - ease(seg(p, [VINES[1], TIE[0]])))).toFixed(1)}px)`
         if (tieSub.current) tieSub.current.style.opacity = ease(seg(tu, [0.88, 1])).toFixed(3)
       }
 
@@ -703,8 +706,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         ))}
 
         <div ref={tieBox} className={styles.tie}>
-          <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
           <p ref={tieRow} className={styles.tieRow}><span ref={tieWords}>But tying it all together</span></p>
+          <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
           <p ref={tieSub} className={styles.tieSub}>across all <Rich text="**15** networks" /></p>
         </div>
 
