@@ -57,8 +57,7 @@
 .layer { opacity: 0; will-change: transform; transform-style: preserve-3d; }
 .layer svg { position: absolute; inset: 0; }
 /* thickness: the country and each area are slabs, their sides a darker copy just beneath; hidden once flat */
-/* while the pieces fly: only the flat top, fading out under them (--base-a) */
-.flying .slab { visibility: hidden; }
+/* --base-a: the country fades out under the pieces as they land */
 .slab { transform: translateZ(var(--z)); }
 .base { opacity: var(--base-a, 1); }
 .slab path { fill: color-mix(in srgb, var(--map-land), #000 22%); stroke: color-mix(in srgb, var(--map-land), #000 22%); transition: fill 0.4s, stroke 0.4s; }
@@ -104,7 +103,7 @@
 .words [data-line] { opacity: 0; }
 /* the numbers are the point: bigger and heavier than the words round them */
 .num { font-family: var(--rounded); font-weight: 800; font-size: 1.32em; line-height: 0.9; letter-spacing: -0.04em; font-variant-numeric: lining-nums; color: var(--ink); }
-.sub .num, .tieSub .num { font-size: 1.12em; }
+.sub .num { font-size: 1.12em; }
 /* .words .big, not .big: the page's own `.page p { color: inherit }` would otherwise win and grey it out */
 .words .big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.4vw, 50px); line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); }
 /* the smaller line under a big one */
@@ -127,16 +126,10 @@
 .words.centre .big { font-size: clamp(30px, 3.2vw, 50px); letter-spacing: -0.03em; }
 .centre .brandMark { height: clamp(64px, 7.2vw, 116px); margin-bottom: clamp(28px, 3.4vw, 52px); }
 
-/* the headline: the wordmark (its t's pulled together by the script) as tall as the words beside it, a line under it */
+/* the headline: the wordmark (its t's pulled together by the script), a line under it */
 .tie { position: absolute; z-index: 3; top: clamp(20px, 5vh, 56px); left: 0; right: 0; padding: 0 24px; text-align: center; visibility: hidden; }
-/* the wordmark, as wide as the words under it (set by the script); its halves start out far beyond that */
-.tieMark { display: block; margin: 0.35em auto 0; width: 320px; height: auto; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); }
-.tieRow {
-  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(22px, 2.3vw, 34px); line-height: 1.1;
-  letter-spacing: -0.025em; color: var(--ink); white-space: nowrap;
-}
-.tieRow span { display: inline-block; opacity: 0; }
-.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 18px; letter-spacing: 0.01em; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
+/* the wordmark; its halves start out far beyond its width */
+.tieMark { display: block; margin: 0.35em auto 0; width: clamp(220px, 24vw, 400px); height: auto; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); }
 
 /* the fifteen logos down both sides of the map (placed by the script), all the same height */
 .mark { position: absolute; z-index: 3; top: 0; left: 0; opacity: 0; visibility: hidden; transform-origin: 50% 50%; will-change: transform, opacity; }
@@ -166,8 +159,6 @@
   .bottom, .bottomLeft { bottom: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .centre { left: 20px; right: 20px; padding: 0; }
   .tie { top: 28px; padding: 0 20px; }
-  .tieRow { font-size: clamp(26px, 7.4vw, 34px); white-space: normal; }
-  .tieSub { font-size: 16px; }
   .meta { font-size: 14px; }
 }
 

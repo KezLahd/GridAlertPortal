@@ -45,7 +45,7 @@ type Span = [number, number]
 // in (FACE), keeping its depth; only then does it break apart (FLAT), the sprigs grow and pull it back together
 // It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
 const TIP: Span = [0.03, 0.075], TIP0 = 0.28
-const DROPS: Span = [0.09, 0.37], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.6]
+const DROPS: Span = [0.09, 0.37], FACE: Span = [0.3, 0.37], FLAT: Span = [0.38, 0.43], VINES: Span = [0.44, 0.6]
 const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
 // The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
@@ -65,7 +65,7 @@ const warp = (r: number) => {
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
-const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.81, 0.83]
+const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.925, 0.94]
 const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * TIE_PULL, MEET]
 const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04]
 
@@ -81,7 +81,7 @@ const WORDS: Words[] = [
   // a small lead-in, then the big claim; the kicker and the claim are split by "|"
   { lines: [{ text: "Australia\u2019s power grid|isn\u2019t one company.", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
   // as the logos come in, then as the country breaks apart
-  { lines: [{ text: "**15** companies.", inn: [0.026, 0.044] }, { text: "**15** websites.", inn: [0.372, 0.392] }], at: "top", out: [0.49, 0.5] },
+  { lines: [{ text: "**15** companies.", inn: [0.026, 0.044] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.6, 0.612] },
   // as the dots turn gold
   { lines: [{ text: "**15** networks. **1** map.", inn: [0.832, 0.852] }], at: "bottomLeft", out: [0.925, 0.94] },
   { lines: [{ text: "Be the first to know.", inn: [0.94, 0.965] }], brand: true, at: "centre", out: [2, 3] },
@@ -390,10 +390,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const marks = useRef<(HTMLDivElement | null)[]>([])
   const corners = useRef<(HTMLElement | null)[]>([])
   const tieBox = useRef<HTMLDivElement>(null)
-  const tieRow = useRef<HTMLParagraphElement>(null)
   const tieMark = useRef<SVGSVGElement>(null)
-  const tieWords = useRef<HTMLSpanElement>(null)
-  const tieSub = useRef<HTMLParagraphElement>(null)
   const overcast = useRef<HTMLDivElement>(null)
   const aurora = useRef<HTMLCanvasElement>(null)
 
@@ -420,14 +417,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const tie = tieMark.current ? makeTie(tieMark.current) : null
     let tied = -1, tiedReach = -1
     const au = aurora.current, actx = au?.getContext("2d") ?? null
-    // the wordmark as wide as the line of words under it
-    const fitMark = () => {
-      const mk = tieMark.current, tw = tieWords.current
-      if (!mk || !tw) return
-      mk.style.width = `${tw.offsetWidth}px`
-    }
-    fitMark()
-    document.fonts?.ready.then(fitMark)
 
     const size = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -435,7 +424,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // the aurora is soft light: half the pixels is plenty
       if (au) { au.width = Math.round(st.offsetWidth / 2); au.height = Math.round(st.offsetHeight / 2) }
       drawn = ""
-      fitMark()
     }
     size()
     const ro = new ResizeObserver(size)
@@ -492,7 +480,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         })
       })
 
-      // the headline: the wordmark's t's pulled together, then the words beside it, then the line under it
+      // the headline: the wordmark's t's pulled together, then the line under it; it stays up through the dots
       const tu = seg(p, TIE), tb = tieBox.current
       if (tb) {
         const v = p >= VINES[0] ? 1 - ease(seg(p, TIE_OUT)) : 0
@@ -504,11 +492,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           tied = tu; tiedReach = room
           tie(tu, mw > 0 ? Math.min(TIE_VIEW.w * 1.1, (room * TIE_VIEW.w) / mw) : 200)
         }
-        if (tieWords.current) tieWords.current.style.opacity = ease(seg(p, [VINES[0] + 0.003, VINES[0] + 0.015])).toFixed(3)
-        // while the sprigs spread the line sits lower, where the wordmark will be; once they've joined everything up it
-        // moves up, and the wordmark is drawn under it
-        if (tieRow.current) tieRow.current.style.transform = `translateY(${((mk?.height ?? 0) * (1 - ease(seg(p, [VINES[1], TIE[0]])))).toFixed(1)}px)`
-        if (tieSub.current) tieSub.current.style.opacity = ease(seg(tu, [0.88, 1])).toFixed(3)
       }
 
       // the page: grey and still while it's fifteen companies; from the moment the t's meet, Wattle's paper and aurora
@@ -579,8 +562,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= FLY[1]
       rg.classList.toggle(styles.allIn, allIn)
-      // while the pieces fly only the country's flat top shows (no grey sides under them; they carry their own), and it
-      // fades away as they arrive, so it's gone by the time they're in place
+      // the country stays a full 3D slab while the pieces fly over it, and fades away as they arrive, so it's gone by
+      // the time they're in place and they show only their own sides
       const flying = p < FLY[1] && p > FLY[0] - 0.01
       rg.classList.toggle(styles.flying, flying)
       rg.style.setProperty("--base-a", flying ? (1 - ease(seg(seg(p, FLY), [0.55, 0.95]))).toFixed(3) : "1")
@@ -809,9 +792,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         ))}
 
         <div ref={tieBox} className={styles.tie}>
-          <p ref={tieRow} className={styles.tieRow}><span ref={tieWords}>But tying it all together</span></p>
           <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
-          <p ref={tieSub} className={styles.tieSub}>across all <Rich text="**15** networks" /></p>
         </div>
 
         {STEPS.map((group, g) => {
