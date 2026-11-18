@@ -245,17 +245,28 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
 // the sprigs: short stitches across every border where two pieces meet, evenly spaced along it (network-stitches.ts),
 // so as the country breaks apart each gap is laced across its whole length, and the stitches draw it back together.
 // Longer borders (the big states) get sturdier stitches; each one's thickness wanders a little
-// the strip's own sprigs: three across its top edge, from Western Power down to it
+// the strip's own sprigs: three across its top edge from Western Power down to it, and two from the rest of Horizon's
+// area to its far end, so it's held from both sides
 const SNIP_STITCHES = (() => {
-  if (!SNIP_D || WP < 0) return []
+  const HG = STEPS.findIndex((g) => g.includes(HORIZON))
+  if (!SNIP_D || WP < 0 || HG < 0) return []
   const v = (SNIP_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number), pts: [number, number][] = []
   for (let k = 0; k + 1 < v.length; k += 2) pts.push([v[k], v[k + 1]])
   const x0 = Math.min(...pts.map((q) => q[0])), x1 = Math.max(...pts.map((q) => q[0]))
-  return [0.22, 0.5, 0.78].map((f) => {
+  const wp = [0.22, 0.5, 0.78].map((f) => {
     const x = x0 + (x1 - x0) * f, near = pts.filter((q) => Math.abs(q[0] - x) < (x1 - x0) * 0.12)
     const y = Math.min(...(near.length ? near : pts).map((q) => q[1]))
     return { a: WP, b: WP, pa: [x, y - 3] as [number, number], pb: [x, y + 4] as [number, number], len: 60, drop: true }
   })
+  const hv = (HORIZON_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number), hp: [number, number][] = []
+  for (let k = 0; k + 1 < hv.length; k += 2) hp.push([hv[k], hv[k + 1]])
+  const east = pts.reduce((m, q) => (q[0] > m[0] ? q : m), pts[0])
+  const from = hp.reduce((m, q) => (Math.hypot(q[0] - east[0], q[1] - east[1]) < Math.hypot(m[0] - east[0], m[1] - east[1]) ? q : m), hp[0])
+  return [...wp, ...[0.86, 0.97].map((f, j) => {
+    const x = x0 + (x1 - x0) * f, near = pts.filter((q) => Math.abs(q[0] - x) < (x1 - x0) * 0.08)
+    const y = Math.min(...(near.length ? near : pts).map((q) => q[1]))
+    return { a: HG, b: WP, pa: [from[0] - 4 - j * 8, from[1] - 4] as [number, number], pb: [x, y + 4] as [number, number], len: 60, drop: true }
+  })]
 })()
 const STRANDS = [...STITCHES.map((t) => ({ ...t, drop: false })), ...SNIP_STITCHES].map((t, k) => ({
   ...t, bend: (k % 2 ? -1 : 1) * (0.1 + (k % 3) * 0.05),
@@ -550,11 +561,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (still) paint(0.9)
     }).catch(() => {})
 
-    // the wordmark as wide as the line of words over it
+    // the wordmark a little narrower than the line of words over it
     const fitMark = () => {
       const mk = tieMark.current, tw = tieWords.current
       if (!mk || !tw) return
-      mk.style.width = `${tw.offsetWidth}px`
+      mk.style.width = `${(tw.offsetWidth * 0.86).toFixed(1)}px`
     }
     fitMark()
     document.fonts?.ready.then(fitMark)
@@ -626,8 +637,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the headline: the wordmark's t's pulled together, then the line under it; it stays up through the dots
       const tu = seg(p, TIE), tb = tieBox.current
-      // how far apart the two halves of the wordmark start, in its own units: as far as the screen allows
-      const reachU = mk && mk.width > 0 ? Math.min(TIE_VIEW.w * 1.1, (Math.max(0, sr.width * 0.92 - mk.width) * TIE_VIEW.w) / mk.width) : 200
+      // how far apart the two halves of the wordmark start, in its own units: about half the word's width again
+      const reachU = mk && mk.width > 0 ? Math.min(TIE_VIEW.w * 0.55, (Math.max(0, sr.width * 0.92 - mk.width) * TIE_VIEW.w) / mk.width) : 200
       if (tb) {
         const v = p >= VINES[0] ? 1 - ease(seg(p, TIE_OUT)) : 0
         tb.style.visibility = v > 0.001 ? "visible" : "hidden"
@@ -635,9 +646,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         // "But tying it all together" is up while the sprigs grow and the t's are pulled together, then goes once the
         // word has settled; the wordmark stays on its own
         if (tieWords.current) tieWords.current.style.opacity = (ease(seg(p, [VINES[0] + 0.003, VINES[0] + 0.015])) * (1 - ease(seg(p, [TIE[1], TIE[1] + 0.02])))).toFixed(3)
-        // while the sprigs spread the line sits lower, where the wordmark will be; once they've joined everything up it
-        // moves up, and the wordmark is drawn under it
-        if (tieRow.current) tieRow.current.style.transform = `translateY(${((mk?.height ?? 0) * (1 - ease(seg(p, [VINES[1], TIE[0]])))).toFixed(1)}px)`
         // the two halves start as far apart as the screen allows, and meet in the middle of the word
         const mw = mk?.width ?? 0, room = Math.max(0, sr.width * 0.92 - mw)
         if (v > 0.001 && tie && (Math.abs(tu - tied) > 0.0002 || room !== tiedReach)) {
@@ -733,13 +741,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const tilt = (TIP0 + (1 - TIP0) * ease(seg(p, TIP))) * (1 - ease(seg(p, FACE)))
       // at the very start it's a little smaller, so the opening line leads
       const opening = 1 - ease(seg(p, TIP))
-      // while it's in pieces it sits smaller, so the gaps and the sprigs across them have room; it grows back as the
-      // sprigs pull it together
-      const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
       // facing you it sits a little smaller and lower, to stay clear of the words above it
       // the jolt as the wordmark locks them all together: a quick squeeze the moment the t's meet, settling in a few beats
       const lockS = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9, lock = p > MEET ? 1 - 0.028 * Math.exp(-8 * lockS) * Math.cos(lockS * 28) : 1
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
       rg.classList.toggle(styles.flat, p >= FLATTEN[1])
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= FLY[1]
@@ -758,13 +763,14 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // one unbroken move, from the split right up to the pull: quick at first, slowing but never stopping
       const drift = (1 - Math.pow(1 - seg(p, [FLAT[0], LACE[0]]), 3)) * ease(seg(p, [FLAT[0], FLAT[0] + 0.015]))
       const apart = (1.45 * drift * (1 - lace) + knock) * (wide ? 2.4 : 1)
+      const apX = apart, apY = apart
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, span(g)), e = ease(t)
         // a hop as it flies; it stays a whole piece-height above the country (so its sides never cut into it) until the
         // country has faded, then settles the last bit onto nothing, sides and all
         const z = t >= 1 ? 0 : 30 * Math.sin(Math.PI * e) + PIECE_DEPTH * (1 - ease(seg(t, [0.9, 1])))
-        const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
+        const sx = (SPLIT[g][0] * apX / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apY / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
         // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
         // whole dots of its own colour, which then shrink
@@ -799,8 +805,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", (glass * op).toFixed(3))
           if (i === WPN) {
-            el.style.setProperty("--sx", `${(SNIP_DROP[0] * apart).toFixed(2)}px`)
-            el.style.setProperty("--sy", `${(SNIP_DROP[1] * apart).toFixed(2)}px`)
+            el.style.setProperty("--sx", `${(SNIP_DROP[0] * apX).toFixed(2)}px`)
+            el.style.setProperty("--sy", `${(SNIP_DROP[1] * apY).toFixed(2)}px`)
           }
           el.style.setProperty("--d", d3.toFixed(3))
           el.classList.toggle(styles.lifting, t < 1 && op > 0.001 && d3 > 0.02)
@@ -819,8 +825,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const on = grow > 0 && tight < 1
         vs.style.opacity = vu.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
-          const A: Pt = [s.pa[0] + SPLIT[s.a][0] * apart, s.pa[1] + SPLIT[s.a][1] * apart]
-          const B: Pt = [s.pb[0] + (SPLIT[s.b][0] + (s.drop ? SNIP_DROP[0] : 0)) * apart, s.pb[1] + (SPLIT[s.b][1] + (s.drop ? SNIP_DROP[1] : 0)) * apart]
+          const A: Pt = [s.pa[0] + SPLIT[s.a][0] * apX, s.pa[1] + SPLIT[s.a][1] * apY]
+          const B: Pt = [s.pb[0] + (SPLIT[s.b][0] + (s.drop ? SNIP_DROP[0] : 0)) * apX, s.pb[1] + (SPLIT[s.b][1] + (s.drop ? SNIP_DROP[1] : 0)) * apY]
           const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]
