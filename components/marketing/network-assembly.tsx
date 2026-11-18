@@ -40,9 +40,10 @@ const G = STEPS.length
 
 // the timeline, as fractions of the section's scroll (0 = its top reaches the top of the screen, 1 = its end)
 type Span = [number, number]
-// the country is in 3D from the start; it only turns to face you, flat, just before it becomes dots (FACE)
-const DROPS: Span = [0.07, 0.4], FLAT: Span = [0.42, 0.48], VINES: Span = [0.49, 0.575]
-const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1], FACE: Span = [0.735, 0.785]
+// the country is a 3D slab throughout. Tipped back while the areas drop onto it, it turns to face you once they're all
+// in (FACE), keeping its depth; only then does it break apart (FLAT), the sprigs grow and pull it back together
+const DROPS: Span = [0.07, 0.4], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.58]
+const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), slowing as they near,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at 86% of TIE; once the word has
@@ -477,9 +478,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // it only makes room for the company beside it while a company is showing; the rest of the time it's full size
       const beside = wide ? Math.min(1, Math.max(0.72, (sr.width - 2 * (cw + 48)) / Math.max(1, rg.offsetWidth))) : 1
       const fit = 1 - (1 - beside) * ca * (1 - cb)
-      rg.style.transform = tilt > 0.0005 || room > 0.0005
-        ? `translateY(${(tilt * 2 + room * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.05 * room)).toFixed(4)})`
-        : "none"
+      // facing you it sits a little smaller and lower, to stay clear of the words above it
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 + room * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.05 * room)).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
       rg.classList.toggle(styles.allIn, allIn)
