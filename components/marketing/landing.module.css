@@ -94,17 +94,26 @@
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 30px; }
 
 /* hero */
-.hero { position: relative; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 48px; padding: 28px 0 80px; }
+.hero { position: relative; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 48px;
+  min-height: calc(100svh - 84px); padding: 8px 0 48px; box-sizing: border-box; }
 .heroText { position: relative; z-index: 1; max-width: 580px; }
-.soonPill {
-  display: inline-flex; align-items: center; gap: 9px; font-family: var(--rounded); font-weight: 700; font-size: 13.5px;
-  color: var(--gold-text) !important; padding: 7px 15px 7px 12px; border-radius: 999px;
-  background: color-mix(in srgb, var(--gold) 14%, transparent);
-}
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--glow); }
 .title { font-family: var(--rounded); font-weight: 700; font-size: clamp(42px, 6vw, 68px); line-height: 1.02; letter-spacing: -0.03em; margin: 22px 0 18px; text-wrap: balance; }
 .lede { font-size: 20px; line-height: 1.5; color: var(--muted) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
-.heroShot { justify-self: center; width: min(330px, 100%); }
+.heroShot { justify-self: center; width: min(330px, 100%, calc((100svh - 190px) * 0.46)); }
+
+/* the App Store button: Apple's black badge shape, greyed out with "Coming soon" until the app is live */
+.store {
+  display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 20px 0 16px; border-radius: 14px;
+  background: #24211c; color: #fbf8f2 !important; opacity: 0.5; cursor: not-allowed; user-select: none;
+}
+.store svg { width: 22px; height: 22px; margin-top: -3px; flex: none; }
+.storeText { display: flex; flex-direction: column; line-height: 1.05; color: inherit !important; }
+.storeText small { font-family: var(--text); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
+.storeText b { font-family: var(--text); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+@media (prefers-color-scheme: dark) { .store { background: #f3eee4; color: #12100d !important; opacity: 0.42; } }
+.also { margin: 18px 0 0; font-size: 14.5px; color: var(--faint) !important; }
+.also a { color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.also a:hover { color: var(--ink); }
 .heroShot { position: relative; }
 .heroShot .screen { translate: 0 calc(var(--sy, 0) * -0.07px); }
 .heroShot > :not(.head) { position: relative; z-index: 1; }
@@ -162,10 +171,11 @@
 
 /* phones */
 @media (max-width: 899px) {
-  .hero { grid-template-columns: 1fr; gap: 30px; padding: 8px 0 40px; }
+  .hero { grid-template-columns: 1fr; gap: 30px; min-height: 0; padding: 8px 0 40px; }
   .title { font-size: clamp(38px, 10.5vw, 52px); margin: 18px 0 14px; }
   .lede { font-size: 17.5px; }
   .ctas { margin-top: 24px; flex-direction: column; align-items: stretch; }
+  .store { justify-content: center; }
   .heroShot { width: min(250px, 68vw); }
   .head { width: 100px; top: -40px; left: -36px; }
   .groups { padding: 64px 0 20px; }

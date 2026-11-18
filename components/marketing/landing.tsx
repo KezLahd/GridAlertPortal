@@ -135,6 +135,19 @@ function Carousel({ still }: { still: boolean }) {
   )
 }
 
+// Apple's mark, as one path (Simple Icons, CC0).
+const APPLE = "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
+
+/** The App Store button, greyed out until the app is live. Not a link yet, so nothing to click. */
+function AppStoreSoon() {
+  return (
+    <span className={styles.store} role="link" aria-disabled="true" aria-label="Coming soon to the App Store">
+      <svg viewBox="0 0 24 24" aria-hidden><path d={APPLE} fill="currentColor" /></svg>
+      <span className={styles.storeText}><small>Coming soon to the</small><b>App Store</b></span>
+    </span>
+  )
+}
+
 const plans = [
   { mark: `${V}/tier.seed.png`, name: "Wattle Seed", price: "Free", per: "", line: "Up to 5 sites, with outages checked every 30 minutes." },
   { mark: `${V}/tier.bloom.png`, name: "Wattle Bloom", price: "$5.99", per: "a month per person, or $51.99 a year", line: "Up to 100 sites, live outages, push alerts and a weekly planned-work digest." },
@@ -179,13 +192,15 @@ export default function Landing() {
 
         <section className={styles.hero}>
           <div className={styles.heroText} data-rise>
-            <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
             <h1 className={styles.title}>Know the moment your sites lose power.</h1>
             <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
             <div className={styles.ctas}>
+              <AppStoreSoon />
               <a href={MAIL} className={styles.primary}>Get in touch</a>
-              <Link href="/login" className={styles.ghost}>Sign in to the web portal</Link>
             </div>
+            <p className={styles.also}>
+              For iPhone, iPad and Mac. Already with us? <Link href="/login">Sign in on the web</Link>
+            </p>
           </div>
           <div className={styles.heroShot} data-rise>
             {/* eslint-disable-next-line @next/next/no-img-element */}
