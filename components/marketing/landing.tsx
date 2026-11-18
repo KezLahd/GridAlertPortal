@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
 import Lenis from "lenis"
+import { Rubik } from "next/font/google"
 import "lenis/dist/lenis.css"
 import { NetworkAssembly } from "./network-assembly"
 import styles from "./landing.module.css"
@@ -13,6 +14,10 @@ import styles from "./landing.module.css"
 // no cards. Scrolling is smoothed by Lenis; things have depth (the
 // network map as an exploded 3D stack that assembles as you scroll, screens crossfading). All of it stops for
 // prefers-reduced-motion, which shows the end state and stills instead of the clips.
+
+// The app's type is SF Pro Rounded, which only Apple devices have. Everywhere else (Windows, Android, Chrome on a
+// Mac) the rounded type falls back to Rubik. It isn't preloaded, so Safari, which has SF Pro Rounded, never fetches it.
+const rubik = Rubik({ subsets: ["latin"], variable: "--font-rubik", display: "swap", preload: false })
 
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
 const V = "/landing/v2"
@@ -164,7 +169,7 @@ export default function Landing() {
   }, [wide])
 
   return (
-    <main ref={root} className={styles.page}>
+    <main ref={root} className={`${styles.page} ${rubik.variable}`}>
       <div className={styles.wrap}>
         <nav className={styles.nav}>
           <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>

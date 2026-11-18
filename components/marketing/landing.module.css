@@ -11,7 +11,7 @@
   --glow: rgba(242, 179, 0, 0.28);
   --land: #ece5d6;
   --land-edge: #fbf8f2;
-  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", var(--font-rubik), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
