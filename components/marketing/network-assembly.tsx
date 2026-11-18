@@ -322,7 +322,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const words = useRef<(HTMLElement | null)[]>([])
   const chip = useRef<HTMLDivElement>(null)
   const chipIn = useRef<HTMLDivElement>(null)
-  const leader = useRef<HTMLDivElement>(null)
   const tieBox = useRef<HTMLDivElement>(null)
   const tieRow = useRef<HTMLParagraphElement>(null)
   const tieMark = useRef<SVGSVGElement>(null)
@@ -345,7 +344,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
-    const H = wide ? 300 : 190, TX = wide ? 50 : 40
+    const H = wide ? 190 : 130, TX = wide ? 62 : 52
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
     // how big a dot is as the ring first reaches it: just big enough that neighbouring dots cover the area between them
@@ -390,8 +389,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const drop = p > DROPS[0] - 0.01 && p < FLAT[0] + 0.01
       let now = -1
       STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 0.8) * SLOT]) > 0.04 && drop) now = g })
-      const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
-      const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
+      const cw = chip.current?.offsetWidth ?? 0
       const reserve = (() => { const w = words.current[1]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
       const secTop = sec.getBoundingClientRect().top
       const mk = tieMark.current?.getBoundingClientRect()
@@ -437,30 +435,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         }
       }
 
-      // the company that's landing: beside the map on the side its area is on, in a fixed spot; only its line moves,
-      // following the area down
+      // the company that's landing: its logo alone, always in the same spot, centred under the headline, so the eye
+      // stays in one place; its piece drops out from under it
       const ca = ease(seg(p, CHIP.inn)), cb = ease(seg(p, CHIP.out))
       slide(chip.current, chipIn.current, ca, cb)
-      const ld = leader.current
-      if (wide && chip.current && pin && ld) {
-        const mx = pin.left + pin.width / 2 - sr.left, my = pin.top + pin.height / 2 - sr.top
-        const s = mx < sr.width / 2 ? -1 : 1
-        const tx = s < 0
-          ? Math.max(24, rr.left - sr.left - 40 - cw)
-          : Math.min(sr.width - cw - 24, rr.right - sr.left + 40)
-        // one fixed spot on each side, at the same height, so the eye always finds it in the same place
-        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, sr.height * 0.5 - 40))
-        if (s !== side || cx < 0) side = s
-        cx = tx; cy = ty
-        chip.current.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`
-        // the line, from the chip's near edge to the middle of the falling area
-        const ax = s < 0 ? cx + cw + 14 : cx - 14, ay = cy + 30
-        const dx = mx - ax, dy = my - ay, len = Math.hypot(dx, dy)
-        const grow = ca * (1 - cb)
-        ld.style.width = `${(len * grow).toFixed(1)}px`
-        ld.style.transform = `translate3d(${ax.toFixed(1)}px, ${ay.toFixed(1)}px, 0) rotate(${Math.atan2(dy, dx).toFixed(4)}rad)`
-        ld.style.visibility = grow > 0.01 ? "visible" : "hidden"
-      } else if (ld) ld.style.visibility = "hidden"
+      if (chip.current) chip.current.style.transform = `translate3d(${((sr.width - cw) / 2).toFixed(1)}px, ${reserve.toFixed(1)}px, 0)`
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
@@ -470,8 +449,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
       const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
       // it only makes room for the company beside it while a company is showing; the rest of the time it's full size
-      const beside = wide ? Math.min(1, Math.max(0.72, (sr.width - 2 * (cw + 48)) / Math.max(1, rg.offsetWidth))) : 1
-      const fit = 1 - (1 - beside) * ca * (1 - cb)
+      const fit = 1
       // facing you it sits a little smaller and lower, to stay clear of the words above it
       rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 - room * 2).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.2 * spread)).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
@@ -492,7 +470,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
         // whole dots of its own colour, which then shrink
         const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t > 0 ? 1 : 0
-        const glass = t >= 1 ? 1 : clamp(t / 0.06) * (0.32 + 0.68 * ease(t))
+        // solid all the way down (its sides show while it falls), just fading in as it appears
+        const glass = t >= 1 ? 1 : clamp(t / 0.05)
+        // it starts out under the logo, in the middle of the top of the country, and comes down into its place
+        const from = t >= 1 ? 0 : fall(t)
+        const fx = ((CX - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((40 - MID[g][1]) * 0.7 * from / NET_VIEW.h) * 100
         const down = t >= 1
         if (down !== landed[g]) {
           landed[g] = down
@@ -501,7 +483,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
-          el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${sx.toFixed(2)}%, ${sy.toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
+          el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${(sx + fx).toFixed(2)}%, ${(sy + fy).toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
           el.style.opacity = String(op)
           if (dotted && qd < 1) {
             const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
@@ -701,20 +683,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           <p ref={tieSub} className={styles.tieSub}>All fifteen networks, in one place.</p>
         </div>
 
-        <div ref={leader} className={styles.leader} aria-hidden />
         <div ref={chip} className={styles.chip} aria-live="polite">
           <div ref={chipIn}>
             {net && key && (
               <div key={key} className={styles.company}>
-                <div className={styles.logo}><Logo k={key} h={wide ? 68 : 40} w={wide ? 380 : 230} /></div>
-                <p className={styles.meta}>
-                  <b>{net.states.join(" · ")}</b> {net.area}
-                  {CUSTOMERS[key] && <> About {CUSTOMERS[key]} customers.</>}
-                  {" "}<a href={net.website} target="_blank" rel="noopener noreferrer">{net.website.replace(/^https?:\/\/(www\.)?/, "")}{" ↗"}</a>
-                </p>
-                <div className={styles.rail} aria-hidden>
-                  {STEPS.map((g, i) => <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} />)}
-                </div>
+                <div className={styles.logo}><Logo k={key} h={wide ? 88 : 48} w={wide ? 460 : 260} /></div>
               </div>
             )}
           </div>
