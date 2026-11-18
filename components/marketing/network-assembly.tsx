@@ -55,10 +55,11 @@ const RIPPLE: Span = [0.886, 0.896], FLIGHT: Span = [0.896, 0.936]
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
 // painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
 // screen and the "15 companies." line grows and fades with them
-// it opens on a lit bulb that flickers out (BULB_OUT) under "When the power goes out, who do you call?"; the answer,
+// it opens on "When the power goes out," over a lit bulb that flickers out as the section scrolls fully into view, then
+// "who do you call?" under the dead bulb; the answer,
 // "15 companies.", comes in with their logos in two columns in the middle (LOGOS), then the columns part (PART) and
 // Australia comes up between them
-const BULB_OUT: Span = [0.004, 0.016], PART: Span = [0.1, 0.135]
+const PART: Span = [0.1, 0.135]
 const LOGOS: Span = [0.068, 0.094], FLY: Span = [0.145, 0.27], ZOOM: Span = [0.282, 0.37]
 // the timeline against the real scroll: the opening is short, the flying in a little longer, the rest as before, and
 // the last screen stays put for the final stretch of the section (raw 0.88 to 1)
@@ -90,7 +91,7 @@ const WORDS: Words[] = [
   // the opening line, alone and big; it goes as the country tips back
   // a small lead-in, then the big claim; the kicker and the claim are split by "|"
   // the opening question, one line at a time, over the bulb going out
-  { lines: [{ text: "When the power goes out,", inn: [-0.02, -0.01] }, { text: "who do you call?", inn: [0.014, 0.028] }], hero: true, at: "top", out: [0.044, 0.054] },
+  { lines: [{ text: "When the power goes out,", inn: [-0.02, -0.01] }, { text: "who do you call?", inn: [0.003, 0.016] }], hero: true, at: "top", out: [0.044, 0.054] },
   // as the logos come in, then as the country breaks apart
   // "15 companies." first, then the logos under it; "Across the nation." only once the columns part and Australia shows
   { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.112, 0.128], noteOut: [0.15, 0.164] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
@@ -154,8 +155,15 @@ const shapeOf = (i: number) => (i === HORIZON && SNIP_D ? HORIZON_D : NETS[i].d)
 const SPLIT: number[][] = MID.map(() => [0, 0])
 // each piece's own box on the map (x, y, w, h, in the map's units), a little padded. Its layer and its SVGs are cropped
 // to it, so a moving piece is a small layer for the browser to move about, not a map-sized one (times 13, for its sides)
+// Horizon's strip rides with Western Power (so it never drifts off on its own), dropping a little below it as they part
+const WPN = NETS.findIndex((n) => n.name === "Western Power")
+const SNIP_DROP: [number, number] = [6, 30], SNIP_MAX = 3.6
 const BOX = NETS.map((_, i) => {
   const v = (shapeOf(i).match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+  if (i === WPN && SNIP_D) {
+    const w = (SNIP_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+    for (let k = 0; k + 1 < w.length; k += 2) v.push(w[k], w[k + 1], w[k] + SNIP_DROP[0] * SNIP_MAX, w[k + 1] + SNIP_DROP[1] * SNIP_MAX)
+  }
   let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
   for (let k = 0; k + 1 < v.length; k += 2) { a = Math.min(a, v[k]); c = Math.max(c, v[k]); b = Math.min(b, v[k + 1]); d = Math.max(d, v[k + 1]) }
   return [a - 3, b - 3, c - a + 6, d - b + 6]
@@ -426,7 +434,7 @@ export function Logo({ k, h, w, area }: { k: NetKey; h: number; w: number; area?
 }
 
 /** Wattle's aurora (kept from the app's backgrounds, 15 Nov): three slow curtains of gold light across the top. */
-function drawAurora(c: CanvasRenderingContext2D, w: number, h: number, t: number, dk: boolean) {
+function drawAurora(c: CanvasRenderingContext2D, w: number, h: number, t: number, dk: boolean, reveal?: [number, number, number]) {
   c.setTransform(1, 0, 0, 1, 0, 0)
   c.clearRect(0, 0, w, h)
   c.globalCompositeOperation = dk ? "lighter" : "source-over"
@@ -440,6 +448,13 @@ function drawAurora(c: CanvasRenderingContext2D, w: number, h: number, t: number
       c.fillStyle = g; c.fillRect(x, y - len, 2.2, len)
     }
   })
+  // spreading out from a point: everything outside the circle is wiped, with a soft edge
+  if (reveal) {
+    const [x, y, r] = reveal, g = c.createRadialGradient(x, y, Math.max(0, r - 80), x, y, Math.max(1, r))
+    g.addColorStop(0, "#000"); g.addColorStop(1, "rgba(0,0,0,0)")
+    c.globalCompositeOperation = "destination-in"
+    c.fillStyle = r > 0 ? g : "rgba(0,0,0,0)"; c.fillRect(0, 0, w, h)
+  }
   c.globalCompositeOperation = "source-over"
 }
 
@@ -632,10 +647,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (au && actx) {
         au.style.visibility = th > 0 ? "visible" : "hidden"
         if (th > 0) {
-          const m = th < 1 ? `radial-gradient(circle at ${jx.toFixed(0)}px ${jy.toFixed(0)}px, #000 ${(rad - 160).toFixed(0)}px, transparent ${rad.toFixed(0)}px)` : ""
-          au.style.maskImage = m; au.style.webkitMaskImage = m
-          drawAurora(actx, au.width, au.height, performance.now() / 1000, dark.matches)
-        }
+          const ak = au.width / Math.max(1, sr.width)
+          drawAurora(actx, au.width, au.height, performance.now() / 1000, dark.matches, th < 1 ? [jx * ak, jy * ak, (rad - 80) * ak] : undefined)
+        } else actx.clearRect(0, 0, au.width, au.height)
       }
 
       // the fifteen logos, down both sides of the map, all the same height; each piece starts small and faint just inside
@@ -678,11 +692,17 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (mapBox.current) { mapBox.current.style.opacity = ls.toFixed(3); mapBox.current.style.visibility = ls > 0.001 ? "visible" : "hidden" }
       // the bulb: lit, flickering out, then gone with the question
       if (bulb.current) {
-        const ft = seg(p, BULB_OUT), flick = ft <= 0 ? 1 : ft >= 1 ? 0 : (Math.sin(ft * 41) > -0.15 ? 1 - ft * 0.5 : 0.12) * (1 - ft * ft)
+        const ft = seg(clamp(1 - secTop / Math.max(1, window.innerHeight)), [0.4, 1]), flick = ft <= 0 ? 1 : ft >= 1 ? 0 : (Math.sin(ft * 41) > -0.15 ? 1 - ft * 0.5 : 0.12) * (1 - ft * ft)
         const bo = 1 - ease(seg(p, WORDS[0].out))
         bulb.current.style.setProperty("--lit", flick.toFixed(3))
         bulb.current.style.opacity = bo.toFixed(3)
         bulb.current.style.visibility = bo > 0.001 ? "visible" : "hidden"
+        // "who do you call?" sits under the bulb, not under the first line
+        const box = words.current[0], q = box?.querySelectorAll<HTMLElement>("[data-line]")[1]
+        if (box && q) {
+          const at = box.getBoundingClientRect().top + q.offsetTop, under = bulb.current.getBoundingClientRect().bottom + (wide ? 30 : 18)
+          q.style.transform = `translateY(${(under - at).toFixed(1)}px)`
+        }
       }
 
       // the country tips back for the drops, then comes flat again
@@ -712,8 +732,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const lace = Math.pow(seg(p, LACE), 2.2), since = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9
       const knock = p > MEET ? 0.12 * Math.exp(-5.2 * since) * Math.abs(Math.sin((Math.PI * since) / 0.34)) : 0
       // as the sprigs anchor in, the pieces keep drifting slowly further apart (easing out) until the pull starts
-      const drift = 1 - Math.pow(1 - seg(p, [VINES[0], LACE[0]]), 3)
-      const apart = ((ease(seg(p, FLAT)) + 0.45 * drift) * (1 - lace) + knock) * (wide ? 2.4 : 1)
+      // one unbroken move, from the split right up to the pull: quick at first, slowing but never stopping
+      const drift = (1 - Math.pow(1 - seg(p, [FLAT[0], LACE[0]]), 3)) * ease(seg(p, [FLAT[0], FLAT[0] + 0.015]))
+      const apart = (1.45 * drift * (1 - lace) + knock) * (wide ? 2.4 : 1)
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, span(g)), e = ease(t)
@@ -754,10 +775,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", (glass * op).toFixed(3))
-          if (i === HORIZON && WP >= 0) {
-            const hg = STEPS.findIndex((s) => s.includes(HORIZON))
-            el.style.setProperty("--sx", `${((SPLIT[WP][0] - SPLIT[hg][0] + 6) * apart).toFixed(2)}px`)
-            el.style.setProperty("--sy", `${((SPLIT[WP][1] - SPLIT[hg][1] + 30) * apart).toFixed(2)}px`)
+          if (i === WPN) {
+            el.style.setProperty("--sx", `${(SNIP_DROP[0] * apart).toFixed(2)}px`)
+            el.style.setProperty("--sy", `${(SNIP_DROP[1] * apart).toFixed(2)}px`)
           }
           el.style.setProperty("--d", d3.toFixed(3))
           el.classList.toggle(styles.lifting, t < 1 && op > 0.001 && d3 > 0.02)
@@ -823,6 +843,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // every dot, each turning gold as its own lands
       const ready = flyers.length > 0
       const rp = still ? 1 : seg(p, RIPPLE), fl = still ? 1 : seg(p, FLIGHT)
+      // the flight's clock run on past its end, so the last dots to land still get their whole turn to gold
+      const flk = still ? 1.5 : Math.min(1.5, Math.max(0, (p - FLIGHT[0]) / (FLIGHT[1] - FLIGHT[0])))
       const mkEl = tieMark.current
       const ux = mk ? mk.left - sr.left : 0, uy = mk ? mk.top - sr.top : 0, uk = mk ? mk.width / TIE_VIEW.w : 0
       const jh = tieHalves(tu, reachU)
@@ -834,7 +856,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (ctx) {
         const q = seg(p, DOTS), gold = ease(seg(p, GOLD)), o = seg(p, SCATTER), out = o * o
         const ox = rr.left - sr.left, oy = rr.top - sr.top, sc = rr.width / NET_VIEW.w
-        const key = `${q.toFixed(3)}|${ready ? `${rp.toFixed(4)}|${fl.toFixed(4)}|${ux.toFixed(0)}|${uy.toFixed(0)}|${uk.toFixed(3)}` : gold.toFixed(3)}|${out.toFixed(4)}|${dark.matches}|${ox.toFixed(0)}|${oy.toFixed(0)}|${sc.toFixed(3)}`
+        const key = `${q.toFixed(3)}|${ready ? `${rp.toFixed(4)}|${flk.toFixed(4)}|${ux.toFixed(0)}|${uy.toFixed(0)}|${uk.toFixed(3)}` : gold.toFixed(3)}|${out.toFixed(4)}|${dark.matches}|${ox.toFixed(0)}|${oy.toFixed(0)}|${sc.toFixed(3)}`
         if (key !== drawn) {
           drawn = key
           ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -850,7 +872,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 if (front <= 0) continue
                 const m = ease(clamp(front * 40))
                 // gold once its own gold dot has landed, with a small pop (seconds of the app's timing, 2.25 for FLIGHT)
-                const since = (fl - d.land) * 2.25, k = ready ? (since > 0 ? ease(clamp(since / 0.2)) : 0) : gold
+                const since = (flk - d.land) * 2.25, k = ready ? (since > 0 ? ease(clamp(since / 0.2)) : 0) : gold
                 const pop = ready && since > 0 ? 1 + 0.5 * Math.exp(-11 * since) * Math.min(1, since * 30) : 1
                 const c = dark.matches ? d.cd : d.c
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * k), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * k), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * k)
@@ -966,11 +988,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                     transformOrigin: `${((MID[OWN[i]][0] - BOX[i][0]) / BOX[i][2]) * 100}% ${((MID[OWN[i]][1] - BOX[i][1]) / BOX[i][3]) * 100}%` }}>
                   {PIECE_SLICES.map((k) => (
                     <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k}px` }} viewBox={BOX[i].join(" ")} preserveAspectRatio="none" aria-hidden>
-                      <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
+                      <path d={shapeOf(i)} />{i === WPN && SNIP_D && <path className={styles.snip} d={SNIP_D} style={{ ["--c" as string]: tint("Horizon Power"), ["--cd" as string]: LIFT["Horizon Power"] ?? tint("Horizon Power") }} />}
                     </svg>
                   ))}
                   <svg viewBox={BOX[i].join(" ")} preserveAspectRatio="none" aria-hidden>
-                    <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
+                    <path d={shapeOf(i)} />{i === WPN && SNIP_D && <path className={styles.snip} d={SNIP_D} style={{ ["--c" as string]: tint("Horizon Power"), ["--cd" as string]: LIFT["Horizon Power"] ?? tint("Horizon Power") }} />}
                   </svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
                     style={{ left: `${((MID[g][0] - BOX[i][0]) / BOX[i][2]) * 100}%`, top: `${((MID[g][1] - BOX[i][1]) / BOX[i][3]) * 100}%` }} />}
