@@ -169,7 +169,7 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
 const PAIRS: [number, number][] = []
 MID.forEach((a, i) => {
   MID.map((b, j) => [j, Math.hypot(a[0] - b[0], a[1] - b[1])] as const).filter(([j]) => j !== i)
-    .sort((x, y) => x[1] - y[1]).slice(0, 3)
+    .sort((x, y) => x[1] - y[1]).slice(0, 2)
     .forEach(([j]) => {
       // Tasmania is an island already: no sprig across Bass Strait
       if (NETS[STEPS[i][0]].name === "TasNetworks" || NETS[STEPS[j][0]].name === "TasNetworks") return
@@ -181,23 +181,27 @@ const ACROSS = ([["Western Power", "Ergon Energy"], ["Power and Water", "SA Powe
   .map(([a, b]) => [group(a), group(b)] as [number, number]).filter(([a, b]) => a >= 0 && b >= 0)
 const tie = (a: number, b: number) => Math.hypot(MID[a][0] - MID[b][0], MID[a][1] - MID[b][1])
 const STRANDS = [
+  // the longer the tie (the bigger the pieces), the more strands and the sturdier they are; little neighbours get one
+  // fine strand. Each strand's thickness also wanders a little, so no two look the same
   ...PAIRS.flatMap(([a, b], k) => {
-    const one = { a, b, bend: (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03) }
-    const two = { a, b, bend: -one.bend * 0.8 }, three = { a, b, bend: one.bend * 0.45 }
-    return tie(a, b) > 220 ? [one, two, three] : tie(a, b) > 120 ? [one, two] : [one]
+    const L = tie(a, b), heft = Math.min(1, L / 300)
+    const w = (j: number) => (0.4 + 1.5 * heft) * (0.7 + (((k * 7 + j * 5) % 11) / 10) * 0.65)
+    const bends = [1, -0.8, 0.45, -0.3].map((m) => m * (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03))
+    const n = L > 260 ? 4 : L > 180 ? 3 : L > 100 ? 2 : 1
+    return bends.slice(0, n).map((bend, j) => ({ a, b, bend, w: w(j) }))
   }),
-  ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07 })),
+  ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07, w: 1.3 + (k % 2) * 0.5 })),
 ]
 // each sprig: a stem in four lengths that go under, over, under, over the pieces (the start alternating), thin leaves
 // along it, and two small clusters of wattle balls
 const SEGS = 4
-const LEAVES = [0.06, 0.13, 0.2, 0.28, 0.36, 0.44, 0.52, 0.6, 0.68, 0.76, 0.84, 0.92]
+const LEAVES = [0.14, 0.36, 0.58, 0.8]
 const BLOOMS = [0.24, 0.5, 0.78]
 const BALLS: [number, number][] = [[0, -9], [6.5, -5], [-6, -4], [1.5, -15]]
 // every length runs under the pieces: the sprigs show only in the gaps, and vanish as the gaps close
 const over = (_k: number, _u: number) => false
 // each sprig its own size, from slight to sturdy
-const SIZE = (k: number) => 0.45 + (((k * 7) % 11) / 10) * 1.25
+const SIZE = (k: number) => STRANDS[k].w
 type Pt = [number, number]
 const lerpP = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 const halves = ([a, b, c, d]: Pt[], t: number) => {
