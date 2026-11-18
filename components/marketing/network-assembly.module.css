@@ -97,6 +97,10 @@
 }
 .words > div { opacity: 0; will-change: opacity; }
 .words p { margin: 0; }
+.words [data-line] { opacity: 0; }
+/* the numbers are the point: bigger and heavier than the words round them */
+.num { font-family: var(--rounded); font-weight: 800; font-size: 1.32em; line-height: 0.9; letter-spacing: -0.04em; font-variant-numeric: lining-nums; color: var(--ink); }
+.sub .num, .tieSub .num { font-size: 1.12em; }
 /* .words .big, not .big: the page's own `.page p { color: inherit }` would otherwise win and grey it out */
 .words .big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.4vw, 50px); line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); }
 /* the smaller line under a big one */
@@ -126,7 +130,7 @@
   letter-spacing: -0.025em; color: var(--ink); white-space: nowrap;
 }
 .tieRow span { display: inline-block; opacity: 0; }
-.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
+.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 18px; letter-spacing: 0.01em; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
 
 /* the company landing now: its logo alone, centred under the headline (placed by the script), always in one spot */
 .chip {
