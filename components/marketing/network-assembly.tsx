@@ -13,7 +13,8 @@ import { STITCHES } from "./network-stitches"
 //   2. it tips back into 3D, and each network's area drops onto it in turn, named with its logo and details
 //   3. the map comes back flat and breaks apart into fifteen pieces, with no country behind them
 //   4. Wattle sprigs grow between the pieces, twining, then pull tight like a lace and draw them back into one
-//   5. each area turns into dots of its own colour, the dots turn wattle gold, and finally drift away
+//   5. each area turns into dots of its own colour; a gold ripple from where the t's meet turns the wordmark into wattle
+//      dots (the app's pull to refresh), which fly down, one onto every dot, each turning gold as its own lands; then away
 // Words arrive in different places as it goes, some over the map. Reduced motion shows the gold map, still.
 
 // Each network in the strongest colour of its own logo (the app's brand table, NetworkBrand in Models.swift), swapped
@@ -47,6 +48,9 @@ type Span = [number, number]
 const TIP: Span = [0.05, 0.06], TIP0 = 0.28
 const DROPS: Span = [0.09, 0.37], FACE: Span = [0.312, 0.37], FLAT: Span = [0.38, 0.43], VINES: Span = [0.44, 0.6]
 const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
+// the wordmark ripples into wattle dots (RIPPLE), then they fly down onto the map (FLIGHT). GOLD is only the fallback
+// for when the wordmark couldn't be loaded: then the dots just turn gold together
+const RIPPLE: Span = [0.886, 0.896], FLIGHT: Span = [0.896, 0.936]
 // The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
 // painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
@@ -260,7 +264,7 @@ const heading = (q: Pt[], t: number) => {
 const fall = (t: number) => 1 - ease(t)
 
 // the dots: a fine grid over the country, each in its network's colour, revealed in a sweep from the middle
-type Dot = { n: number; x: number; y: number; r: number; d: number; c: number[]; cd: number[]; vx: number; vy: number }
+type Dot = { n: number; x: number; y: number; r: number; d: number; c: number[]; cd: number[]; vx: number; vy: number; land: number }
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 const GOLD_RGB = rgb("#F2B300")
 function makeDots(paths: SVGPathElement[]): Dot[] {
@@ -278,10 +282,71 @@ function makeDots(paths: SVGPathElement[]): Dot[] {
       const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 1500 + rand() * 2300
       out.push({
         n, x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist),
-        c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(),
+        c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(), land: Infinity,
       })
     }
   }
+  return out
+}
+
+// The wordmark as wattle dots, packed largest first as the app's pull to refresh does, in the wordmark's own units
+// (TIE_VIEW). Packed on a 400px-wide copy, where the app's sizes were tuned.
+type WDot = { x: number; y: number; r: number; d: number; kids: Flyer[]; leave: number[] }
+type Flyer = { s: WDot; to: Dot; tl: number; dur: number; jx: number; jy: number }
+const JOIN: Pt = [168, 24.28] // where the t's meet, in the wordmark's units
+function packWord(path: string): WDot[] {
+  const k = 400 / TIE_VIEW.w, W = 400, H = Math.ceil(TIE_VIEW.h * k)
+  const c = document.createElement("canvas"); c.width = W; c.height = H
+  const g = c.getContext("2d", { willReadFrequently: true })
+  if (!g) return []
+  g.scale(k, k); g.fill(new Path2D(path))
+  const px = g.getImageData(0, 0, W, H).data
+  const inside = (x: number, y: number) => { x |= 0; y |= 0; return x >= 0 && y >= 0 && x < W && y < H && px[(y * W + x) * 4 + 3] > 200 }
+  let seed = 11
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const cell = 10, grid = new Map<string, { x: number; y: number; r: number }[]>(), got: { x: number; y: number; r: number }[] = []
+  const fits = (x: number, y: number, r: number) => {
+    if (!inside(x, y)) return false
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; if (!inside(x + Math.cos(a) * r * 0.92, y + Math.sin(a) * r * 0.92)) return false }
+    const cx = Math.floor(x / cell), cy = Math.floor(y / cell)
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const o of grid.get(`${cx + i},${cy + j}`) ?? []) if (Math.hypot(o.x - x, o.y - y) < o.r + r + 0.9) return false
+    return true
+  }
+  for (const r of [4.6, 3.8, 3.1, 2.5, 2.0, 1.6]) for (let n = 0; n < 9000; n++) {
+    const x = rand() * W, y = rand() * H
+    if (!fits(x, y, r)) continue
+    const o = { x, y, r: r * (0.94 + rand() * 0.12) }, key = `${Math.floor(x / cell)},${Math.floor(y / cell)}`
+    got.push(o); grid.set(key, [...(grid.get(key) ?? []), o])
+  }
+  return got.map((o) => ({ x: o.x / k, y: o.y / k, r: o.r / k, d: Math.hypot(o.x / k - JOIN[0], o.y / k - JOIN[1]), kids: [], leave: [] }))
+}
+// One gold dot flies to every map dot. Each map dot is fed by the word dot whose place in the word matches its place on
+// the map (left letters feed the west, the tops of the letters the north); a word dot whose place is off the coast still
+// flies, to the nearest map dot. Times are fractions of FLIGHT, scattered so they land all over at once, not as a wave
+function planFlight(word: WDot[], dots: Dot[]): Flyer[] {
+  let seed = 13
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const maxD = Math.max(...word.map((w) => w.d)), xs = word.map((w) => w.x), ys = word.map((w) => w.y)
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys)
+  const home = word.map((w) => [NET_VIEW.w * (0.04 + (0.92 * (w.x - x0)) / (x1 - x0)), NET_VIEW.h * (0.1 + (0.8 * (w.y - y0)) / (y1 - y0))])
+  const fly = (s: WDot, to: Dot): Flyer => {
+    const f = { s, to, tl: (0.25 * (s.d / maxD) + rand() * 0.95) / 2.25, dur: (0.65 + rand() * 0.4) / 2.25, jx: rand() - 0.5, jy: rand() }
+    s.kids.push(f); to.land = Math.min(to.land, f.tl + f.dur); return f
+  }
+  word.forEach((w) => { w.kids = [] })
+  dots.forEach((d) => { d.land = Infinity })
+  const out = dots.map((d) => {
+    let bi = 0, bv = Infinity
+    home.forEach(([hx, hy], k) => { const e = (hx - d.x) ** 2 + ((hy - d.y) * 1.6) ** 2; if (e < bv) { bv = e; bi = k } })
+    return fly(word[bi], d)
+  })
+  word.forEach((w, k) => {
+    if (w.kids.length) return
+    let best = dots[0], bv = Infinity
+    for (const d of dots) { const e = (home[k][0] - d.x) ** 2 + (home[k][1] - d.y) ** 2; if (e < bv) { bv = e; best = d } }
+    out.push(fly(w, best))
+  })
+  word.forEach((w) => { w.leave = w.kids.map((f) => f.tl).sort((a, b) => a - b) })
   return out
 }
 
@@ -431,6 +496,18 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const tie = tieMark.current ? makeTie(tieMark.current) : null
     let tied = -1, tiedReach = -1
     const au = aurora.current, actx = au?.getContext("2d") ?? null
+    // the wordmark as wattle dots and their flights down onto the map, ready once the wordmark has loaded
+    let word: WDot[] = [], flyers: Flyer[] = [], wordMax = 1, gone = false
+    fetch("/wattle-wordmark.svg").then((r) => r.text()).then((svg) => {
+      const d = svg.match(/ d="([^"]+)"/)?.[1]
+      if (gone || !d) return
+      word = packWord(d)
+      if (!word.length) return
+      wordMax = Math.max(...word.map((w) => w.d))
+      flyers = planFlight(word, dots)
+      drawn = ""
+      if (still) paint(0.9)
+    }).catch(() => {})
 
     // the wordmark as wide as the line of words over it
     const fitMark = () => {
@@ -713,18 +790,28 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         })
       }
 
-      // the dots, over the whole stage so they can fly off it: in each area's colour, then gold, then away
+      // the dots, over the whole stage so they can fly off it: in each area's colour, then gold, then away. The gold
+      // comes from the wordmark: a ripple from where the t's meet turns it into wattle dots, and they fly down, one onto
+      // every dot, each turning gold as its own lands
+      const ready = flyers.length > 0
+      const rp = still ? 1 : seg(p, RIPPLE), fl = still ? 1 : seg(p, FLIGHT)
+      const mkEl = tieMark.current
+      const ux = mk ? mk.left - sr.left : 0, uy = mk ? mk.top - sr.top : 0, uk = mk ? mk.width / TIE_VIEW.w : 0
+      if (mkEl) {
+        // the solid wordmark is eaten away by the ripple, from the join out
+        const m = ready && rp > 0 ? (rp >= 1 ? "linear-gradient(transparent, transparent)" : `radial-gradient(circle at ${(JOIN[0] * uk).toFixed(1)}px ${(JOIN[1] * uk).toFixed(1)}px, transparent ${(rp * wordMax * uk).toFixed(1)}px, #000 ${(rp * wordMax * uk + 0.6).toFixed(1)}px)`) : ""
+        if (mkEl.style.maskImage !== m) { mkEl.style.maskImage = m; mkEl.style.setProperty("-webkit-mask-image", m) }
+      }
       if (ctx) {
         const q = seg(p, DOTS), gold = ease(seg(p, GOLD)), o = seg(p, SCATTER), out = o * o
         const ox = rr.left - sr.left, oy = rr.top - sr.top, sc = rr.width / NET_VIEW.w
-        const key = `${q.toFixed(3)}|${gold.toFixed(3)}|${out.toFixed(4)}|${dark.matches}|${ox.toFixed(0)}|${oy.toFixed(0)}|${sc.toFixed(3)}`
+        const key = `${q.toFixed(3)}|${ready ? `${rp.toFixed(4)}|${fl.toFixed(4)}|${ux.toFixed(0)}|${uy.toFixed(0)}|${uk.toFixed(3)}` : gold.toFixed(3)}|${out.toFixed(4)}|${dark.matches}|${ox.toFixed(0)}|${oy.toFixed(0)}|${sc.toFixed(3)}`
         if (key !== drawn) {
           drawn = key
           ctx.setTransform(1, 0, 0, 1, 0, 0)
           ctx.clearRect(0, 0, cv.width, cv.height)
           if (q > 0 && o < 1) {
             ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy)
-            const shrink = 1 - 0.28 * gold
             // the morph: as the ring passes, each dot starts as a disc a little bigger than the gap between dots, over its
             // still-solid area, and shrinks to its dot while the area melts away under it. Nothing is clipped: a disc may
             // spill a touch past its edge, but every dot stays whole
@@ -733,20 +820,50 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 const front = q * 1.35 - d.d
                 if (front <= 0) continue
                 const m = ease(clamp(front * 40))
+                // gold once its own gold dot has landed, with a small pop (seconds of the app's timing, 2.25 for FLIGHT)
+                const since = (fl - d.land) * 2.25, k = ready ? (since > 0 ? ease(clamp(since / 0.2)) : 0) : gold
+                const pop = ready && since > 0 ? 1 + 0.5 * Math.exp(-11 * since) * Math.min(1, since * 30) : 1
                 const c = dark.matches ? d.cd : d.c
-                const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
+                const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * k), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * k), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * k)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
                 ctx.beginPath()
-                ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * shrink * (1 + 1.6 * o * o), 0, Math.PI * 2)
+                ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * (1 - 0.28 * k) * pop * (1 + 1.6 * o * o), 0, Math.PI * 2)
                 ctx.fill()
               }
             })
+          }
+          if (ready && rp > 0 && fl < 1 && mk) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+            ctx.fillStyle = "#F2B300"
+            // the word's dots, popping in as the ripple reaches them, shrinking as their gold dots leave
+            for (const w of word) {
+              const ahead = (rp - w.d / wordMax) * 0.5
+              if (ahead < 0) continue
+              let left = 0
+              for (const tl of w.leave) if (tl > fl) left++
+              if (!left) continue
+              const r = w.r * uk * (1 + 0.45 * Math.exp(-12 * ahead)) * Math.sqrt(left / w.leave.length)
+              ctx.beginPath(); ctx.arc(ux + w.x * uk, uy + w.y * uk, r, 0, Math.PI * 2); ctx.fill()
+            }
+            // the gold dots in flight: up a little first, then down onto their own dot, with a short faint tail
+            ctx.strokeStyle = "rgba(242,179,0,0.3)"; ctx.lineCap = "round"
+            const lift = uk * (400 / TIE_VIEW.w) ** -1
+            for (const f of flyers) {
+              const u0 = (fl - f.tl) / f.dur
+              if (u0 <= 0 || u0 >= 1) continue
+              const sx = ux + f.s.x * uk, sy = uy + f.s.y * uk, tx = ox + f.to.x * sc, ty = oy + f.to.y * sc
+              const cx = sx + (tx - sx) * 0.3 + f.jx * 110 * lift, cy = sy - (25 + 70 * f.jy) * lift
+              const at = (u: number) => { const v = 1 - u; return [v * v * sx + 2 * v * u * cx + u * u * tx, v * v * sy + 2 * v * u * cy + u * u * ty] }
+              const u = ease(u0), [px, py] = at(u), [qx, qy] = at(Math.max(0, u - 0.07)), r = f.to.r * sc * (0.55 + 0.45 * u)
+              ctx.lineWidth = r * 1.2; ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(px, py); ctx.stroke()
+              ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill()
+            }
           }
         }
       }
     }
 
-    if (still) { paint(0.9); return () => ro.disconnect() }
+    if (still) { paint(0.9); return () => { gone = true; ro.disconnect() } }
 
     // follow the scroll with a little lag of our own, so a flick of the wheel plays through rather than skipping
     const frame = () => {
@@ -764,7 +881,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (visible && !raf) raf = requestAnimationFrame(frame)
     }, { rootMargin: "200px 0px" })
     io.observe(sec)
-    return () => { io.disconnect(); ro.disconnect(); cancelAnimationFrame(raf) }
+    return () => { gone = true; io.disconnect(); ro.disconnect(); cancelAnimationFrame(raf) }
   }, [still, wide])
 
   return (
