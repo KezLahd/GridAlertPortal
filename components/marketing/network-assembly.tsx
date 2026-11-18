@@ -5,6 +5,7 @@ import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW } from "./network-map-data"
 import styles from "./network-assembly.module.css"
 import { makeTie, TIE_VIEW } from "./brand-tie"
+import { STITCHES } from "./network-stitches"
 
 // The page's story, told on one map of Australia as you scroll. Every step is tied to the scroll position (smoothed
 // a little more on top of Lenis, like a scrubbed timeline), so nothing fires and vanishes on one flick of the wheel:
@@ -164,40 +165,19 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
   D.forEach((d, g) => { SPLIT[g][0] = d[0]; SPLIT[g][1] = d[1] })
 }
 
-// the sprigs: each company tied to its two nearest (a second strand on the longer ties), and three more right across
-// the middle of the country, so it's laced through the centre and not only round the edge
-const PAIRS: [number, number][] = []
-MID.forEach((a, i) => {
-  MID.map((b, j) => [j, Math.hypot(a[0] - b[0], a[1] - b[1])] as const).filter(([j]) => j !== i)
-    .sort((x, y) => x[1] - y[1]).slice(0, 2)
-    .forEach(([j]) => {
-      // Tasmania is an island already: no sprig across Bass Strait
-      if (NETS[STEPS[i][0]].name === "TasNetworks" || NETS[STEPS[j][0]].name === "TasNetworks") return
-      if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j])
-    })
-})
-const group = (name: string) => STEPS.findIndex((g) => NETS[g[0]].name === name)
-const ACROSS = ([["Western Power", "Ergon Energy"], ["Power and Water", "SA Power Networks"], ["Horizon Power", "Essential Energy"]] as const)
-  .map(([a, b]) => [group(a), group(b)] as [number, number]).filter(([a, b]) => a >= 0 && b >= 0)
-const tie = (a: number, b: number) => Math.hypot(MID[a][0] - MID[b][0], MID[a][1] - MID[b][1])
-const STRANDS = [
-  // the longer the tie (the bigger the pieces), the more strands and the sturdier they are; little neighbours get one
-  // fine strand. Each strand's thickness also wanders a little, so no two look the same
-  ...PAIRS.flatMap(([a, b], k) => {
-    const L = tie(a, b), heft = Math.min(1, L / 300)
-    const w = (j: number) => (0.4 + 1.5 * heft) * (0.7 + (((k * 7 + j * 5) % 11) / 10) * 0.65)
-    const bends = [1, -0.8, 0.45, -0.3].map((m) => m * (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03))
-    const n = L > 260 ? 4 : L > 180 ? 3 : L > 100 ? 2 : 1
-    return bends.slice(0, n).map((bend, j) => ({ a, b, bend, w: w(j) }))
-  }),
-  ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07, w: 1.3 + (k % 2) * 0.5 })),
-]
+// the sprigs: short stitches across every border where two pieces meet, evenly spaced along it (network-stitches.ts),
+// so as the country breaks apart each gap is laced across its whole length, and the stitches draw it back together.
+// Longer borders (the big states) get sturdier stitches; each one's thickness wanders a little
+const STRANDS = STITCHES.map((t, k) => ({
+  ...t, bend: (k % 2 ? -1 : 1) * (0.1 + (k % 3) * 0.05),
+  w: (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.75 + (((k * 7) % 11) / 10) * 0.5),
+}))
 // each sprig: a stem in four lengths that go under, over, under, over the pieces (the start alternating), thin leaves
 // along it, and two small clusters of wattle balls
-const SEGS = 4
-const LEAVES = [0.14, 0.36, 0.58, 0.8]
-const BLOOMS = [0.24, 0.5, 0.78]
-const BALLS: [number, number][] = [[0, -9], [6.5, -5], [-6, -4], [1.5, -15]]
+const SEGS = 2
+const LEAVES = [0.3, 0.7]
+const BLOOMS = [0.5]
+const BALLS: [number, number][] = [[0, -5], [3.6, -2.6], [-3.4, -2.2]]
 // every length runs under the pieces: the sprigs show only in the gaps, and vanish as the gaps close
 const over = (_k: number, _u: number) => false
 // each sprig its own size, from slight to sturdy
@@ -546,8 +526,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const on = grow > 0 && tight < 1
         vs.style.opacity = vu.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
-          const A: Pt = [MID[s.a][0] + SPLIT[s.a][0] * apart, MID[s.a][1] + SPLIT[s.a][1] * apart]
-          const B: Pt = [MID[s.b][0] + SPLIT[s.b][0] * apart, MID[s.b][1] + SPLIT[s.b][1] * apart]
+          const A: Pt = [s.pa[0] + SPLIT[s.a][0] * apart, s.pa[1] + SPLIT[s.a][1] * apart]
+          const B: Pt = [s.pb[0] + SPLIT[s.b][0] * apart, s.pb[1] + SPLIT[s.b][1] * apart]
           const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]
@@ -555,7 +535,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           for (let j = 0; j < SEGS; j++) {
             const el = stems.current[k * SEGS + j]
             if (!el) continue
-            el.style.strokeWidth = (2.6 * SIZE(k)).toFixed(2)
+            el.style.strokeWidth = (3.6 * SIZE(k)).toFixed(2)
             const t0 = j / SEGS, t1 = Math.min((j + 1) / SEGS, g)
             if (t1 <= t0) { el.setAttribute("d", ""); continue }
             const [p0, p1, p2, p3] = part(q, t0, t1)
@@ -566,21 +546,22 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             if (!el) return
             const sz = clamp((g - u) * 8)
             if (sz <= 0) { el.setAttribute("rx", "0"); el.setAttribute("ry", "0"); return }
-            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 12 * sz * SIZE(k)
+            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 6 * sz * SIZE(k)
             const cx = x + Math.cos(ang) * rx, cy = y + Math.sin(ang) * rx
             el.setAttribute("cx", cx.toFixed(1)); el.setAttribute("cy", cy.toFixed(1))
-            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (2.8 * sz * SIZE(k)).toFixed(2))
+            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (1.6 * sz * SIZE(k)).toFixed(2))
             el.setAttribute("transform", `rotate(${((ang * 180) / Math.PI).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`)
           })
           BLOOMS.forEach((u, j) => {
-            const sz = clamp((g - u) * 6), [x, y] = at(q, u), ang = heading(q, u), c = Math.cos(ang), sn = Math.sin(ang)
+            // wattle only on every third stitch
+            const sz = k % 3 ? 0 : clamp((g - u) * 6), [x, y] = at(q, u), ang = heading(q, u), c = Math.cos(ang), sn = Math.sin(ang)
             const side = (j + k) % 2 ? 1 : -1
             BALLS.forEach(([ox, oy], m) => {
               const el = balls.current[(k * BLOOMS.length + j) * BALLS.length + m]
               if (!el) return
               const px = (ox * c - oy * side * sn) * SIZE(k), py = (ox * sn + oy * side * c) * SIZE(k)
               el.setAttribute("cx", (x + px).toFixed(1)); el.setAttribute("cy", (y + py).toFixed(1))
-              el.setAttribute("r", ((m === 3 ? 3.4 : 4.4) * sz * SIZE(k)).toFixed(2))
+              el.setAttribute("r", (2.3 * sz * SIZE(k)).toFixed(2))
             })
           })
         })
