@@ -58,6 +58,7 @@
 .allIn .edge { display: block; }
 .allIn .base { visibility: hidden; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
+.layer .snip { transform: translate(var(--sx, 0), var(--sy, 0)); }
 .layer .edge path { fill: color-mix(in srgb, var(--c), #000 38%); stroke: color-mix(in srgb, var(--c), #000 38%); }
 @media (prefers-color-scheme: dark) { .layer .edge path { fill: color-mix(in srgb, var(--cd, var(--c)), #000 45%); stroke: color-mix(in srgb, var(--cd, var(--c)), #000 45%); } }
 /* the patches' borders on the grey country, drawn in as the section arrives (--draw goes 1 to 0) */

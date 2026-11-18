@@ -79,9 +79,19 @@ const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
 
 // the middle of each company's areas, and how far it moves out when the country breaks apart
 const MID = STEPS.map((g) => g.reduce((a, i) => [a[0] + NETS[i].at[0] / g.length, a[1] + NETS[i].at[1] / g.length], [0, 0]))
+// Horizon Power's little strip on the south coast (its first outline, below this line) breaks off on its own when the
+// country splits, dropping below Western Power, so the west comes apart like a puzzle
+const SNIP_Y = 645
+const HORIZON = NETS.findIndex((n) => n.name === "Horizon Power")
+const [SNIP_D, HORIZON_D] = (() => {
+  const parts = NETS[HORIZON]?.d.split(/(?=M)/) ?? []
+  return [parts.filter((d) => +d.slice(1).split(/[ L]/)[1] > SNIP_Y).join(""), parts.filter((d) => +d.slice(1).split(/[ L]/)[1] <= SNIP_Y).join("")]
+})()
+const shapeOf = (i: number) => (i === HORIZON && SNIP_D ? HORIZON_D : NETS[i].d)
 // filled in by evenSplit() once the shapes are on the page
 const SPLIT: number[][] = MID.map(() => [0, 0])
 const TAS = STEPS.findIndex((g) => NETS[g[0]].name === "TasNetworks")
+const WP = STEPS.findIndex((g) => NETS[g[0]].name === "Western Power")
 
 /** Where each piece goes when the country breaks apart: pushed out from the middle a little, then nudged apart until
  *  every piece sits the same gap from each of its neighbours, none covering another. */
@@ -93,7 +103,7 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     pt.x = c * step + step / 2; pt.y = r * step + step / 2
     const n = paths.findIndex((p) => p.isPointInFill(pt))
-    if (n >= 0) owner[r * cols + c] = gOf[n]
+    if (n >= 0 && !(NETS[n].name === "Horizon Power" && pt.y > SNIP_Y)) owner[r * cols + c] = gOf[n]
   }
   const pts: { g: number; x: number; y: number }[] = [], mass = MID.map(() => 0)
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -107,9 +117,9 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
     if (nb) pts.push({ g, x: c * step + step / 2, y: r * step + step / 2 })
   }
   const D = MID.map(([x, y]) => [(x - CX) * 0.14, (y - CY - 40) * 0.14])
-  // a few start off in a set direction: Western Power straight down, away from Horizon above it; Evoenergy (the ACT,
+  // a few start off in a set direction: Evoenergy (the ACT,
   // a hole in Essential's area) out to the south-east and Essential up and away from it, so it has a gap of its own
-  const START: Record<string, [number, number]> = { "Western Power": [-4, 46], "Evoenergy": [34, 44], "Essential Energy": [-12, -16] }
+  const START: Record<string, [number, number]> = { "Evoenergy": [34, 44], "Essential Energy": [-12, -16] }
   STEPS.forEach((g, i) => { const v = START[NETS[g[0]].name]; if (v) D[i] = [...v] })
   const small = Math.min(...mass.filter((m) => m > 0))
   for (let it = 0; it < 160; it++) {
@@ -466,7 +476,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
       const fit = wide ? Math.min(0.96, Math.max(0.7, (sr.width - 2 * (cw + 64)) / Math.max(1, rg.offsetWidth))) : 0.96
       rg.style.transform = tilt > 0.0005 || room > 0.0005
-        ? `translateY(${(tilt * 3 + room * 8).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.15 * room)).toFixed(4)})`
+        ? `translateY(${(tilt * 3 + room * 6).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.05 * room)).toFixed(4)})`
         : "none"
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
@@ -508,6 +518,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", glass.toFixed(3))
+          if (i === HORIZON && WP >= 0) {
+            const hg = STEPS.findIndex((s) => s.includes(HORIZON))
+            el.style.setProperty("--sx", `${((SPLIT[WP][0] - SPLIT[hg][0] + 6) * apart).toFixed(2)}px`)
+            el.style.setProperty("--sy", `${((SPLIT[WP][1] - SPLIT[hg][1] + 30) * apart).toFixed(2)}px`)
+          }
           el.classList.toggle(styles.lifting, t > 0 && t < 1)
         })
       })
@@ -656,9 +671,13 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
                   {[4, 3, 2, 1].map((k) => (
-                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                      <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
+                    </svg>
                   ))}
-                  <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                  <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                    <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
+                  </svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
                     style={{ left: `${(MID[g][0] / NET_VIEW.w) * 100}%`, top: `${(MID[g][1] / NET_VIEW.h) * 100}%` }} />}
                 </div>
