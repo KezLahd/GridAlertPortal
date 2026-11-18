@@ -73,7 +73,6 @@
 .allIn .base { visibility: hidden; }
 .allIn .floor { filter: none; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
-.layer .snip { transform: translate(var(--sx, 0), var(--sy, 0)); }
 .layer .edge path { fill: color-mix(in srgb, var(--c), #000 38%); stroke: color-mix(in srgb, var(--c), #000 38%); }
 @media (prefers-color-scheme: dark) { .layer .edge path { fill: color-mix(in srgb, var(--cd, var(--c)), #000 45%); stroke: color-mix(in srgb, var(--cd, var(--c)), #000 45%); } }
 /* the patches' borders on the grey country, drawn in as the section arrives (--draw goes 1 to 0) */
@@ -121,7 +120,7 @@
 /* the wordmark leads: it's the biggest thing here, with room under it before the line */
 /* the opening question leads with its first line; the second is the quieter follow-up */
 .words .kicker { margin: 0 0 0.16em; font-family: var(--rounded); font-weight: 700; font-size: clamp(40px, 5.4vw, 88px); line-height: 1.02; letter-spacing: -0.032em; color: var(--ink); }
-.words .big.hero { margin: 0; font-weight: 600; font-size: clamp(32px, 3.9vw, 62px); line-height: 1.1; letter-spacing: -0.02em; color: var(--muted); }
+.words .big.hero { margin: 0; font-weight: 600; font-size: clamp(32px, 3.9vw, 62px); line-height: 1.1; letter-spacing: -0.02em; color: var(--ink); }
 /* the line under "15 companies." */
 .words .note { display: block; margin-top: 0.55em; font-family: var(--rounded); font-weight: 500; font-size: clamp(16px, 1.35vw, 21px); letter-spacing: 0; line-height: 1.3; color: var(--muted); opacity: 0; }
 

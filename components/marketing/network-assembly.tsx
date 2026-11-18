@@ -91,10 +91,11 @@ const WORDS: Words[] = [
   // the opening line, alone and big; it goes as the country tips back
   // a small lead-in, then the big claim; the kicker and the claim are split by "|"
   // the opening question, one line at a time, over the bulb going out
-  { lines: [{ text: "When the power goes out,", inn: [-0.02, -0.01] }, { text: "who do you call?", inn: [0.003, 0.016] }], hero: true, at: "top", out: [0.044, 0.054] },
+  { lines: [{ text: "When the power goes out,", inn: [-0.02, -0.01] }, { text: "who do you call?", inn: [0.016, 0.028] }], hero: true, at: "top", out: [0.044, 0.054] },
   // as the logos come in, then as the country breaks apart
-  // "15 companies." first, then the logos under it; "Across the nation." only once the columns part and Australia shows
-  { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.112, 0.128], noteOut: [0.15, 0.164] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
+  // "15 companies." first, then the logos under it; "Across the nation." once the columns part and Australia shows, and
+  // it stays until the line goes past the camera
+  { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.112, 0.128] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
   // as the dots turn gold
   { lines: [{ text: "**15** networks. **1** map.", inn: [0.832, 0.852] }], at: "bottomLeft", out: [0.925, 0.94] },
   { lines: [{ text: "Be the first to know.", inn: [0.94, 0.965] }], brand: true, at: "centre", out: [2, 3] },
@@ -155,14 +156,13 @@ const shapeOf = (i: number) => (i === HORIZON && SNIP_D ? HORIZON_D : NETS[i].d)
 const SPLIT: number[][] = MID.map(() => [0, 0])
 // each piece's own box on the map (x, y, w, h, in the map's units), a little padded. Its layer and its SVGs are cropped
 // to it, so a moving piece is a small layer for the browser to move about, not a map-sized one (times 13, for its sides)
-// Horizon's strip rides with Western Power (so it never drifts off on its own), dropping a little below it as they part
+// Horizon's strip rides on Western Power, right where it sits, so it never drifts off on its own
 const WPN = NETS.findIndex((n) => n.name === "Western Power")
-const SNIP_DROP: [number, number] = [6, 30], SNIP_MAX = 3.6
 const BOX = NETS.map((_, i) => {
   const v = (shapeOf(i).match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
   if (i === WPN && SNIP_D) {
     const w = (SNIP_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
-    for (let k = 0; k + 1 < w.length; k += 2) v.push(w[k], w[k + 1], w[k] + SNIP_DROP[0] * SNIP_MAX, w[k + 1] + SNIP_DROP[1] * SNIP_MAX)
+    v.push(...w)
   }
   let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
   for (let k = 0; k + 1 < v.length; k += 2) { a = Math.min(a, v[k]); c = Math.max(c, v[k]); b = Math.min(b, v[k + 1]); d = Math.max(d, v[k + 1]) }
@@ -522,7 +522,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const COVER = 7.8
 
     const tie = tieMark.current ? makeTie(tieMark.current) : null
-    let tied = -1, tiedReach = -1
+    let tied = -1, tiedReach = -1, bulbFit = ""
     const au = aurora.current, actx = au?.getContext("2d") ?? null
     // the wordmark as wattle dots and their flights down onto the map, ready once the wordmark has loaded
     let word: WDot[] = [], flyers: Flyer[] = [], wordMax = 1, gone = false
@@ -678,6 +678,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const zx = cx + (xm + mw[g] / 2 - cx) * near - mw[g] / 2, zy = cy + (y + mh[g] / 2 - cy) * near - mh[g] / 2
         m.style.transform = `translate3d(${zx.toFixed(1)}px, ${zy.toFixed(1)}px, 0) scale(${((0.97 + 0.03 * a) * near).toFixed(4)})`
       })
+      // "15 websites." takes the top line of the box, where "15 companies." was, well clear of the map
+      {
+        const l2 = words.current[1]?.querySelectorAll<HTMLElement>("[data-line]")
+        if (l2?.[1]) l2[1].style.transform = `translateY(${(l2[0].offsetTop - l2[1].offsetTop).toFixed(1)}px)`
+      }
       // "15 companies." sits just over the top of the frame of logos, and comes past the camera with them
       {
         const box = words.current[1], ln = box?.querySelector<HTMLElement>("[data-line]")
@@ -692,16 +697,21 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       if (mapBox.current) { mapBox.current.style.opacity = ls.toFixed(3); mapBox.current.style.visibility = ls > 0.001 ? "visible" : "hidden" }
       // the bulb: lit, flickering out, then gone with the question
       if (bulb.current) {
-        const ft = seg(clamp(1 - secTop / Math.max(1, window.innerHeight)), [0.4, 1]), flick = ft <= 0 ? 1 : ft >= 1 ? 0 : (Math.sin(ft * 41) > -0.15 ? 1 - ft * 0.5 : 0.12) * (1 - ft * ft)
+        const ft = seg(p, [0.002, 0.014]), flick = ft <= 0 ? 1 : ft >= 1 ? 0 : (Math.sin(ft * 41) > -0.15 ? 1 - ft * 0.5 : 0.12) * (1 - ft * ft)
         const bo = 1 - ease(seg(p, WORDS[0].out))
         bulb.current.style.setProperty("--lit", flick.toFixed(3))
         bulb.current.style.opacity = bo.toFixed(3)
         bulb.current.style.visibility = bo > 0.001 ? "visible" : "hidden"
-        // "who do you call?" sits under the bulb, not under the first line
-        const box = words.current[0], q = box?.querySelectorAll<HTMLElement>("[data-line]")[1]
-        if (box && q) {
-          const at = box.getBoundingClientRect().top + q.offsetTop, under = bulb.current.getBoundingClientRect().bottom + (wide ? 30 : 18)
-          q.style.transform = `translateY(${(under - at).toFixed(1)}px)`
+        // the bulb fills the space under the first line, and "who do you call?" sits under it, the same gap either side
+        const box = words.current[0], ls2 = box?.querySelectorAll<HTMLElement>("[data-line]"), k = ls2?.[0], q = ls2?.[1]
+        if (box && k && q) {
+          const sh = sr.height, kb = k.getBoundingClientRect().bottom - sr.top, m = Math.max(18, sh * 0.04)
+          const H = Math.max(120, Math.min(sh * 0.5, sh - kb - sh * 0.09 - q.offsetHeight - 2 * m))
+          const fit = `${(kb + m + H / 2).toFixed(1)}px|${((H * 120) / 184).toFixed(1)}px`
+          if (fit !== bulbFit) { bulbFit = fit; const [t, w] = fit.split("|"); bulb.current.style.top = t; bulb.current.style.width = w }
+          const at = box.getBoundingClientRect().top - sr.top + q.offsetTop
+          // (less the space over its letters, so the gaps look the same, not just measure the same)
+          q.style.transform = `translateY(${(kb + 2 * m + H - 0.2 * parseFloat(getComputedStyle(q).fontSize) - at).toFixed(1)}px)`
         }
       }
 
@@ -775,10 +785,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", (glass * op).toFixed(3))
-          if (i === WPN) {
-            el.style.setProperty("--sx", `${(SNIP_DROP[0] * apart).toFixed(2)}px`)
-            el.style.setProperty("--sy", `${(SNIP_DROP[1] * apart).toFixed(2)}px`)
-          }
           el.style.setProperty("--d", d3.toFixed(3))
           el.classList.toggle(styles.lifting, t < 1 && op > 0.001 && d3 > 0.02)
         })
