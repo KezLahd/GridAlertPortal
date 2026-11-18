@@ -39,9 +39,16 @@
 .layer { opacity: 0; will-change: transform, opacity; transform-style: preserve-3d; }
 .layer svg { position: absolute; inset: 0; }
 /* thickness: the country and each area are slabs, their sides a darker copy just beneath; hidden once flat */
-.slab { transform: translateZ(-14px); }
-.slab path { fill: color-mix(in srgb, var(--map-land), #000 22%); stroke: color-mix(in srgb, var(--map-land), #000 22%); }
-.layer .edge { transform: translateZ(-9px); }
+.slab { transform: translateZ(var(--z)); }
+.slab path { fill: color-mix(in srgb, var(--map-land), #000 22%); stroke: color-mix(in srgb, var(--map-land), #000 22%); transition: fill 0.4s, stroke 0.4s; }
+/* once an area has landed, the side of the country under it takes its colour */
+.slab path.on { fill: color-mix(in srgb, var(--c), #000 35%); stroke: color-mix(in srgb, var(--c), #000 35%); }
+@media (prefers-color-scheme: dark) { .slab path.on { fill: color-mix(in srgb, var(--cd), #000 40%); stroke: color-mix(in srgb, var(--cd), #000 40%); } }
+/* a falling area's own sides, only while it's in the air */
+.layer .edge { transform: translateZ(var(--z)); display: none; }
+.lifting .edge, .allIn .edge { display: block; }
+.allIn .base { visibility: hidden; }
+.layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
 .layer .edge path { fill: color-mix(in srgb, var(--c), #000 38%); stroke: color-mix(in srgb, var(--c), #000 38%); }
 @media (prefers-color-scheme: dark) { .layer .edge path { fill: color-mix(in srgb, var(--cd, var(--c)), #000 45%); stroke: color-mix(in srgb, var(--cd, var(--c)), #000 45%); } }
 .flat .slab, .flat .edge { display: none; }
@@ -51,9 +58,10 @@
 
 /* the wattle sprigs: green stems with gold puffs along them */
 .vines { overflow: visible; opacity: 0; pointer-events: none; }
-.vines path { fill: none; stroke: #6f8d2e; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.vines path { fill: none; stroke: #6b5a2e; stroke-width: 2.6; stroke-linecap: round; }
+.vines ellipse { fill: #6f8d2e; }
 .vines circle { fill: #f2b300; }
-@media (prefers-color-scheme: dark) { .vines path { stroke: #9cbb52; } }
+@media (prefers-color-scheme: dark) { .vines path { stroke: #a08a52; } .vines ellipse { fill: #93b24c; } }
 
 /* the words: each placed somewhere different, and moved in and out by the scroll */
 .words {

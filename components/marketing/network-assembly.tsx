@@ -78,19 +78,48 @@ const SPLIT = MID.map(([x, y]) => {
   return [(dx / len) * push, (dy / len) * push]
 })
 
-// the sprigs: each company tied to its two nearest, twice over (two strands that cross, like twine)
+// the sprigs: each company tied to its two nearest (a second strand on the longer ties), and three more right across
+// the middle of the country, so it's laced through the centre and not only round the edge
 const PAIRS: [number, number][] = []
 MID.forEach((a, i) => {
   MID.map((b, j) => [j, Math.hypot(a[0] - b[0], a[1] - b[1])] as const).filter(([j]) => j !== i)
     .sort((x, y) => x[1] - y[1]).slice(0, 2)
     .forEach(([j]) => { if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j]) })
 })
-const STRANDS = PAIRS.flatMap(([a, b], k) => [{ a, b, bend: 0.14 + (k % 3) * 0.04 }, { a, b, bend: -(0.12 + (k % 2) * 0.05) }])
-// wattle balls all along each sprig, three sizes
-const PUFFS = [0.05, 0.14, 0.24, 0.34, 0.44, 0.54, 0.64, 0.74, 0.84, 0.94]
-const PUFF_R = [7, 10, 8.5]
-const bez = (t: number, p0: number, p1: number, p2: number, p3: number) =>
-  (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
+const group = (name: string) => STEPS.findIndex((g) => NETS[g[0]].name === name)
+const ACROSS = ([["Western Power", "Ergon Energy"], ["Power and Water", "SA Power Networks"], ["Horizon Power", "Essential Energy"]] as const)
+  .map(([a, b]) => [group(a), group(b)] as [number, number]).filter(([a, b]) => a >= 0 && b >= 0)
+const tie = (a: number, b: number) => Math.hypot(MID[a][0] - MID[b][0], MID[a][1] - MID[b][1])
+const STRANDS = [
+  ...PAIRS.flatMap(([a, b], k) => {
+    const one = { a, b, bend: (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03) }
+    return tie(a, b) > 240 ? [one, { a, b, bend: -one.bend * 0.8 }] : [one]
+  }),
+  ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07 })),
+]
+// each sprig: a stem in four lengths that go under, over, under, over the pieces (the start alternating), thin leaves
+// along it, and two small clusters of wattle balls
+const SEGS = 4
+const LEAVES = [0.07, 0.16, 0.27, 0.38, 0.5, 0.62, 0.74, 0.86]
+const BLOOMS = [0.33, 0.69]
+const BALLS: [number, number][] = [[0, -9], [6.5, -5], [-6, -4], [1.5, -15]]
+const over = (k: number, u: number) => (Math.min(SEGS - 1, Math.floor(u * SEGS)) + k) % 2 === 1
+type Pt = [number, number]
+const lerpP = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+const halves = ([a, b, c, d]: Pt[], t: number) => {
+  const ab = lerpP(a, b, t), bc = lerpP(b, c, t), cd = lerpP(c, d, t), abc = lerpP(ab, bc, t), bcd = lerpP(bc, cd, t), m = lerpP(abc, bcd, t)
+  return [[a, ab, abc, m], [m, bcd, cd, d]]
+}
+const part = (q: Pt[], t0: number, t1: number) => halves(halves(q, t1)[0], t1 > 0 ? t0 / t1 : 0)[1]
+const at = (q: Pt[], t: number): Pt => [
+  (1 - t) ** 3 * q[0][0] + 3 * (1 - t) ** 2 * t * q[1][0] + 3 * (1 - t) * t * t * q[2][0] + t ** 3 * q[3][0],
+  (1 - t) ** 3 * q[0][1] + 3 * (1 - t) ** 2 * t * q[1][1] + 3 * (1 - t) * t * t * q[2][1] + t ** 3 * q[3][1],
+]
+const heading = (q: Pt[], t: number) => {
+  const x = 3 * (1 - t) ** 2 * (q[1][0] - q[0][0]) + 6 * (1 - t) * t * (q[2][0] - q[1][0]) + 3 * t * t * (q[3][0] - q[2][0])
+  const y = 3 * (1 - t) ** 2 * (q[1][1] - q[0][1]) + 6 * (1 - t) * t * (q[2][1] - q[1][1]) + 3 * t * t * (q[3][1] - q[2][1])
+  return Math.atan2(y, x)
+}
 
 // an area comes down from high above and settles into place, easing in and out, no hop. Its height, 1 to 0
 const fall = (t: number) => 1 - ease(t)
@@ -156,6 +185,24 @@ function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
   )
 }
 
+type Refs<T> = { current: (T | null)[] }
+/** The parts of every sprig that sit on one side of the pieces: over them (upper) or under them. */
+function Sprigs({ upper, stems, leaves, balls }: { upper: boolean; stems: Refs<SVGPathElement>; leaves: Refs<SVGEllipseElement>; balls: Refs<SVGCircleElement> }) {
+  return (
+    <>
+      {STRANDS.flatMap((_, k) => Array.from({ length: SEGS }, (_, j) => (
+        over(k, (j + 0.5) / SEGS) === upper && <path key={`s${k}-${j}`} ref={(el) => { stems.current[k * SEGS + j] = el }} />
+      )))}
+      {STRANDS.flatMap((_, k) => LEAVES.map((u, j) => (
+        over(k, u) === upper && <ellipse key={`l${k}-${j}`} ref={(el) => { leaves.current[k * LEAVES.length + j] = el }} rx="0" ry="0" />
+      )))}
+      {STRANDS.flatMap((_, k) => BLOOMS.flatMap((u, j) => BALLS.map((_, m) => (
+        over(k, u) === upper && <circle key={`b${k}-${j}-${m}`} ref={(el) => { balls.current[(k * BLOOMS.length + j) * BALLS.length + m] = el }} r="0" />
+      ))))}
+    </>
+  )
+}
+
 export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean }) {
   const section = useRef<HTMLElement>(null)
   const stage = useRef<HTMLDivElement>(null)
@@ -163,9 +210,12 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const base = useRef<SVGSVGElement>(null)
   const layers = useRef<(HTMLDivElement | null)[]>([])
   const pins = useRef<(HTMLElement | null)[]>([])
+  const rests = useRef<(HTMLElement | null)[]>([])
   const vines = useRef<SVGSVGElement>(null)
-  const strands = useRef<(SVGPathElement | null)[]>([])
-  const puffs = useRef<(SVGCircleElement | null)[]>([])
+  const vinesUnder = useRef<SVGSVGElement>(null)
+  const stems = useRef<(SVGPathElement | null)[]>([])
+  const leaves = useRef<(SVGEllipseElement | null)[]>([])
+  const balls = useRef<(SVGCircleElement | null)[]>([])
   const canvas = useRef<HTMLCanvasElement>(null)
   const words = useRef<(HTMLElement | null)[]>([])
   const chip = useRef<HTMLDivElement>(null)
@@ -179,12 +229,17 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const dots = makeDots(Array.from(bs.querySelectorAll("path")))
     const dark = window.matchMedia("(prefers-color-scheme: dark)")
     const ctx = cv.getContext("2d")
+    // the country's sides, one path per area, coloured in an area's colour once it has landed
+    const sides = Array.from(rg.querySelectorAll<SVGPathElement>(`.${styles.slab} path`))
+    const landed: boolean[] = STEPS.map(() => false)
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
     const H = wide ? 300 : 190, TX = wide ? 50 : 40
     const areas = NETS.map((n) => new Path2D(n.d))
-    const land = new Path2D(); areas.forEach((a) => land.addPath(a))
+    const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
+    // a disc this big, on the dot grid, leaves no gaps: the shapes become discs without a seam
+    const COVER = 9
 
     const size = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -211,6 +266,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       let now = -1
       STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT]) > 0.04 && drop) now = g })
       const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
+      const rest = now >= 0 ? rests.current[now]?.getBoundingClientRect() : null
       const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
       const reserve = (() => { const w = words.current[2]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
 
@@ -219,17 +275,19 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         slide(el, el?.firstElementChild as HTMLElement | null, ease(seg(p, w.inn)), ease(seg(p, w.out)))
       })
 
-      // the company that's landing: beside the map on the side its area is on, level with it, with a line to it
+      // the company that's landing: beside the map on the side its area is on, level with where it will land, and still;
+      // only its line moves, following the area down
       const ca = ease(seg(p, CHIP.inn)), cb = ease(seg(p, CHIP.out))
       slide(chip.current, chipIn.current, ca, cb)
       const ld = leader.current
-      if (wide && chip.current && pin && ld) {
+      if (wide && chip.current && pin && rest && ld) {
         const mx = pin.left + pin.width / 2 - sr.left, my = pin.top + pin.height / 2 - sr.top
+        const ry = rest.top + rest.height / 2 - sr.top
         const s = mx < sr.width / 2 ? -1 : 1
         const tx = s < 0
           ? Math.max(24, rr.left - sr.left - 40 - cw)
           : Math.min(sr.width - cw - 24, rr.right - sr.left + 40)
-        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, my - 30))
+        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, ry - 30))
         if (s !== side || cx < 0) { side = s; cx = tx; cy = ty } else { cx += (tx - cx) * 0.18; cy += (ty - cy) * 0.18 }
         chip.current.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`
         // the line, from the chip's near edge to the middle of the falling area
@@ -249,7 +307,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         ? `translateY(${(tilt * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${(1 - tilt * (1 - fit)).toFixed(4)})`
         : "none"
       rg.classList.toggle(styles.flat, tilt < 0.02)
-      bs.style.opacity = (1 - ease(seg(p, FLAT))).toFixed(3)
+      // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
+      const allIn = p >= DROPS[1]
+      rg.classList.toggle(styles.allIn, allIn)
 
       // apart, then laced back together
       const apart = ease(seg(p, FLAT)) * (1 - ease(seg(p, LACE))) * (wide ? 1 : 0.55)
@@ -258,12 +318,21 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT])
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
-        const op = dotted ? 0 : clamp(t / 0.06)
+        // see-through while it falls, solid as it lands
+        const op = dotted ? 0 : t > 0 ? 1 : 0
+        const glass = t >= 1 ? 1 : clamp(t / 0.06) * (0.32 + 0.68 * ease(t))
+        const down = t >= 1 && tilt > 0.02
+        if (down !== landed[g]) {
+          landed[g] = down
+          group.forEach((i) => sides.forEach((sp, k) => { if (k % NETS.length === i) sp.classList.toggle(styles.on, down) }))
+        }
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
           el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${sx.toFixed(2)}%, ${sy.toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
-          el.style.opacity = op.toFixed(3)
+          el.style.opacity = String(op)
+          el.style.setProperty("--a", glass.toFixed(3))
+          el.classList.toggle(styles.lifting, t > 0 && t < 1)
         })
       })
       if (now !== shown) { shown = now; if (now >= 0) setStep(now) }
@@ -272,30 +341,49 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const want = now >= 0 ? tint(NETS[STEPS[now][0]].name) : p >= DOTS[0] ? "#F2B300" : p >= VINES[0] ? "#7E9B3A" : "#C9B48A"
       if (want !== bloom) { bloom = want; st.style.setProperty("--bloom", want) }
 
-      // the sprigs run underneath the pieces: they show only in the gaps, and vanish as the gaps close
+      // the sprigs grow from the middle of each piece, weaving over and under the pieces, then pull tight like a lace
+      // and draw back in, so once the country is whole there's nothing left of them
       const grow = seg(p, VINES), tight = ease(seg(p, LACE))
-      const vs = vines.current
-      if (vs) {
+      const vs = vines.current, vu = vinesUnder.current
+      if (vs && vu) {
         const on = grow > 0 && tight < 1
-        vs.style.opacity = on ? "1" : "0"
+        vs.style.opacity = vu.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
-          const el = strands.current[k]
-          if (!el) return
-          const ax = MID[s.a][0] + SPLIT[s.a][0] * apart, ay = MID[s.a][1] + SPLIT[s.a][1] * apart
-          const bx = MID[s.b][0] + SPLIT[s.b][0] * apart, by = MID[s.b][1] + SPLIT[s.b][1] * apart
-          const dx = bx - ax, dy = by - ay, nx = -dy, ny = dx
+          const A: Pt = [MID[s.a][0] + SPLIT[s.a][0] * apart, MID[s.a][1] + SPLIT[s.a][1] * apart]
+          const B: Pt = [MID[s.b][0] + SPLIT[s.b][0] * apart, MID[s.b][1] + SPLIT[s.b][1] * apart]
+          const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
-          const c1x = ax + dx * 0.3 + nx * k1, c1y = ay + dy * 0.3 + ny * k1
-          const c2x = ax + dx * 0.7 + nx * k2, c2y = ay + dy * 0.7 + ny * k2
-          el.setAttribute("d", `M${ax.toFixed(1)} ${ay.toFixed(1)}C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`)
-          // where the pieces never quite meet (Bass Strait, the Bight) the strands draw themselves back in at the end
+          const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]
           const g = clamp(grow * 1.15 - (k % 5) * 0.03) * (1 - ease(clamp((tight - 0.45) / 0.55)))
-          el.style.strokeDashoffset = (1 - g).toFixed(3)
-          PUFFS.forEach((u, j) => {
-            const c = puffs.current[k * PUFFS.length + j]
-            if (!c) return
-            c.setAttribute("cx", bez(u, ax, c1x, c2x, bx).toFixed(1)); c.setAttribute("cy", bez(u, ay, c1y, c2y, by).toFixed(1))
-            c.setAttribute("r", (PUFF_R[(j + k) % 3] * clamp((g - u) * 5)).toFixed(2))
+          for (let j = 0; j < SEGS; j++) {
+            const el = stems.current[k * SEGS + j]
+            if (!el) continue
+            const t0 = j / SEGS, t1 = Math.min((j + 1) / SEGS, g)
+            if (t1 <= t0) { el.setAttribute("d", ""); continue }
+            const [p0, p1, p2, p3] = part(q, t0, t1)
+            el.setAttribute("d", `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}C${p1[0].toFixed(1)} ${p1[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} ${p3[0].toFixed(1)} ${p3[1].toFixed(1)}`)
+          }
+          LEAVES.forEach((u, j) => {
+            const el = leaves.current[k * LEAVES.length + j]
+            if (!el) return
+            const sz = clamp((g - u) * 8)
+            if (sz <= 0) { el.setAttribute("rx", "0"); el.setAttribute("ry", "0"); return }
+            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 12 * sz
+            const cx = x + Math.cos(ang) * rx, cy = y + Math.sin(ang) * rx
+            el.setAttribute("cx", cx.toFixed(1)); el.setAttribute("cy", cy.toFixed(1))
+            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (2.8 * sz).toFixed(2))
+            el.setAttribute("transform", `rotate(${((ang * 180) / Math.PI).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`)
+          })
+          BLOOMS.forEach((u, j) => {
+            const sz = clamp((g - u) * 6), [x, y] = at(q, u), ang = heading(q, u), c = Math.cos(ang), sn = Math.sin(ang)
+            const side = (j + k) % 2 ? 1 : -1
+            BALLS.forEach(([ox, oy], m) => {
+              const el = balls.current[(k * BLOOMS.length + j) * BALLS.length + m]
+              if (!el) return
+              const px = ox * c - oy * side * sn, py = ox * sn + oy * side * c
+              el.setAttribute("cx", (x + px).toFixed(1)); el.setAttribute("cy", (y + py).toFixed(1))
+              el.setAttribute("r", ((m === 3 ? 3.4 : 4.4) * sz).toFixed(2))
+            })
           })
         })
       }
@@ -312,29 +400,31 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           if (q > 0 && o < 1) {
             ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy)
             const shrink = 1 - 0.28 * gold
-            // the morph: each dot starts as a big disc that, with its neighbours and the area under them, makes the
-            // solid area, clipped to the coast; the discs shrink to dots, so the area breaks up rather than fades
+            // the morph: each dot starts as a big disc; with its neighbours, and clipped to its own area's exact edge, the
+            // discs make that solid area, so the hand-over from the shapes shows nothing. As the ripple passes, each disc
+            // shrinks to its dot, so the areas break up smoothly from the middle out
             const morphing = q < 1
-            if (morphing) {
-              ctx.save(); ctx.clip(land)
-              // the areas themselves fill the slivers along the coast the first discs don't reach
-              const under = 1 - clamp(q * 2.4)
-              if (under > 0) NETS.forEach((n, i) => {
-                const c = rgb(dark.matches ? LIFT[n.name] ?? tint(n.name) : tint(n.name))
-                ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
-                ctx.globalAlpha = under; ctx.fill(areas[i]); ctx.globalAlpha = 1
-              })
-            }
-            for (const d of dots) {
-              const m = ease(clamp((q * 1.35 - d.d) * 3))
-              const c = dark.matches ? d.cd : d.c
-              const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
-              ctx.fillStyle = `rgb(${r},${gg},${b})`
-              ctx.beginPath()
-              ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (7.2 + (d.r - 7.2) * m) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
-              ctx.fill()
-            }
-            if (morphing) ctx.restore()
+            byNet.forEach((list, i) => {
+              if (morphing) { ctx.save(); ctx.clip(areas[i]) }
+              for (const d of list) {
+                const m = ease(clamp((q * 1.35 - d.d) * 2.2))
+                const c = dark.matches ? d.cd : d.c
+                const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
+                ctx.fillStyle = `rgb(${r},${gg},${b})`
+                ctx.beginPath()
+                ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
+                ctx.fill()
+              }
+              if (morphing) {
+                ctx.restore()
+                // the shapes overlapped a hair at their shared edges; do the same here so no seam shows at the start
+                const seam = 1 - clamp(q * 2.5)
+                if (seam > 0) {
+                  const c = dark.matches ? list[0]?.cd : list[0]?.c
+                  if (c) { ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${seam.toFixed(3)})`; ctx.lineWidth = 1.4; ctx.stroke(areas[i]) }
+                }
+              }
+            })
           }
         }
       }
@@ -373,31 +463,38 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
         <div className={styles.mapBox}>
           <div ref={rig} className={styles.rig}>
-            {/* the country's thickness, seen while it's tipped back */}
-            <svg className={`${styles.base} ${styles.slab}`} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
-              {NETS.map((n) => <path key={n.name} d={n.d} />)}
-            </svg>
+            {/* the country's thickness, seen while it's tipped back: three layers make a solid side */}
+            {[3, 2, 1].map((k) => (
+              <svg key={k} className={`${styles.base} ${styles.slab}`} style={{ ["--z" as string]: `${-k * 5}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                {NETS.map((n) => <path key={n.name} d={n.d} style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }} />)}
+              </svg>
+            ))}
             <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               {NETS.map((n) => <path key={n.name} d={n.d} />)}
+            </svg>
+            {/* the lengths of sprig that pass under the pieces */}
+            <svg ref={vinesUnder} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              <Sprigs upper={false} stems={stems} leaves={leaves} balls={balls} />
             </svg>
             {NETS.map((n, i) => {
               const g = STEPS.findIndex((s) => s[0] === i)
               return (
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
-                  <svg className={styles.edge} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                  {[3, 2, 1].map((k) => (
+                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 4}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                  ))}
                   <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
                     style={{ left: `${(MID[g][0] / NET_VIEW.w) * 100}%`, top: `${(MID[g][1] / NET_VIEW.h) * 100}%` }} />}
                 </div>
               )
             })}
-            {/* the sprigs, over the pieces, through the middle of each */}
+            {/* where each company's area comes to rest, for placing its name */}
+            {MID.map(([x, y], g) => <i key={g} ref={(el) => { rests.current[g] = el }} className={styles.pin}
+              style={{ left: `${(x / NET_VIEW.w) * 100}%`, top: `${(y / NET_VIEW.h) * 100}%` }} />)}
             <svg ref={vines} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
-              {STRANDS.map((s, k) => <path key={k} ref={(el) => { strands.current[k] = el }} pathLength={1} />)}
-              {STRANDS.flatMap((_, k) => PUFFS.map((_, j) => (
-                <circle key={`${k}-${j}`} ref={(el) => { puffs.current[k * PUFFS.length + j] = el }} r="0" />
-              )))}
+              <Sprigs upper stems={stems} leaves={leaves} balls={balls} />
             </svg>
           </div>
         </div>
