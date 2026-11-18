@@ -44,23 +44,30 @@ type Span = [number, number]
 // the country is a 3D slab throughout. Tipped back while the areas drop onto it, it turns to face you once they're all
 // in (FACE), keeping its depth; only then does it break apart (FLAT), the sprigs grow and pull it back together
 // It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
-const TIP: Span = [0.004, 0.066], TIP0 = 0.28
-const DROPS: Span = [0.07, 0.4], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.6]
+const TIP: Span = [0.03, 0.075], TIP0 = 0.28
+const DROPS: Span = [0.09, 0.37], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.6]
 const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
-const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
-// each company lands in the first 80% of its slot and sits there for the rest, so there's time to read it. The drops
-// get more of the real scroll than their share of the timeline: about 45% of a screen each, out of a 1350vh section
-const RAW_DROPS: Span = [0.05, 0.57]
-const warp = (r: number) => r < RAW_DROPS[0] ? (r / RAW_DROPS[0]) * DROPS[0]
-  : r < RAW_DROPS[1] ? DROPS[0] + ((r - RAW_DROPS[0]) / (RAW_DROPS[1] - RAW_DROPS[0])) * (DROPS[1] - DROPS[0])
-  : DROPS[1] + ((r - RAW_DROPS[1]) / (1 - RAW_DROPS[1])) * (1 - DROPS[1])
+// The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
+// then, as you scroll, the pieces fly in from beside their logos to their places, one after another but overlapping, so
+// it's quick (DROPS); once they're all in, the logos go (LOGOS_OUT)
+const LOGOS: Span = [0.05, 0.085], LOGOS_OUT: Span = [0.37, 0.395]
+const FLY = 0.09, STAG = (DROPS[1] - DROPS[0] - FLY) / Math.max(1, G - 1)
+// the timeline against the real scroll: the opening is short, the flying in a little longer, the rest as before, and
+// the last screen stays put for the final stretch of the section (raw 0.88 to 1)
+const WARP: [number, number][] = [[0, 0], [0.08, 0.09], [0.3, 0.4], [0.88, 1], [1, 1]]
+const warp = (r: number) => {
+  for (let i = 1; i < WARP.length; i++) {
+    const [r0, p0] = WARP[i - 1], [r1, p1] = WARP[i]
+    if (r <= r1) return p0 + ((r - r0) / Math.max(1e-6, r1 - r0)) * (p1 - p0)
+  }
+  return 1
+}
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
-// The map steps down and back a little while the headline is up (ROOM), to leave it space.
 const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.81, 0.83]
 const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * TIE_PULL, MEET]
-const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56], ROOM_OUT: Span = [0.81, 0.835]
+const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04]
 
 // the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
 // it; the last one carries the wordmark above it
@@ -68,22 +75,20 @@ const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56],
 // them that comes in after; the whole thing goes out together. **15** marks a number to set big and bold: the numbers
 // are the point. The last one carries the wordmark above it.
 type Line = { text: string; inn: Span }
-type Words = { lines: Line[]; sub?: Line; brand?: boolean; at: string; out: Span }
+type Words = { lines: Line[]; sub?: Line; brand?: boolean; hero?: boolean; at: string; out: Span }
 const WORDS: Words[] = [
-  { lines: [{ text: "Australia\u2019s power comes through **15** companies.", inn: [-0.02, -0.01] }],
-    sub: { text: "Not your retailer: the networks that own the poles and wires in your street.", inn: [0.006, 0.022] }, at: "top", out: [0.05, 0.068] },
-  { lines: [{ text: "Each one looks after its own patch.", inn: [0.068, 0.085] }], at: "top", out: [0.4, 0.42] },
-  // as the country turns to face you, then as it breaks apart
-  { lines: [{ text: "**15** companies.", inn: [0.404, 0.42] }, { text: "**15** websites.", inn: [0.447, 0.462] }], at: "top", out: [0.49, 0.5] },
+  // the opening line, alone and big; it goes as the country tips back
+  { lines: [{ text: "Australia\u2019s power network.", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
+  // as the logos come in, then as the country breaks apart
+  { lines: [{ text: "**15** companies.", inn: [0.05, 0.07] }, { text: "**15** websites.", inn: [0.447, 0.462] }], at: "top", out: [0.49, 0.5] },
   // as the dots turn gold
   { lines: [{ text: "**15** networks. **1** map.", inn: [0.88, 0.9] }], at: "bottomLeft", out: [0.925, 0.94] },
-  { lines: [{ text: "Never be the last to know.", inn: [0.95, 0.98] }], sub: { text: "Every site you run, on every network, in one app.", inn: [0.962, 0.99] }, brand: true, at: "centre", out: [2, 3] },
+  { lines: [{ text: "Be the first to know.", inn: [0.95, 0.98] }], brand: true, at: "centre", out: [2, 3] },
 ]
 /** a line with its **numbers** set big and bold */
 function Rich({ text }: { text: string }) {
   return <>{text.split(/\*\*(.+?)\*\*/).map((t, i) => (i % 2 ? <b key={i} className={styles.num}>{t}</b> : t))}</>
 }
-const CHIP: { inn: Span; out: Span } = { inn: [0.072, 0.09], out: [0.4, 0.42] }
 
 // customers on each network, rounded, from the networks' own 2024-26 reports and regulatory filings with the AER and
 // ERA WA (CitiPower and Powercor added together)
@@ -100,6 +105,19 @@ const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
 
 // the middle of each company's areas, and how far it moves out when the country breaks apart
 const MID = STEPS.map((g) => g.reduce((a, i) => [a[0] + NETS[i].at[0] / g.length, a[1] + NETS[i].at[1] / g.length], [0, 0]))
+// which company each area belongs to
+const OWN = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
+// which side of the map each company's logo sits on, and where down that side: the western half of the pieces on the
+// left, the eastern half on the right, each side top to bottom in the order their pieces sit
+const COL: { side: number; j: number; n: number }[] = (() => {
+  const byX = STEPS.map((_, g) => g).sort((a, b) => MID[a][0] - MID[b][0])
+  const half = Math.ceil(byX.length / 2)
+  const out: { side: number; j: number; n: number }[] = []
+  ;[byX.slice(0, half), byX.slice(half)].forEach((list, s) => {
+    list.sort((a, b) => MID[a][1] - MID[b][1]).forEach((g, j) => { out[g] = { side: s ? 1 : -1, j, n: list.length } })
+  })
+  return out
+})()
 // Horizon Power's little strip on the south coast (its first outline, below this line) breaks off on its own when the
 // country splits, dropping below Western Power, so the west comes apart like a puzzle
 const SNIP_Y = 645
@@ -261,11 +279,39 @@ const LOCKUP: Partial<Record<NetKey, { light: string; dark: string; aspect: numb
 
 
 /** A network's logo at most `h` tall and `w` wide, as one lockup or as its icon mark and wordmark side by side. */
-export function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
+// `area`: size every logo to the same area instead of the same height, so stacked and wide ones carry the same weight
+/** From four screen points (the map's corners: top-left, top-right, bottom-left, bottom-right) to a function that turns
+ *  any screen point into where it falls on the map, 0–1 across and down, however the map is tilted. */
+function unproject(q: (Pt | null)[]): ((x: number, y: number) => Pt) | null {
+  if (q.some((v) => !v)) return null
+  const src = q as Pt[], dst: Pt[] = [[0, 0], [1, 0], [0, 1], [1, 1]]
+  // solve the 8 unknowns of the homography screen → map
+  const A: number[][] = []
+  src.forEach(([x, y], i) => {
+    const [u, v] = dst[i]
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u])
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v])
+  })
+  for (let c = 0; c < 8; c++) {
+    let m = c
+    for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r
+    ;[A[c], A[m]] = [A[m], A[c]]
+    if (Math.abs(A[c][c]) < 1e-9) return null
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue
+      const f = A[r][c] / A[c][c]
+      for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]
+    }
+  }
+  const h = A.map((row, i) => row[8] / row[i])
+  return (x, y) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w] }
+}
+
+export function Logo({ k, h, w, area }: { k: NetKey; h: number; w: number; area?: number }) {
   const n = NET[k]
   const lock = LOCKUP[k]
   if (lock) {
-    const lh = Math.min(h * 1.25, w / lock.aspect)
+    const lh = area ? Math.min(Math.sqrt(area / lock.aspect), w / lock.aspect, h * 2.4) : Math.min(h * 1.25, w / lock.aspect)
     return (
       <picture className={styles.lockup}>
         <source media="(prefers-color-scheme: dark)" srcSet={lock.dark} />
@@ -278,7 +324,7 @@ export function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
   const wordScale = n.word && n.icon && n.word[0] > 2.5 ? 0.62 : 1
   const across = (n.icon?.[0] ?? 0) + (n.word?.[0] ?? 0) * wordScale
   const gap = n.icon && n.word ? 14 : 0
-  const fit = Math.min(h, (w - gap) / across)
+  const fit = area ? Math.min(Math.sqrt(area / (across + gap / h)), (w - gap) / across, h * 1.6) : Math.min(h, (w - gap) / across)
   return (
     <span className={styles.pair} role="img" aria-label={n.name}>
       {n.icon && <img src={`/networks/${k}-icon.png`} alt="" className={`tone-${n.icon[1]}`} style={{ height: fit, width: fit * n.icon[0] }} />}
@@ -337,8 +383,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const balls = useRef<(SVGCircleElement | null)[]>([])
   const canvas = useRef<HTMLCanvasElement>(null)
   const words = useRef<(HTMLElement | null)[]>([])
-  const chip = useRef<HTMLDivElement>(null)
-  const chipIn = useRef<HTMLDivElement>(null)
+  const marks = useRef<(HTMLDivElement | null)[]>([])
+  const corners = useRef<(HTMLElement | null)[]>([])
   const tieBox = useRef<HTMLDivElement>(null)
   const tieRow = useRef<HTMLParagraphElement>(null)
   const tieMark = useRef<SVGSVGElement>(null)
@@ -346,7 +392,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const tieSub = useRef<HTMLParagraphElement>(null)
   const overcast = useRef<HTMLDivElement>(null)
   const aurora = useRef<HTMLCanvasElement>(null)
-  const [step, setStep] = useState(0)
 
   useEffect(() => {
     const sec = section.current, st = stage.current, rg = rig.current, cv = canvas.current, bs = base.current
@@ -361,7 +406,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
-    const H = wide ? 190 : 130, TX = wide ? 62 : 52
+    const TX = wide ? 62 : 52, GAPX = wide ? 40 : 6
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
     // how big a dot is as the ring first reaches it: just big enough that neighbouring dots cover the area between them
@@ -403,11 +448,13 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const paint = (p: number) => {
       // reads first (last frame's layout), then writes
       const sr = st.getBoundingClientRect(), rr = rg.getBoundingClientRect()
-      const drop = p > DROPS[0] - 0.01 && p < FLAT[0] + 0.01
+      // where the map's four corners are on screen, tilted as it is; turns a point on the screen into a point on the map
+      const toMap = unproject(corners.current.map((el) => { const r = el?.getBoundingClientRect(); return r ? [r.left, r.top] as Pt : null }))
+      const fr = toMap ? (() => { const xs = corners.current.map((el) => el!.getBoundingClientRect().left); return { left: Math.min(...xs), right: Math.max(...xs) } })() : rr
       let now = -1
-      STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 0.8) * SLOT]) > 0.04 && drop) now = g })
-      const cw = chip.current?.offsetWidth ?? 0
-      const reserve = (() => { const w = words.current[1]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
+      const span = (g: number): Span => [DROPS[0] + g * STAG, DROPS[0] + g * STAG + FLY]
+      STEPS.forEach((_, g) => { const t = seg(p, span(g)); if (t > 0 && t < 1) now = g })
+      const mw = marks.current.map((m) => m?.offsetWidth ?? 0), mh = marks.current.map((m) => m?.offsetHeight ?? 0)
       const secTop = sec.getBoundingClientRect().top
       const mk = tieMark.current?.getBoundingClientRect()
 
@@ -460,23 +507,39 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         }
       }
 
-      // the company that's landing: its logo alone, always in the same spot, centred under the headline, so the eye
-      // stays in one place; its piece drops out from under it
-      const ca = ease(seg(p, CHIP.inn)), cb = ease(seg(p, CHIP.out))
-      slide(chip.current, chipIn.current, ca, cb)
-      if (chip.current) chip.current.style.transform = `translate3d(${((sr.width - cw) / 2).toFixed(1)}px, ${reserve.toFixed(1)}px, 0)`
+      // the fifteen logos, down both sides of the map, all the same height; each piece starts small and faint just inside
+      // its logo, on the map's side of it (start[g], in the map's own units)
+      const li = ease(seg(p, LOGOS)), lo = ease(seg(p, LOGOS_OUT))
+      const start: Pt[] = []
+      STEPS.forEach((_, g) => {
+        const m = marks.current[g], c = COL[g]
+        const y0 = sr.height * 0.22, y1 = sr.height * 0.9
+        const y = y0 + (y1 - y0) * (c.n > 1 ? c.j / (c.n - 1) : 0.5) - mh[g] / 2
+        const x = c.side < 0 ? Math.max(16, fr.left - sr.left - GAPX - mw[g]) : Math.min(sr.width - 16 - mw[g], fr.right - sr.left + GAPX)
+        const sx = c.side < 0 ? x + mw[g] + (wide ? 64 : 24) : x - (wide ? 64 : 24), sy = y + mh[g] / 2
+        const uv = toMap?.(sx + sr.left, sy + sr.top) ?? [0.5, 0.5]
+        start[g] = [uv[0] * NET_VIEW.w, uv[1] * NET_VIEW.h]
+        if (!m) return
+        const a = ease(seg(p, [LOGOS[0] + c.j * 0.003, LOGOS[1] + c.j * 0.003])) * (1 - lo)
+        m.style.opacity = a.toFixed(3)
+        m.style.visibility = a > 0.001 ? "visible" : "hidden"
+        m.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${(0.97 + 0.03 * a).toFixed(4)})`
+      })
+      // while the logos are up the map sits a little smaller, to leave them room either side
+      const widest = Math.max(0, ...mw)
+      const beside = wide ? Math.min(1, Math.max(0.6, (sr.width - 2 * (widest + GAPX + 24)) / Math.max(1, rg.offsetWidth))) : 1
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
       const tilt = (TIP0 + (1 - TIP0) * ease(seg(p, TIP))) * (1 - ease(seg(p, FACE)))
+      // at the very start it's a little smaller, so the opening line leads
+      const opening = 1 - ease(seg(p, TIP))
       // while it's in pieces it sits smaller, so the gaps and the sprigs across them have room; it grows back as the
       // sprigs pull it together
       const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
-      const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
-      // it only makes room for the company beside it while a company is showing; the rest of the time it's full size
-      const fit = 1
+      const fit = 1 - (1 - beside) * li * (1 - lo)
       // facing you it sits a little smaller and lower, to stay clear of the words above it
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 - room * 2).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.2 * spread)).toFixed(4)})`
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - 0.2 * opening)).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
       rg.classList.toggle(styles.allIn, allIn)
@@ -488,18 +551,18 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const apart = (ease(seg(p, FLAT)) * (1 - lace) + knock) * (wide ? 1.8 : 0.8)
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
-        const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 0.8) * SLOT])
-        const z = t >= 1 ? 0 : fall(t) * H
+        const t = seg(p, span(g)), e = ease(t)
+        // a small hop as it flies, so it passes over the country rather than through it
+        const z = t >= 1 ? 0 : 2 + 34 * Math.sin(Math.PI * e)
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
         // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
         // whole dots of its own colour, which then shrink
-        const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t > 0 ? 1 : 0
-        // solid all the way down (its sides show while it falls), just fading in as it appears
-        const glass = t >= 1 ? 1 : clamp(t / 0.05)
-        // it starts out under the logo, in the middle of the top of the country, and comes down into its place
-        const from = t >= 1 ? 0 : fall(t)
-        const fx = ((CX - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((40 - MID[g][1]) * 0.7 * from / NET_VIEW.h) * 100
+        // faint and small beside its logo, then solid and full size as it reaches its place
+        const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t >= 1 ? 1 : li * (0.18 + 0.82 * e)
+        const glass = 1, sc = t >= 1 ? 1 : 0.32 + 0.68 * e
+        const from = t >= 1 ? 0 : 1 - e, st = start[g] ?? MID[g]
+        const fx = ((st[0] - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((st[1] - MID[g][1]) * from / NET_VIEW.h) * 100
         const down = t >= 1
         if (down !== landed[g]) {
           landed[g] = down
@@ -508,7 +571,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
-          el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${(sx + fx).toFixed(2)}%, ${(sy + fy).toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
+          el.style.transform = t < 1 || apart > 0.0005 ? `translate3d(${(sx + fx).toFixed(2)}%, ${(sy + fy).toFixed(2)}%, ${z.toFixed(1)}px) scale(${sc.toFixed(4)})` : "none"
           el.style.opacity = String(op)
           if (dotted && qd < 1) {
             const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
@@ -527,7 +590,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           el.classList.toggle(styles.lifting, t > 0 && t < 1)
         })
       })
-      if (now !== shown) { shown = now; if (now >= 0) setStep(now) }
 
       // the light behind the map takes the colour of what's happening: each company, the sprigs' green, then gold
       const want = now >= 0 ? tint(NETS[STEPS[now][0]].name) : p >= DOTS[0] ? "#F2B300" : p >= VINES[0] ? "#7E9B3A" : "#C9B48A"
@@ -637,13 +699,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     return () => { io.disconnect(); ro.disconnect(); cancelAnimationFrame(raf) }
   }, [still, wide])
 
-  const name = NETS[STEPS[step][0]].name
-  const key = netKey(name)
-  const net = key ? NET[key] : null
-
   return (
     <section ref={section} className={`${styles.section} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
-      <div ref={stage} className={styles.stage} style={{ ["--tint" as string]: tint(name) }}>
+      <div ref={stage} className={styles.stage}>
         <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, and Wattle</h2>
         <div ref={overcast} className={styles.overcast} aria-hidden />
         <canvas ref={aurora} className={styles.aurora} aria-hidden />
@@ -651,6 +709,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
         <div className={styles.mapBox}>
           <div ref={rig} className={styles.rig}>
+            {[0, 1, 2, 3].map((q) => <i key={q} ref={(el) => { corners.current[q] = el }} className={styles.corner} style={{ left: q % 2 ? "100%" : 0, top: q > 1 ? "100%" : 0 }} />)}
             {/* the country's thickness, seen while it's tipped back: three layers make a solid side */}
             {[5, 4, 3, 2, 1].map((k) => (
               <svg key={k} className={`${styles.base} ${styles.slab} ${k === 5 ? styles.floor : ""}`} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
@@ -674,7 +733,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               const g = STEPS.findIndex((s) => s[0] === i)
               return (
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
-                  style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
+                  style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name),
+                    transformOrigin: `${(MID[OWN[i]][0] / NET_VIEW.w) * 100}% ${(MID[OWN[i]][1] / NET_VIEW.h) * 100}%` }}>
                   {[4, 3, 2, 1].map((k) => (
                     <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px`, ["--d" as string]: String(k * 3) }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
                       <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
@@ -699,7 +759,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           <div key={i} ref={(el) => { words.current[i] = el }} className={`${styles.words} ${styles[w.at]}`}>
             <div>
               {w.brand && <span className={styles.brandMark} role="img" aria-label="Wattle" />}
-              {w.lines.map((l, j) => <p key={j} className={styles.big} data-line><Rich text={l.text} /></p>)}
+              {w.lines.map((l, j) => w.hero
+                ? <h2 key={j} className={`${styles.big} ${styles.hero}`} data-line><span className={styles.kicker}>{l.text.split(" ")[0]}</span>{l.text.split(" ").slice(1).join(" ")}</h2>
+                : <p key={j} className={styles.big} data-line><Rich text={l.text} /></p>)}
               {w.sub && <p className={styles.sub} data-line><Rich text={w.sub.text} /></p>}
             </div>
           </div>
@@ -711,15 +773,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           <p ref={tieSub} className={styles.tieSub}>across all <Rich text="**15** networks" /></p>
         </div>
 
-        <div ref={chip} className={styles.chip} aria-live="polite">
-          <div ref={chipIn}>
-            {net && key && (
-              <div key={key} className={styles.company}>
-                <div className={styles.logo}><Logo k={key} h={wide ? 88 : 48} w={wide ? 460 : 260} /></div>
-              </div>
-            )}
-          </div>
-        </div>
+        {STEPS.map((group, g) => {
+          const k = netKey(NETS[group[0]].name)
+          return k && <div key={k} ref={(el) => { marks.current[g] = el }} className={styles.mark}><Logo k={k} h={wide ? 30 : 15} w={wide ? 190 : 84} area={wide ? 3400 : 820} /></div>
+        })}
       </div>
     </section>
   )

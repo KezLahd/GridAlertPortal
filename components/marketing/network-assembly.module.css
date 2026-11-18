@@ -2,7 +2,7 @@
    some over it. Uses the landing page's colour and type variables. */
 
 /* before Wattle comes in the page is grey and flat (overcast), so the country is a cool grey too */
-.section { position: relative; height: 1350vh; --map-land: #c5ccd4; }
+.section { position: relative; height: 1050vh; --map-land: #c5ccd4; }
 @media (prefers-color-scheme: dark) { .section { --map-land: #3a414b; } }
 .stage {
   position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; --bloom: #c9b48a;
@@ -38,6 +38,7 @@
   position: relative; width: min(88vw, calc(80svh * 955 / 885)); aspect-ratio: 955 / 885; margin-top: 4svh;
   transform-style: preserve-3d; transform-origin: 50% 60%; will-change: transform;
 }
+.corner { position: absolute; width: 0; height: 0; pointer-events: none; }
 .base, .layer, .vines { position: absolute; inset: 0; width: 100%; height: 100%; }
 .dots { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 .pin { position: absolute; width: 2px; height: 2px; margin: -1px 0 0 -1px; pointer-events: none; }
@@ -118,6 +119,8 @@
 .bottom { bottom: clamp(28px, 8vh, 80px); left: 0; right: 0; margin: 0 auto; text-align: center; max-width: 640px; padding: 0 24px; }
 .centre { top: 50%; left: 0; right: 0; margin: 0 auto; transform: translateY(-50%); text-align: center; max-width: 980px; padding: 0 24px; }
 /* the wordmark leads: it's the biggest thing here, with room under it before the line */
+.words .big.hero { margin: 0; font-size: clamp(44px, 6vw, 96px); line-height: 1; letter-spacing: -0.035em; }
+.words .hero .kicker { display: block; font-size: 0.42em; letter-spacing: -0.01em; color: var(--muted); margin-bottom: 0.18em; }
 .words.centre .big { font-size: clamp(30px, 3.2vw, 50px); letter-spacing: -0.03em; }
 .centre .brandMark { height: clamp(64px, 7.2vw, 116px); margin-bottom: clamp(28px, 3.4vw, 52px); }
 
@@ -132,14 +135,9 @@
 .tieRow span { display: inline-block; opacity: 0; }
 .tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 18px; letter-spacing: 0.01em; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
 
-/* the company landing now: its logo alone, centred under the headline (placed by the script), always in one spot */
-.chip {
-  position: absolute; z-index: 3; top: 0; left: 0; width: max-content; visibility: hidden;
-  will-change: transform;
-}
-.chip > div { opacity: 0; will-change: transform, opacity; }
-.company { animation: swapIn 0.45s var(--ease) both; }
-@keyframes swapIn { from { opacity: 0; } to { opacity: 1; } }
+/* the fifteen logos down both sides of the map (placed by the script), all the same height */
+.mark { position: absolute; z-index: 3; top: 0; left: 0; opacity: 0; visibility: hidden; transform-origin: 50% 50%; will-change: transform, opacity; }
+
 .logo { min-height: 76px; display: flex; align-items: center; justify-content: center; }
 .meta { font-size: 15.5px; line-height: 1.5; color: var(--muted); margin: 0 0 12px; }
 .meta b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--tint); margin-right: 4px; }
@@ -155,7 +153,8 @@
 
 /* phones: words at the top or bottom only, the company under the map */
 @media (max-width: 899px) {
-  .section { height: 1200vh; }
+  .section { height: 950vh; }
+  .words .big.hero { font-size: clamp(36px, 11vw, 52px); }
   .rig { width: 86vw; margin-top: 0; }
   .words { font-size: 16px; }
   .words .big, .words.centre .big { font-size: clamp(25px, 7vw, 32px); }
