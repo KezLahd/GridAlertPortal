@@ -39,7 +39,7 @@ const G = STEPS.length
 
 // the timeline, as fractions of the section's scroll (0 = its top reaches the top of the screen, 1 = its end)
 type Span = [number, number]
-const TILT: Span = [0.05, 0.13], DROPS: Span = [0.14, 0.5], FLAT: Span = [0.5, 0.57], VINES: Span = [0.58, 0.68]
+const TILT: Span = [0.05, 0.13], DROPS: Span = [0.14, 0.465], FLAT: Span = [0.495, 0.57], VINES: Span = [0.58, 0.68]
 const LACE: Span = [0.68, 0.77], DOTS: Span = [0.77, 0.84], GOLD: Span = [0.83, 0.89], SCATTER: Span = [0.94, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
 
@@ -83,7 +83,7 @@ const SPLIT = MID.map(([x, y]) => {
 const PAIRS: [number, number][] = []
 MID.forEach((a, i) => {
   MID.map((b, j) => [j, Math.hypot(a[0] - b[0], a[1] - b[1])] as const).filter(([j]) => j !== i)
-    .sort((x, y) => x[1] - y[1]).slice(0, 2)
+    .sort((x, y) => x[1] - y[1]).slice(0, 3)
     .forEach(([j]) => { if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j]) })
 })
 const group = (name: string) => STEPS.findIndex((g) => NETS[g[0]].name === name)
@@ -93,7 +93,7 @@ const tie = (a: number, b: number) => Math.hypot(MID[a][0] - MID[b][0], MID[a][1
 const STRANDS = [
   ...PAIRS.flatMap(([a, b], k) => {
     const one = { a, b, bend: (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03) }
-    return tie(a, b) > 240 ? [one, { a, b, bend: -one.bend * 0.8 }] : [one]
+    return tie(a, b) > 170 ? [one, { a, b, bend: -one.bend * 0.8 }] : [one]
   }),
   ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07 })),
 ]
@@ -103,7 +103,10 @@ const SEGS = 4
 const LEAVES = [0.07, 0.16, 0.27, 0.38, 0.5, 0.62, 0.74, 0.86]
 const BLOOMS = [0.33, 0.69]
 const BALLS: [number, number][] = [[0, -9], [6.5, -5], [-6, -4], [1.5, -15]]
-const over = (k: number, u: number) => (Math.min(SEGS - 1, Math.floor(u * SEGS)) + k) % 2 === 1
+// every length runs under the pieces: the sprigs show only in the gaps, and vanish as the gaps close
+const over = (_k: number, _u: number) => false
+// each sprig its own size, from slight to sturdy
+const SIZE = (k: number) => 0.65 + ((k * 7) % 10) / 10 * 0.9
 type Pt = [number, number]
 const lerpP = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 const halves = ([a, b, c, d]: Pt[], t: number) => {
@@ -141,7 +144,7 @@ function makeDots(paths: SVGPathElement[]): Dot[] {
       const name = NETS[n].name
       const dist = Math.hypot(x - ox, y - oy) / R
       const turn = (Math.atan2(y - oy, x - ox) + Math.PI) / (Math.PI * 2)
-      const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 420 + rand() * 900
+      const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 1500 + rand() * 2300
       out.push({
         n, x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
         c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(),
@@ -210,7 +213,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const base = useRef<SVGSVGElement>(null)
   const layers = useRef<(HTMLDivElement | null)[]>([])
   const pins = useRef<(HTMLElement | null)[]>([])
-  const rests = useRef<(HTMLElement | null)[]>([])
   const vines = useRef<SVGSVGElement>(null)
   const vinesUnder = useRef<SVGSVGElement>(null)
   const stems = useRef<(SVGPathElement | null)[]>([])
@@ -250,12 +252,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const ro = new ResizeObserver(size)
     ro.observe(st)
 
-    // words fade and rise in, and fade and rise out: a is how far in (0 to 1), b how far out (0 to 1)
+    // words fade in and fade out, in place: a is how far in (0 to 1), b how far out (0 to 1)
     const slide = (box: HTMLElement | null, inner: HTMLElement | null, a: number, b: number) => {
       if (!box || !inner) return
       const v = a * (1 - b)
       inner.style.opacity = v.toFixed(3)
-      inner.style.transform = `translate3d(0, ${((1 - a) * 28 - b * 28).toFixed(1)}px, 0)`
       box.style.visibility = v > 0.001 ? "visible" : "hidden"
     }
 
@@ -266,7 +267,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       let now = -1
       STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT]) > 0.04 && drop) now = g })
       const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
-      const rest = now >= 0 ? rests.current[now]?.getBoundingClientRect() : null
       const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
       const reserve = (() => { const w = words.current[2]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
 
@@ -275,20 +275,21 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         slide(el, el?.firstElementChild as HTMLElement | null, ease(seg(p, w.inn)), ease(seg(p, w.out)))
       })
 
-      // the company that's landing: beside the map on the side its area is on, level with where it will land, and still;
-      // only its line moves, following the area down
+      // the company that's landing: beside the map on the side its area is on, in a fixed spot; only its line moves,
+      // following the area down
       const ca = ease(seg(p, CHIP.inn)), cb = ease(seg(p, CHIP.out))
       slide(chip.current, chipIn.current, ca, cb)
       const ld = leader.current
-      if (wide && chip.current && pin && rest && ld) {
+      if (wide && chip.current && pin && ld) {
         const mx = pin.left + pin.width / 2 - sr.left, my = pin.top + pin.height / 2 - sr.top
-        const ry = rest.top + rest.height / 2 - sr.top
         const s = mx < sr.width / 2 ? -1 : 1
         const tx = s < 0
           ? Math.max(24, rr.left - sr.left - 40 - cw)
           : Math.min(sr.width - cw - 24, rr.right - sr.left + 40)
-        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, ry - 30))
-        if (s !== side || cx < 0) { side = s; cx = tx; cy = ty } else { cx += (tx - cx) * 0.18; cy += (ty - cy) * 0.18 }
+        // one fixed spot on each side, at the same height, so the eye always finds it in the same place
+        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, sr.height * 0.5 - 40))
+        if (s !== side || cx < 0) side = s
+        cx = tx; cy = ty
         chip.current.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`
         // the line, from the chip's near edge to the middle of the falling area
         const ax = s < 0 ? cx + cw + 14 : cx - 14, ay = cy + 30
@@ -358,6 +359,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           for (let j = 0; j < SEGS; j++) {
             const el = stems.current[k * SEGS + j]
             if (!el) continue
+            el.style.strokeWidth = (2.6 * SIZE(k)).toFixed(2)
             const t0 = j / SEGS, t1 = Math.min((j + 1) / SEGS, g)
             if (t1 <= t0) { el.setAttribute("d", ""); continue }
             const [p0, p1, p2, p3] = part(q, t0, t1)
@@ -368,10 +370,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             if (!el) return
             const sz = clamp((g - u) * 8)
             if (sz <= 0) { el.setAttribute("rx", "0"); el.setAttribute("ry", "0"); return }
-            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 12 * sz
+            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 12 * sz * SIZE(k)
             const cx = x + Math.cos(ang) * rx, cy = y + Math.sin(ang) * rx
             el.setAttribute("cx", cx.toFixed(1)); el.setAttribute("cy", cy.toFixed(1))
-            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (2.8 * sz).toFixed(2))
+            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (2.8 * sz * SIZE(k)).toFixed(2))
             el.setAttribute("transform", `rotate(${((ang * 180) / Math.PI).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`)
           })
           BLOOMS.forEach((u, j) => {
@@ -380,9 +382,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             BALLS.forEach(([ox, oy], m) => {
               const el = balls.current[(k * BLOOMS.length + j) * BALLS.length + m]
               if (!el) return
-              const px = ox * c - oy * side * sn, py = ox * sn + oy * side * c
+              const px = (ox * c - oy * side * sn) * SIZE(k), py = (ox * sn + oy * side * c) * SIZE(k)
               el.setAttribute("cx", (x + px).toFixed(1)); el.setAttribute("cy", (y + py).toFixed(1))
-              el.setAttribute("r", ((m === 3 ? 3.4 : 4.4) * sz).toFixed(2))
+              el.setAttribute("r", ((m === 3 ? 3.4 : 4.4) * sz * SIZE(k)).toFixed(2))
             })
           })
         })
@@ -412,7 +414,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
                 ctx.beginPath()
-                ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
+                ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * shrink * (1 + 1.6 * o * o), 0, Math.PI * 2)
                 ctx.fill()
               }
               if (morphing) {
@@ -490,9 +492,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 </div>
               )
             })}
-            {/* where each company's area comes to rest, for placing its name */}
-            {MID.map(([x, y], g) => <i key={g} ref={(el) => { rests.current[g] = el }} className={styles.pin}
-              style={{ left: `${(x / NET_VIEW.w) * 100}%`, top: `${(y / NET_VIEW.h) * 100}%` }} />)}
             <svg ref={vines} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               <Sprigs upper stems={stems} leaves={leaves} balls={balls} />
             </svg>
