@@ -1,106 +1,87 @@
-/* Every network, as an exploded view (network-assembly.tsx). Uses the landing page's colour and type variables. */
+/* The map story (network-assembly.tsx): words on top, Australia centred under them. Uses the landing page's colour
+   and type variables. */
 
-.section { position: relative; height: 640vh; }
+.section { position: relative; height: 720vh; }
 .stage {
   position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
-  /* overflow is safe here: the stage is the full width of the screen and everything in it fades before its edges */
+  display: flex; flex-direction: column; align-items: center; padding: clamp(28px, 7vh, 72px) 24px clamp(20px, 4vh, 40px);
 }
 .still { height: auto; }
-.still .stage { position: relative; height: auto; overflow: visible; padding: 64px 0; }
-
-.grid {
-  position: relative; z-index: 1; height: 100%; max-width: 1240px; margin: 0 auto; padding: 0 24px;
-  display: grid; grid-template-columns: minmax(300px, 0.72fr) 1.28fr; align-items: center; gap: 32px;
-}
-.text { max-width: 420px; position: relative; z-index: 3; }
+.still .stage { position: relative; height: auto; overflow: visible; padding: 72px 24px; }
+.still .mapBox { flex: none; aspect-ratio: 1035 / 965; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* the network landing now: its number, logo, name, and the area it serves */
-.company { animation: swapIn 0.55s var(--ease) both; }
-@keyframes swapIn { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
-.num { display: block; font-family: var(--rounded); font-weight: 800; font-size: 15px; letter-spacing: 0.04em; color: var(--tint); font-variant-numeric: tabular-nums; margin-bottom: 22px; transition: color 0.6s var(--ease); }
-.num i { font-style: normal; color: var(--muted); font-weight: 600; }
-.logo { min-height: 80px; display: flex; align-items: center; margin-bottom: 22px; }
-.name { font-family: var(--rounded); font-weight: 700; font-size: clamp(28px, 3.2vw, 38px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 10px; color: var(--ink); }
-.area { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 0 18px; text-wrap: pretty; }
-.stat { margin: 0 0 18px; font-size: 16px; color: var(--muted); }
-.stat span { display: block; font-family: var(--rounded); font-weight: 800; font-size: 34px; line-height: 1.1; letter-spacing: -0.02em; color: var(--tint); transition: color 0.6s var(--ease); font-variant-numeric: tabular-nums; }
-.site { display: inline-block; margin-bottom: 28px; font-family: var(--rounded); font-weight: 700; font-size: 15px; color: var(--ink); text-decoration: none; border-bottom: 1.5px solid color-mix(in srgb, var(--tint) 60%, transparent); padding-bottom: 2px; transition: border-color 0.3s; }
-.site:hover { border-bottom-color: var(--tint); }
-.area b { display: block; font-family: var(--rounded); font-weight: 700; font-size: 14px; letter-spacing: 0.04em; color: var(--tint); margin-bottom: 4px; transition: color 0.6s var(--ease); }
-
-/* the end: every logo together */
-.all { animation: swapIn 0.55s var(--ease) both; margin-bottom: 28px; }
-.allLine { font-family: var(--rounded); font-weight: 700; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 24px; }
-.logoWall { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 26px; }
-
-/* fifteen ticks, one per company, each filling with its colour as it lands */
-.rail { display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; max-width: 360px; }
-.rail i { height: 6px; border-radius: 3px; background: var(--line); transition: background 0.5s var(--ease), transform 0.5s var(--ease); }
-.rail i.on { transform: scaleY(1.5); }
-
-/* the map: an outline of the country at the bottom, a sheet per network above it, tilted in 3D */
-.mapBox { position: relative; perspective: 2600px; perspective-origin: 60% 40%; display: grid; place-items: center; }
-.rig {
-  position: relative; width: min(100%, calc(78vh * 955 / 885)); aspect-ratio: 955 / 885;
-  transform-style: preserve-3d; transform-origin: 50% 55%; will-change: transform;
+/* the words for the beat you're on, swapping as you scroll */
+.copy { position: relative; z-index: 2; width: 100%; max-width: 820px; text-align: center; flex: none; }
+.line {
+  font-family: var(--rounded); font-weight: 700; font-size: clamp(26px, 3.3vw, 44px); line-height: 1.12; letter-spacing: -0.02em;
+  color: var(--ink); margin: 0 auto 12px; max-width: 760px; text-wrap: balance; animation: swapIn 0.6s var(--ease) both;
 }
-.base, .layer, .dots { position: absolute; inset: 0; width: 100%; height: 100%; }
-.base path { fill: var(--land); stroke: var(--paper); stroke-width: 1.4; }
-.base { filter: drop-shadow(0 30px 40px rgba(36, 33, 28, 0.12)); }
-.layer { will-change: transform, opacity; transform-style: preserve-3d; }
-.layer svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.layer path { fill: var(--c); stroke: var(--paper); stroke-width: 1.6; stroke-linejoin: round; }
-.lifting { filter: drop-shadow(0 30px 34px rgba(20, 16, 10, 0.3)); }
-/* the landing: it hits the outline, gives a little, springs back up and locks */
-.layer svg { transform-origin: 50% 50%; }
-.landed svg { animation: land 0.62s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
-@keyframes land {
-  0% { transform: translateZ(0) scale(1); filter: brightness(1); }
-  16% { transform: translateZ(-8px) scale(0.982); filter: brightness(1.22); }
-  42% { transform: translateZ(12px) scale(1.014); filter: brightness(1.06); }
-  68% { transform: translateZ(-3px) scale(0.997); filter: brightness(1); }
-  100% { transform: translateZ(0) scale(1); filter: brightness(1); }
-}
-.mark { position: absolute; width: 1px; height: 1px; pointer-events: none; }
-@media (prefers-color-scheme: dark) { .layer path { fill: var(--cd, var(--c)); filter: brightness(1.12); } }
+.under { min-height: 112px; }
+.sub { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 auto; max-width: 600px; text-wrap: pretty; animation: swapIn 0.6s 0.08s var(--ease) both; }
+@keyframes swapIn { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 
-.dots circle { transform-box: fill-box; transform-origin: center; }
-.pulse { fill: #f2b300; opacity: 0; }
-.core { fill: #f2b300; stroke: var(--paper); stroke-width: 2.5; opacity: 0; transform: scale(0.4); transition: opacity 0.4s, transform 0.5s var(--ease); }
-.dotsOn .core { opacity: 1; transform: none; }
-.dotsOn .pulse { animation: pulse 2.4s ease-out infinite; animation-delay: var(--d); }
-.dotsOn g:nth-child(n) .core { transition-delay: var(--d); }
-@keyframes pulse { 0% { opacity: 0.55; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.6); } }
+/* beat two: the company landing now */
+.company { animation: swapIn 0.45s var(--ease) both; display: flex; flex-direction: column; align-items: center; }
+.logo { min-height: 52px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.meta { font-size: 16px; line-height: 1.5; color: var(--muted); margin: 0 auto 12px; max-width: 620px; text-wrap: balance; }
+.meta b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--tint); margin-right: 4px; }
+.meta a { color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 1.5px solid color-mix(in srgb, var(--tint) 60%, transparent); white-space: nowrap; }
+.rail { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; width: min(300px, 80vw); }
+.rail i { height: 5px; border-radius: 3px; background: var(--line); transition: background 0.4s var(--ease); }
 
-.pair { display: inline-flex; align-items: center; gap: 14px; }
+.pair { display: inline-flex; align-items: center; gap: 12px; }
 .pair img, .lockup img { display: block; object-fit: contain; flex: none; }
-.logoText { font-family: var(--rounded); font-weight: 800; font-size: 34px; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
+.logoText { font-family: var(--rounded); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
 @media (prefers-color-scheme: dark) { .pair :global(.tone-dark) { filter: brightness(0) invert(0.94); } }
 @media (prefers-color-scheme: light) { .pair :global(.tone-light) { filter: brightness(0) opacity(0.86); } }
 
-/* phones: words on top, the map under them, the logo between */
-@media (max-width: 899px) {
-  .section { height: 520vh; }
-  .grid { grid-template-columns: 1fr; grid-template-rows: auto 1fr; align-items: start; gap: 0; padding-top: 28px; }
-  .num { margin-bottom: 14px; }
-  .logo { min-height: 56px; margin-bottom: 14px; }
-  .name { font-size: 26px; margin-bottom: 6px; }
-  .area { font-size: 15.5px; margin-bottom: 12px; }
-  .stat { font-size: 14.5px; margin-bottom: 12px; }
-  .stat span { font-size: 26px; }
-  .site { font-size: 14px; margin-bottom: 16px; }
-  .logoWall { gap: 12px 18px; }
-  .all { margin-bottom: 18px; }
-  .rail { max-width: none; }
-  .mapBox { align-self: end; padding-bottom: 28px; }
-  .rig { width: min(100%, calc(46svh * 955 / 885)); }
+/* the map: one SVG, so it's sharp at any size */
+.mapBox { position: relative; z-index: 1; flex: 1; min-height: 0; width: 100%; max-width: 1000px; }
+.map { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.base path { fill: var(--land); stroke: var(--paper); stroke-width: 1.4; }
+.base { filter: drop-shadow(0 24px 34px rgba(36, 33, 28, 0.1)); }
+
+/* beat two: each company's areas drop in from above you and lock into place with one small bounce */
+.split { transform: translate(calc(var(--split, 0) * var(--dx) * 1px), calc(var(--split, 0) * var(--dy) * 1px)); }
+.area {
+  transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; transform: translateY(-26px) scale(1.5);
+  transition: opacity 0.22s ease-out, transform 0.62s cubic-bezier(0.34, 1.42, 0.5, 1);
+}
+.area.in { opacity: 1; transform: none; }
+.area path {
+  fill: var(--c); stroke: var(--paper); stroke-width: 1.6; stroke-linejoin: round;
+  fill-opacity: calc(1 - var(--fade, 0) * 0.9); transition: fill-opacity 0.2s;
+}
+@media (prefers-color-scheme: dark) { .area path { fill: var(--cd, var(--c)); } }
+
+/* beat four: Wattle's dots sweep out from the middle, each popping up as the sweep reaches it */
+.dots circle {
+  fill: #f2b300; transform-box: fill-box; transform-origin: 50% 50%;
+  transform: scale(clamp(0, calc((var(--q, 0) * 1.25 - var(--d)) * 7), 1));
 }
 
-.still .grid { height: auto; }
-.still .rig { transform: none !important; }
+/* beat five: your sites, pulsing where the power's out */
+.pulse { fill: var(--ink); opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+.core { fill: var(--ink); stroke: var(--paper); stroke-width: 3; opacity: 0; transform: scale(0.3); transform-box: fill-box; transform-origin: 50% 50%; transition: opacity 0.3s, transform 0.5s cubic-bezier(0.34, 1.5, 0.5, 1); }
+.sitesOn .core { opacity: 1; transform: none; transition-delay: calc(var(--i) * 0.12s); }
+.sitesOn .pulse { animation: pulse 2.4s ease-out infinite; animation-delay: calc(var(--i) * 0.3s); }
+@keyframes pulse { 0% { opacity: 0.4; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.7); } }
+
+/* phones: the same story, the words a little smaller */
+@media (max-width: 899px) {
+  .section { height: 640vh; }
+  .stage { padding-top: 32px; }
+  .line { font-size: clamp(23px, 6.6vw, 30px); }
+  .sub { font-size: 15.5px; }
+  .meta { font-size: 14.5px; }
+  .under { min-height: 128px; }
+}
+
+.still .area { opacity: 1; transform: none; transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .layer, .rig { transform: none !important; opacity: 1 !important; }
-  .company, .all, .dotsOn .pulse, .landed svg { animation: none; }
+  .area { opacity: 1; transform: none; transition: none; }
+  .line, .sub, .company { animation: none; }
+  .sitesOn .pulse { animation: none; }
 }

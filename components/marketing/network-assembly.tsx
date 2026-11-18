@@ -5,11 +5,15 @@ import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
 import styles from "./network-assembly.module.css"
 
-// Every network, as an exploded view. Australia's sixteen network areas start as coloured sheets hovering in a tilted
-// stack over an empty outline of the country. Scrolling drops them into place one company at a time, the one landing
-// lifted with a shadow, while the column on the left names it: its logo, its name, its state and the area it serves.
-// Once the last one lands the map swings flat, the outages pulse and the column shows every logo together. Driven per frame from the scroll position (Lenis
-// smooths it); nothing runs while the section is off screen, and reduced motion shows the finished, flat map.
+// The story of the page, told on one map of Australia, centred, as you scroll:
+//   1. just the country: power here reaches you through fifteen network companies
+//   2. their service areas drop in one by one, each named with its logo, area and customers
+//   3. the areas pull apart: fifteen companies, fifteen websites, fifteen ways of reporting an outage
+//   4. Wattle's dots spread over every area and draw it back together as one
+//   5. your sites light up on it: outages now and planned work, from all fifteen, in one place
+// Everything is drawn in one SVG, so it stays sharp at any size. The beats are scrubbed by the scroll position (Lenis
+// smooths it); each area's landing is a short timed spring so it feels the same however fast you scroll. Reduced
+// motion shows the finished map with the Wattle dots.
 
 // Each network in the strongest colour of its own logo (the app's brand table, NetworkBrand in Models.swift), swapped
 // for another colour from the same logo where a neighbour on the map would look alike: CitiPower Powercor takes its
@@ -32,17 +36,11 @@ NETS.forEach((n, i) => {
   if (prev && netKey(NETS[prev[0]].name) && netKey(NETS[prev[0]].name) === netKey(n.name)) prev.push(i)
   else STEPS.push([i])
 })
-const STEP_OF = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
 const G = STEPS.length
 
-// where in the section's scroll each phase happens (0 = section top reaches the top of the screen, 1 = its end)
-const START = 0.04, END = 0.84, SLOT = (END - START) / G, FLAT_FROM = 0.84, FLAT_TO = 0.94
-
-// logos with a sharper or fuller lockup than the app's icon + wordmark pair: one image, light and dark versions
-const LOCKUP: Partial<Record<NetKey, { light: string; dark: string; aspect: number }>> = {
-  energex: { light: "/networks/energex-lockup.svg", dark: "/networks/energex-lockup-dark.svg", aspect: 2.646 },
-  tasnetworks: { light: "/networks/tasnetworks-lockup.png", dark: "/networks/tasnetworks-lockup-dark.png", aspect: 2.19 },
-}
+// the beats, as fractions of the section's scroll (0 = its top reaches the top of the screen, 1 = its end)
+const AREAS_FROM = 0.1, AREAS_TO = 0.52, SPLIT_FROM = 0.52, SPLIT_TO = 0.6, DOTS_FROM = 0.66, DOTS_TO = 0.84, SITES_FROM = 0.87
+const SLOT = (AREAS_TO - AREAS_FROM) / G
 
 // customers on each network, rounded, from the networks' own 2024-26 reports and regulatory filings with the AER and
 // ERA WA (CitiPower and Powercor added together)
@@ -52,13 +50,50 @@ const CUSTOMERS: Partial<Record<NetKey, string>> = {
   sapower: "930,000", tasnetworks: "300,000", wpower: "1.2 million", horizonpower: "50,000", powerwater: "90,000",
 }
 
-// desktop: where an area first appears, facing you (fractions of the stage), and the box it's fitted into
-const FACE_AT = [0.5, 0.19], FACE_W = 260, FACE_H = 170
-const RIG_SCALE = 0.9
-
 const clamp = (v: number) => Math.min(1, Math.max(0, v))
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
+
+// how far each company's areas move out when the map comes apart: away from the middle of the country
+const SPLIT = STEPS.map((g) => {
+  const [x, y] = g.reduce((a, i) => [a[0] + NETS[i].at[0] / g.length, a[1] + NETS[i].at[1] / g.length], [0, 0])
+  const dx = x - CX, dy = y - (CY + 40), len = Math.hypot(dx, dy) || 1
+  const push = 26 + 34 * Math.min(1, len / 420)
+  return [(dx / len) * push, (dy / len) * push]
+})
+
+// Wattle's dots: a grid over the country, bigger towards the middle like the app icon, each revealed in a sweep that
+// spirals out from the centre. Worked out once in the browser from the areas themselves.
+type Dot = { x: number; y: number; r: number; d: number }
+function makeDots(paths: SVGPathElement[]): Dot[] {
+  const out: Dot[] = []
+  const step = 15, ox = CX, oy = CY + 30, R = Math.hypot(CX, CY)
+  for (let y = step / 2; y < NET_VIEW.h; y += step) {
+    for (let x = step / 2 + ((Math.round(y / step) % 2) * step) / 2; x < NET_VIEW.w; x += step) {
+      const pt = new DOMPoint(x, y)
+      if (!paths.some((p) => p.isPointInFill(pt))) continue
+      const dist = Math.hypot(x - ox, y - oy) / R
+      const turn = (Math.atan2(y - oy, x - ox) + Math.PI) / (Math.PI * 2)
+      out.push({ x, y, r: 2.4 + 5.4 * Math.pow(1 - Math.min(1, dist), 1.4), d: Math.min(1, dist * 0.82 + turn * 0.18) })
+    }
+  }
+  return out
+}
+
+const BEATS = [
+  { line: "Australia\u2019s power reaches you through fifteen network companies.", sub: "Not your retailer. The company that owns the poles and wires in your street." },
+  { line: "Each one looks after its own part of the country.", sub: "" },
+  { line: "And each one reports outages on its own website, in its own way.", sub: "Keeping an eye on fifteen of them, for every site you run, takes hours." },
+  { line: "Wattle watches all fifteen for you.", sub: "Every network, every few minutes, on one map." },
+  { line: "Add your sites. Wattle tells you the moment one loses power.", sub: "And about planned work days ahead, so you can move the fridge stock or the appointments." },
+]
+
+// logos with a sharper or fuller lockup than the app's icon + wordmark pair: one image, light and dark versions
+const LOCKUP: Partial<Record<NetKey, { light: string; dark: string; aspect: number }>> = {
+  energex: { light: "/networks/energex-lockup.svg", dark: "/networks/energex-lockup-dark.svg", aspect: 2.646 },
+  tasnetworks: { light: "/networks/tasnetworks-lockup.png", dark: "/networks/tasnetworks-lockup-dark.png", aspect: 2.19 },
+}
+
 
 /** A network's logo at most `h` tall and `w` wide, as one lockup or as its icon mark and wordmark side by side. */
 function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
@@ -89,177 +124,119 @@ function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
 
 export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean }) {
   const section = useRef<HTMLElement>(null)
-  const stage = useRef<HTMLDivElement>(null)
-  const rig = useRef<HTMLDivElement>(null)
-  const layers = useRef<(HTMLDivElement | null)[]>([])
-  const marks = useRef<(HTMLElement | null)[]>([])
-  const centre = useRef<HTMLElement>(null)
-  const [step, setStep] = useState(still ? G : 0)
+  const svg = useRef<SVGSVGElement>(null)
+  const groups = useRef<(SVGGElement | null)[]>([])
+  const [dots, setDots] = useState<Dot[]>([])
+  const [beat, setBeat] = useState(still ? 4 : 0)
+  const [step, setStep] = useState(-1)
+
+  // the dots are worked out from the drawn areas once they're on the page
+  useEffect(() => {
+    const el = svg.current
+    if (!el) return
+    setDots(makeDots(Array.from(el.querySelectorAll<SVGPathElement>(`.${styles.area} path`))))
+  }, [])
 
   useEffect(() => {
-    const sec = section.current, stg = stage.current, rg = rig.current
-    if (!sec || !stg || !rg) return
+    const sec = section.current, sv = svg.current
+    if (!sec || !sv) return
     if (still) {
-      setStep(G)
-      layers.current.forEach((el) => { if (el) { el.style.transform = "none"; el.style.opacity = "1" } })
-      rg.style.transform = "none"
+      sv.style.setProperty("--split", "0"); sv.style.setProperty("--q", "1"); sv.style.setProperty("--fade", "1")
+      groups.current.forEach((g) => g?.classList.add(styles.in))
       return
     }
-    let raf = 0, visible = false, shown = -2
-    const tiltX = wide ? 50 : 38, tiltZ = wide ? -16 : -10
-    const drop = wide ? 300 : 210
-    // each company's areas together, as a box in the map's own units (measured once)
-    const boxes: { x: number; y: number; w: number; h: number }[] = []
-    const groupBox = (g: number) => {
-      if (boxes[g]) return boxes[g]
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
-      STEPS[g].forEach((i) => {
-        const b = layers.current[i]?.querySelector("path")?.getBBox()
-        if (!b) return
-        x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height)
-      })
-      boxes[g] = isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : { x: CX, y: CY, w: 1, h: 1 }
-      return boxes[g]
-    }
-
+    let raf = 0, visible = false, shownBeat = -1, shownStep = -2
     const frame = () => {
       raf = 0
       if (!visible) return
       const r = sec.getBoundingClientRect()
       const p = clamp(-r.top / Math.max(1, r.height - window.innerHeight))
-      stg.style.setProperty("--p", p.toFixed(4))
 
-      // the stack. Desktop: each company's area first appears flat, facing you, in the space above the map; then
-      // tilts to the map's angle while it moves over its place, and falls. Phones: it appears above its place and
-      // falls. The fall is slow at first, faster and faster, then a timed spring bounces it into place (timed, so the
-      // landing feels the same however fast you scroll).
-      const sr = stg.getBoundingClientRect()
-      const cr = centre.current?.getBoundingClientRect()
-      const unit = rg.offsetWidth / NET_VIEW.w
-      let landing = -1
-      STEPS.forEach((group, g) => {
-        const t = clamp((p - (START + g * SLOT)) / (SLOT * 0.9))
-        if (t > 0 && t < 1) landing = g
-        let tf: string
-        if (wide && cr) {
-          const m = ease(clamp((t - 0.12) / 0.4))
-          const fl = Math.pow(clamp((t - 0.55) / 0.45), 2.4)
-          const bb = groupBox(g)
-          // flat and facing you, the area fitted into a box at the top of the stage, between the words and the map
-          const k = Math.min(3, FACE_W / (bb.w * unit), FACE_H / (bb.h * unit))
-          const qx = sr.left + sr.width * FACE_AT[0], qy = sr.top + sr.height * FACE_AT[1]
-          const offX = (bb.x + bb.w / 2 - CX) * unit, offY = (bb.y + bb.h / 2 - CY) * unit
-          const px = qx - (cr.left + cr.width / 2) - k * offX, py = qy - (cr.top + cr.height / 2) - k * offY
-          const L = (from: number, to: number) => from + (to - from) * m
-          tf = `scale(${L(1 / RIG_SCALE, 1).toFixed(4)}) rotateZ(${L(-tiltZ, 0).toFixed(2)}deg) rotateX(${L(-tiltX, 0).toFixed(2)}deg) ` +
-            `translate3d(${L(px, 0).toFixed(1)}px, ${L(py, 0).toFixed(1)}px, ${(L(0, drop) * (1 - fl)).toFixed(1)}px) scale(${L(k, 1).toFixed(4)})`
-        } else {
-          const out = 1 - Math.pow(t, 2.4)
-          tf = `translate3d(0, 0, ${(out * drop).toFixed(1)}px)`
-        }
-        group.forEach((i) => {
-          const el = layers.current[i]
-          if (!el) return
-          el.style.transform = tf
-          el.style.opacity = clamp(t / 0.1).toFixed(3)
-          el.classList.toggle(styles.lifting, t > 0 && t < 1)
-          const down = t >= 1
-          if (down !== (el.dataset.down === "1")) {
-            el.dataset.down = down ? "1" : "0"
-            el.classList.toggle(styles.landed, down)
-          }
-        })
-      })
+      // areas: each company's drops in when its turn comes (the spring itself is a CSS transition on .in)
+      const shown = p < AREAS_FROM ? -1 : Math.min(G - 1, Math.floor((p - AREAS_FROM) / SLOT))
+      groups.current.forEach((g, i) => g?.classList.toggle(styles.in, i <= shown))
 
-      // after the last lands, the whole map swings flat to face you
-      const f = ease(clamp((p - FLAT_FROM) / (FLAT_TO - FLAT_FROM)))
-      rg.style.transform = `rotateX(${((1 - f) * tiltX).toFixed(2)}deg) rotateZ(${((1 - f) * tiltZ).toFixed(2)}deg) scale(${(RIG_SCALE + (1 - RIG_SCALE) * f).toFixed(4)})`
+      // apart, then back together under the dots
+      const apart = ease(clamp((p - SPLIT_FROM) / (SPLIT_TO - SPLIT_FROM)))
+      const q = clamp((p - DOTS_FROM) / (DOTS_TO - DOTS_FROM))
+      sv.style.setProperty("--split", (apart * (1 - ease(clamp(q * 1.6)))).toFixed(4))
+      sv.style.setProperty("--q", q.toFixed(4))
+      sv.style.setProperty("--fade", ease(clamp(q * 1.25)).toFixed(4))
 
-      // which company the caption is about: the one landing, else the last that landed; all of them at the end
-      const now = p >= FLAT_FROM ? G : landing >= 0 ? landing : Math.max(0, Math.min(G - 1, Math.floor((p - START) / SLOT)))
-      if (now !== shown) { shown = now; setStep(now) }
-
+      const b = p < AREAS_FROM ? 0 : p < SPLIT_FROM ? 1 : p < DOTS_FROM - 0.02 ? 2 : p < SITES_FROM ? 3 : 4
+      if (b !== shownBeat) { shownBeat = b; setBeat(b) }
+      const st = b === 1 ? shown : -1
+      if (st !== shownStep) { shownStep = st; setStep(st) }
       raf = requestAnimationFrame(frame)
     }
-
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting
       if (visible && !raf) raf = requestAnimationFrame(frame)
     }, { rootMargin: "100px 0px" })
     io.observe(sec)
     return () => { io.disconnect(); cancelAnimationFrame(raf) }
-  }, [still, wide])
+  }, [still])
 
-  const current = step >= 0 && step < G ? STEPS[step] : null
+  const current = step >= 0 ? STEPS[step] : null
   const name = current ? NETS[current[0]].name : null
   const key = name ? netKey(name) : null
-  const colour = name ? tint(name) : "#F2B300"
   const net = key ? NET[key] : null
+  const B = BEATS[beat]
 
   return (
     <section ref={section} className={`${styles.section} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
-      <div ref={stage} className={styles.stage} style={{ ["--tint" as string]: colour }}>
-        <div className={styles.grid}>
-          <div className={styles.text}>
-            <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, one by one</h2>
-            {net && key ? (
+      <div className={styles.stage} style={{ ["--tint" as string]: name ? tint(name) : "#F2B300" }}>
+        <div className={styles.copy}>
+          <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, and Wattle</h2>
+          <p key={beat} className={styles.line}>{B.line}</p>
+          <div className={styles.under}>
+            {beat === 1 && net && key ? (
               <div key={key} className={styles.company} aria-live="polite">
-                <span className={styles.num}>{String(step + 1).padStart(2, "0")}<i> / {String(G).padStart(2, "0")}</i></span>
-                <div className={styles.logo}><Logo k={key} h={wide ? 64 : 44} w={wide ? 360 : 280} /></div>
-                <h3 className={styles.name}>{net.name}</h3>
-                <p className={styles.area}><b>{net.states.join(" · ")}</b>{net.area}</p>
-                {CUSTOMERS[key] && (
-                  <p className={styles.stat}>About <span>{CUSTOMERS[key]}</span> homes and businesses on its network</p>
-                )}
-                <a className={styles.site} href={net.website} target="_blank" rel="noopener noreferrer">
-                  {net.website.replace(/^https?:\/\/(www\.)?/, "")}<span aria-hidden> ↗</span>
-                </a>
+                <div className={styles.logo}><Logo k={key} h={wide ? 44 : 34} w={wide ? 260 : 200} /></div>
+                <p className={styles.meta}>
+                  <b>{net.states.join(" \u00b7 ")}</b> {net.area}
+                  {CUSTOMERS[key] && <> About {CUSTOMERS[key]} customers.</>}
+                  {" "}<a href={net.website} target="_blank" rel="noopener noreferrer">{net.website.replace(/^https?:\/\/(www\.)?/, "")}{"\u00a0\u2197"}</a>
+                </p>
+                <div className={styles.rail} aria-hidden>
+                  {STEPS.map((g, i) => <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} />)}
+                </div>
               </div>
             ) : (
-              <div className={styles.all} aria-live="polite">
-                <p className={styles.allLine}>Every network, watched in one place.</p>
-                <div className={styles.logoWall}>
-                  {STEPS.map((g) => {
-                    const k = netKey(NETS[g[0]].name)
-                    return k ? <Logo key={k} k={k} h={wide ? 32 : 24} w={wide ? 160 : 132} /> : null
-                  })}
-                </div>
-              </div>
+              B.sub && <p key={`s${beat}`} className={styles.sub}>{B.sub}</p>
             )}
-            <div className={styles.rail} aria-hidden>
-              {STEPS.map((g, i) => (
-                <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} className={i === step ? styles.on : ""} />
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.mapBox}>
-            <div ref={rig} className={styles.rig}>
-              <i ref={centre} className={styles.mark} style={{ left: "50%", top: "50%" }} aria-hidden />
-              <svg className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
-                {NETS.map((n) => <path key={n.name} d={n.d} />)}
-              </svg>
-              {NETS.map((n, i) => (
-                <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
-                  style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name), zIndex: 2 + STEP_OF[i] }}>
-                  <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
-                  <i ref={(el) => { marks.current[i] = el }} className={styles.mark}
-                    style={{ left: `${(n.at[0] / NET_VIEW.w) * 100}%`, top: `${(n.at[1] / NET_VIEW.h) * 100}%` }} />
-                </div>
-              ))}
-              <svg className={`${styles.dots} ${step >= G ? styles.dotsOn : ""}`} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`}
-                role="img" aria-label="A map of Australia divided into its sixteen electricity network areas">
-                {OUTAGE_DOTS.map((d, i) => (
-                  <g key={d.name} style={{ ["--d" as string]: `${i * 0.3}s` }}>
-                    <circle cx={d.at[0]} cy={d.at[1]} r="22" className={styles.pulse} />
-                    <circle cx={d.at[0]} cy={d.at[1]} r="7.5" className={styles.core} />
-                  </g>
-                ))}
-              </svg>
-            </div>
           </div>
         </div>
 
+        <div className={styles.mapBox}>
+          <svg ref={svg} className={`${styles.map} ${beat >= 4 ? styles.sitesOn : ""}`} viewBox={`-40 -40 ${NET_VIEW.w + 80} ${NET_VIEW.h + 80}`}
+            role="img" aria-label="A map of Australia divided into its electricity network areas">
+            <g className={styles.base}>{NETS.map((n) => <path key={n.name} d={n.d} />)}</g>
+            {STEPS.map((g, gi) => (
+              <g key={gi} className={styles.split} style={{ ["--dx" as string]: SPLIT[gi][0].toFixed(1), ["--dy" as string]: SPLIT[gi][1].toFixed(1) }}>
+                <g ref={(el) => { groups.current[gi] = el }} className={styles.area}>
+                  {g.map((i) => (
+                    <path key={NETS[i].name} d={NETS[i].d}
+                      style={{ ["--c" as string]: tint(NETS[i].name), ["--cd" as string]: LIFT[NETS[i].name] ?? tint(NETS[i].name) }} />
+                  ))}
+                </g>
+              </g>
+            ))}
+            <g className={styles.dots}>
+              {dots.map((d, i) => (
+                <circle key={i} cx={d.x} cy={d.y} r={d.r.toFixed(2)} style={{ ["--d" as string]: d.d.toFixed(3) }} />
+              ))}
+            </g>
+            <g className={styles.sites}>
+              {OUTAGE_DOTS.map((d, i) => (
+                <g key={d.name} style={{ ["--i" as string]: i }}>
+                  <circle cx={d.at[0]} cy={d.at[1]} r="22" className={styles.pulse} />
+                  <circle cx={d.at[0]} cy={d.at[1]} r="9" className={styles.core} />
+                </g>
+              ))}
+            </g>
+          </svg>
+        </div>
       </div>
     </section>
   )
