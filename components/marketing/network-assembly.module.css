@@ -54,13 +54,16 @@
 @media (prefers-color-scheme: dark) { .slab path.on { fill: color-mix(in srgb, var(--cd), #000 40%); stroke: color-mix(in srgb, var(--cd), #000 40%); } }
 /* a falling area's own sides, only while it's in the air */
 .layer .edge { transform: translateZ(var(--z)); display: none; }
-.lifting .edge, .allIn .edge { display: block; }
+/* only once landed: while it falls a piece is just see-through glass, with no layers showing through it */
+.allIn .edge { display: block; }
 .allIn .base { visibility: hidden; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
 .layer .edge path { fill: color-mix(in srgb, var(--c), #000 38%); stroke: color-mix(in srgb, var(--c), #000 38%); }
 @media (prefers-color-scheme: dark) { .layer .edge path { fill: color-mix(in srgb, var(--cd, var(--c)), #000 45%); stroke: color-mix(in srgb, var(--cd, var(--c)), #000 45%); } }
-/* before the drops it's a flat map; after, the pieces keep their sides even facing you */
-.flat .slab { display: none; }
+/* the patches' borders on the grey country, drawn in as the section arrives (--draw goes 1 to 0) */
+.seams { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; --draw: 1; }
+.seams path { fill: var(--c); fill-opacity: calc((1 - var(--draw)) * 0.3); stroke: color-mix(in srgb, var(--c) 75%, #fff); stroke-width: 2.2; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: var(--draw); vector-effect: non-scaling-stroke; }
+@media (prefers-color-scheme: dark) { .seams path { stroke: color-mix(in srgb, var(--c) 70%, #000); } }
 .layer svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .layer path { fill: var(--c); stroke: var(--c); stroke-width: 0.8; stroke-linejoin: round; }
 @media (prefers-color-scheme: dark) { .layer path { fill: var(--cd, var(--c)); stroke: var(--cd, var(--c)); } }
@@ -77,31 +80,40 @@
   position: absolute; z-index: 3; margin: 0; max-width: 560px; visibility: hidden;
   font-size: 19px; line-height: 1.5; color: var(--muted); text-wrap: balance;
 }
-.words > span { display: block; opacity: 0; will-change: transform, opacity; }
-.big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.6vw, 52px); line-height: 1.06; letter-spacing: -0.025em; color: var(--ink); }
+.words > div { opacity: 0; will-change: opacity; }
+.words p { margin: 0; }
+.big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.4vw, 50px); line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); }
+/* the smaller line under a big one */
+.sub { margin-top: 0.7em !important; font-size: clamp(16px, 1.25vw, 19px); line-height: 1.5; color: var(--muted); max-width: 560px; text-wrap: balance; }
+.top .sub, .centre .sub { margin-left: auto !important; margin-right: auto !important; }
+/* the wordmark over the last line */
+.brandMark {
+  display: block; margin: 0 auto 0.5em; height: 0.8em; aspect-ratio: 283.73 / 72.48; background: var(--ink);
+  -webkit-mask: url("/wattle-wordmark.svg") center / contain no-repeat; mask: url("/wattle-wordmark.svg") center / contain no-repeat;
+}
 .top { top: clamp(28px, 8vh, 80px); left: 0; right: 0; margin: 0 auto; text-align: center; max-width: 1180px; padding: 0 24px; }
 .topLeft { top: clamp(28px, 10vh, 100px); left: clamp(24px, 6vw, 96px); max-width: 440px; }
 .topRight { top: clamp(28px, 10vh, 100px); right: clamp(24px, 6vw, 96px); max-width: 420px; text-align: right; }
 .bottomLeft { bottom: clamp(28px, 10vh, 100px); left: clamp(24px, 6vw, 96px); max-width: 520px; }
 .bottom { bottom: clamp(28px, 8vh, 80px); left: 0; right: 0; margin: 0 auto; text-align: center; max-width: 640px; padding: 0 24px; }
-.centre {
-  top: 50%; left: 0; right: 0; margin: -0.6em auto 0; text-align: center; max-width: 900px; padding: 0 24px;
-  font-size: clamp(40px, 6.4vw, 96px); letter-spacing: -0.035em;
-}
+.centre { top: 50%; left: 0; right: 0; margin: 0 auto; transform: translateY(-50%); text-align: center; max-width: 980px; padding: 0 24px; }
+.centre .big { font-size: clamp(38px, 5vw, 76px); letter-spacing: -0.035em; }
+.centre .brandMark { height: clamp(44px, 4.6vw, 72px); font-size: inherit; margin-bottom: 0.45em; }
 
 /* the headline: the wordmark (its t's pulled together by the script) as tall as the words beside it, a line under it */
 .tie { position: absolute; z-index: 3; top: clamp(20px, 5vh, 56px); left: 0; right: 0; padding: 0 24px; text-align: center; visibility: hidden; }
+/* the wordmark, as wide as the words under it (set by the script); its halves start out far beyond that */
+.tieMark { display: block; margin: 0 auto 0.18em; width: 320px; height: auto; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); }
 .tieRow {
-  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(32px, 4vw, 58px); line-height: 1.1;
+  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(30px, 3.3vw, 48px); line-height: 1.1;
   letter-spacing: -0.025em; color: var(--ink); white-space: nowrap;
 }
-.tieMark { display: inline-block; vertical-align: baseline; height: 0.72em; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); margin-right: 0.24em; }
 .tieRow span { display: inline-block; opacity: 0; }
-.tieSub { margin: 0.35em auto 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
+.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
 
 /* the company landing now: beside the map, level with its area (placed by the script), joined to it by a line */
 .chip {
-  position: absolute; z-index: 3; top: 0; left: 0; width: clamp(200px, 22vw, 320px); visibility: hidden;
+  position: absolute; z-index: 3; top: 0; left: 0; width: clamp(260px, 25vw, 400px); visibility: hidden;
   will-change: transform;
 }
 .chip > div { opacity: 0; will-change: transform, opacity; }
@@ -112,7 +124,7 @@
   background: var(--tint); pointer-events: none; will-change: transform, width;
 }
 .leader::after { content: ""; position: absolute; right: -4px; top: -3.25px; width: 8px; height: 8px; border-radius: 50%; background: var(--tint); }
-.logo { min-height: 50px; display: flex; align-items: center; margin-bottom: 8px; }
+.logo { min-height: 76px; display: flex; align-items: center; margin-bottom: 8px; }
 .meta { font-size: 15.5px; line-height: 1.5; color: var(--muted); margin: 0 0 12px; }
 .meta b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--tint); margin-right: 4px; }
 .meta a { color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 1.5px solid color-mix(in srgb, var(--tint) 60%, transparent); white-space: nowrap; }
@@ -130,10 +142,11 @@
   .section { height: 900vh; }
   .rig { width: 86vw; margin-top: 0; }
   .words { font-size: 16px; }
-  .big { font-size: clamp(25px, 7vw, 32px); }
+  .big, .centre .big { font-size: clamp(25px, 7vw, 32px); }
+  .sub { font-size: 15px; }
   .top, .topLeft, .topRight { top: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .bottom, .bottomLeft { bottom: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
-  .centre { font-size: clamp(34px, 10vw, 46px); left: 20px; right: 20px; padding: 0; }
+  .centre { left: 20px; right: 20px; padding: 0; }
   .tie { top: 28px; padding: 0 20px; }
   .tieRow { font-size: clamp(26px, 7.4vw, 34px); white-space: normal; }
   .tieSub { font-size: 16px; }

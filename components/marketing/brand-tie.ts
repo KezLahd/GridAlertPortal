@@ -1,6 +1,6 @@
 "use client"
 // The Wattle wordmark as the map's headline: the app's pull to refresh (brand/wattle/motion/MOTION.md) played in
-// reverse. The right half (t, l, e) starts out where the words beside the mark will be, far from the left half with a slack wire between them; it pulls tight and gold, drags the poles together
+// reverse. The two halves (w a t, t l e) start far apart, a slack wire between the t's with a slack wire between them; it pulls tight and gold, drags the poles together
 // (the tops leaning in as they come), they knock with a flash, bounce twice and settle, and the wire is gone.
 // Driven by the scroll: tie(u) draws the frame for u from 0 to 1. Letter outlines are from public/wattle-wordmark.svg.
 
@@ -58,18 +58,19 @@ export function makeTie(svg: SVGSVGElement) {
     g.setAttribute("transform", `translate(${dx.toFixed(2)} ${((1 - backOut(k)) * BAR * 1.6).toFixed(2)})`)
   }
 
-  /** u: 0 to 1 through the moment; reach: how far right the right half starts, in the mark's own units */
+  /** u: 0 to 1 through the moment; reach: how far apart the halves start, in the mark's own units */
   return (u: number, reach: number) => {
     const GAP = Math.max(60, reach)
-    const inn = seg(u, 0, 0.2)
-    // the pull: the wire takes up its slack and goes gold, then drags the poles in, faster as they come
-    const slack = 1 - easeOut(seg(u, 0.14, 0.32), 2)
-    const k = seg(u, 0.32, 0.62)
-    const tb = Math.max(0, u - 0.62) / 0.38 * 0.9                  // seconds after the knock, as the app counts them
+    const inn = seg(u, 0, 0.12)
+    // the wire takes up its slack and goes gold, then draws the halves in: quickly at first, slower and slower as they
+    // near, like a hand easing off. They meet in the middle of the word, knock once with a flash, and settle
+    const slack = 1 - easeOut(seg(u, 0.06, 0.18), 2)
+    const k = seg(u, 0.18, 0.86)
+    const tb = (Math.max(0, u - 0.86) / 0.14) * 0.75                // seconds after they meet, as the app counts them
     let gap: number, lean: number
-    if (u < 0.62) { gap = GAP * (1 - Math.pow(k, 2.2)); lean = STEM * 0.9 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 1.3)) }
-    else { gap = GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
-    const L = 0, R = gap
+    if (u < 0.86) { gap = GAP * (1 - easeOut(k, 2.2)); lean = STEM * 0.7 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 0.8)) * (1 - k * 0.6) }
+    else { gap = STEM * 0.9 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.45 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
+    const L = -gap / 2, R = gap / 2
     reveal(w, 2, inn, L); reveal(a, 1, inn, L); reveal(l, 1, inn, R); reveal(e, 2, inn, R)
     const to = clamp(inn * 1.6).toFixed(3)
     p1.g.setAttribute("opacity", to); p2.g.setAttribute("opacity", to)
@@ -77,7 +78,7 @@ export function makeTie(svg: SVGSVGElement) {
 
     // two wires: between the facing crossbar ends, and between the middles of the poles
     const wire = clamp((inn - 0.4) / 0.4) * (1 - seg(tb, 0, 0.35))
-    const gold = seg(u, 0.24, 0.32)
+    const gold = seg(u, 0.12, 0.18)
     const ends: [number, number][][] = [
       [onBar(T1 + L, 1, ARM - BAR / 2, lean), onBar(T2 + R, -1, -(ARM - BAR / 2), lean)],
       [bendAt(T1 + L, 1, HC + (YL - TOP - HC) * 0.5, lean), bendAt(T2 + R, -1, HC + (YL - TOP - HC) * 0.5, lean)],

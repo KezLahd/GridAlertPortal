@@ -40,26 +40,29 @@ const G = STEPS.length
 
 // the timeline, as fractions of the section's scroll (0 = its top reaches the top of the screen, 1 = its end)
 type Span = [number, number]
-const TILT: Span = [0.05, 0.13], DROPS: Span = [0.14, 0.465], FLAT: Span = [0.495, 0.57], VINES: Span = [0.58, 0.68]
-const LACE: Span = [0.68, 0.77], DOTS: Span = [0.77, 0.84], GOLD: Span = [0.83, 0.89], SCATTER: Span = [0.94, 1]
+// the country is in 3D from the start; it only turns to face you, flat, just before it becomes dots (FACE)
+const DROPS: Span = [0.07, 0.4], FLAT: Span = [0.42, 0.48], VINES: Span = [0.49, 0.575]
+const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1], FACE: Span = [0.735, 0.785]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
-// "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts); they knock at 62% of TIE,
-// and from there the grey page gives way to Wattle's own: paper, with the aurora spreading out from where they met
-const TIE: Span = [0.625, 0.735], TIE_OUT: Span = [0.75, 0.775]
-const KNOCK = TIE[0] + (TIE[1] - TIE[0]) * 0.62, THEME: Span = [KNOCK, KNOCK + 0.045]
+// "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), slowing as they near,
+// while the sprigs pull the pieces of the country together in step (LACE). They meet at 86% of TIE; once the word has
+// settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
+// The map steps down and back a little while the headline is up (ROOM), to leave it space.
+const TIE: Span = [0.55, 0.72], TIE_OUT: Span = [0.765, 0.79]
+const MEET = TIE[0] + (TIE[1] - TIE[0]) * 0.86, LACE: Span = [0.585, MEET]
+const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56], ROOM_OUT: Span = [0.765, 0.795]
 
-// the words, each with where it sits and when it comes in and goes out
-const WORDS: { text: string; at: string; big?: boolean; inn: Span; out: Span }[] = [
-  { text: "Australia\u2019s power reaches you through fifteen network companies.", at: "top", big: true, inn: [-0.02, -0.01], out: [0.05, 0.09] },
-  { text: "Not your retailer. The company that owns the poles and wires in your street.", at: "bottomLeft", big: true, inn: [0.06, 0.1], out: [0.13, 0.16] },
-  { text: "Each one looks after its own patch.", at: "top", big: true, inn: [0.14, 0.17], out: [0.48, 0.51] },
-  { text: "Fifteen companies. Fifteen websites.", at: "top", big: true, inn: [0.51, 0.545], out: [0.6, 0.63] },
-  { text: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "bottomLeft", inn: [0.525, 0.555], out: [0.6, 0.63] },
-  { text: "Every network, on one map.", at: "bottomLeft", big: true, inn: [0.77, 0.8], out: [0.86, 0.89] },
-  { text: "Wattle checks all fifteen, every few minutes.", at: "top", big: true, inn: [0.87, 0.9], out: [0.93, 0.955] },
-  { text: "So you know the moment a site loses power.", at: "centre", big: true, inn: [0.95, 0.98], out: [2, 3] },
+// the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
+// it; the last one carries the wordmark above it
+type Words = { text: string; sub?: string; brand?: boolean; at: string; inn: Span; out: Span }
+const WORDS: Words[] = [
+  { text: "Australia\u2019s power comes through fifteen companies.", sub: "Not your retailer: the networks that own the poles and wires in your street. These are their patches.", at: "top", inn: [-0.02, -0.01], out: [0.05, 0.068] },
+  { text: "Each one looks after its own patch.", at: "top", inn: [0.068, 0.085], out: [0.4, 0.42] },
+  { text: "Fifteen companies. Fifteen websites.", sub: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "top", inn: [0.42, 0.45], out: [0.515, 0.54] },
+  { text: "Every network, on one map.", sub: "Wattle checks all fifteen, every few minutes.", at: "bottomLeft", inn: [0.795, 0.82], out: [0.89, 0.915] },
+  { text: "Know the moment a site loses power.", sub: "Every site you run, on every network, in one app.", brand: true, at: "centre", inn: [0.94, 0.975], out: [2, 3] },
 ]
-const CHIP: { inn: Span; out: Span } = { inn: [0.145, 0.17], out: [0.48, 0.51] }
+const CHIP: { inn: Span; out: Span } = { inn: [0.072, 0.09], out: [0.4, 0.42] }
 
 // customers on each network, rounded, from the networks' own 2024-26 reports and regulatory filings with the AER and
 // ERA WA (CitiPower and Powercor added together)
@@ -76,11 +79,79 @@ const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
 
 // the middle of each company's areas, and how far it moves out when the country breaks apart
 const MID = STEPS.map((g) => g.reduce((a, i) => [a[0] + NETS[i].at[0] / g.length, a[1] + NETS[i].at[1] / g.length], [0, 0]))
-const SPLIT = MID.map(([x, y]) => {
-  const dx = x - CX, dy = y - (CY + 60), len = Math.hypot(dx, dy) || 1
-  const push = 34 + 46 * Math.min(1, len / 420)
-  return [(dx / len) * push, (dy / len) * push]
-})
+// filled in by evenSplit() once the shapes are on the page
+const SPLIT: number[][] = MID.map(() => [0, 0])
+const TAS = STEPS.findIndex((g) => NETS[g[0]].name === "TasNetworks")
+
+/** Where each piece goes when the country breaks apart: pushed out from the middle a little, then nudged apart until
+ *  every piece sits the same gap from each of its neighbours, none covering another. */
+function evenSplit(paths: SVGPathElement[], GAP = 30) {
+  const step = 8, cols = Math.ceil(NET_VIEW.w / step), rows = Math.ceil(NET_VIEW.h / step)
+  const owner = new Int16Array(cols * rows).fill(-1)
+  const gOf = NETS.map((_, i) => STEPS.findIndex((s) => s.includes(i)))
+  const pt = new DOMPoint()
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    pt.x = c * step + step / 2; pt.y = r * step + step / 2
+    const n = paths.findIndex((p) => p.isPointInFill(pt))
+    if (n >= 0) owner[r * cols + c] = gOf[n]
+  }
+  const pts: { g: number; x: number; y: number }[] = [], mass = MID.map(() => 0)
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const g = owner[r * cols + c]
+    if (g < 0) continue
+    mass[g]++
+    const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => {
+      const cc = c + dc, rr = r + dr
+      return cc < 0 || rr < 0 || cc >= cols || rr >= rows || owner[rr * cols + cc] !== g
+    })
+    if (nb) pts.push({ g, x: c * step + step / 2, y: r * step + step / 2 })
+  }
+  const D = MID.map(([x, y]) => [(x - CX) * 0.14, (y - CY - 40) * 0.14])
+  // a few start off in a set direction: Western Power straight down, away from Horizon above it; Evoenergy (the ACT,
+  // a hole in Essential's area) out to the south-east and Essential up and away from it, so it has a gap of its own
+  const START: Record<string, [number, number]> = { "Western Power": [-4, 46], "Evoenergy": [34, 44], "Essential Energy": [-12, -16] }
+  STEPS.forEach((g, i) => { const v = START[NETS[g[0]].name]; if (v) D[i] = [...v] })
+  const small = Math.min(...mass.filter((m) => m > 0))
+  for (let it = 0; it < 160; it++) {
+    const grid = new Map<number, number[]>(), key = (i: number, j: number) => i * 4099 + j
+    pts.forEach((q, k) => { const x = q.x + D[q.g][0], y = q.y + D[q.g][1], kk = key(Math.floor(x / GAP), Math.floor(y / GAP)); (grid.get(kk) ?? grid.set(kk, []).get(kk)!).push(k) })
+    const F = MID.map(() => [0, 0, 0])
+    // whose ground (if anyone else's) a point has been moved onto
+    const inside = (x: number, y: number, me: number) => {
+      for (let g = 0; g < D.length; g++) {
+        if (g === me) continue
+        const c = Math.floor((x - D[g][0]) / step), r = Math.floor((y - D[g][1]) / step)
+        if (c >= 0 && r >= 0 && c < cols && r < rows && owner[r * cols + c] === g) return g
+      }
+      return -1
+    }
+    pts.forEach((q) => {
+      const x = q.x + D[q.g][0], y = q.y + D[q.g][1], gi = Math.floor(x / GAP), gj = Math.floor(y / GAP)
+      // sitting on another piece: push straight away from that piece's middle, hard
+      const o = inside(x, y, q.g)
+      if (o >= 0) {
+        const dx = MID[q.g][0] + D[q.g][0] - MID[o][0] - D[o][0], dy = MID[q.g][1] + D[q.g][1] - MID[o][1] - D[o][1], d = Math.hypot(dx, dy) || 1
+        F[q.g][0] += (dx / d) * 2; F[q.g][1] += (dy / d) * 2; F[q.g][2]++
+        return
+      }
+      for (let i = gi - 1; i <= gi + 1; i++) for (let j = gj - 1; j <= gj + 1; j++) for (const k of grid.get(key(i, j)) ?? []) {
+        const o = pts[k]
+        if (o.g === q.g) continue
+        let dx = x - (o.x + D[o.g][0]), dy = y - (o.y + D[o.g][1]), d = Math.hypot(dx, dy)
+        if (d >= GAP) continue
+        if (d < 0.01) { dx = MID[q.g][0] - MID[o.g][0]; dy = MID[q.g][1] - MID[o.g][1]; d = Math.hypot(dx, dy) || 1 }
+        const f = (GAP - Math.min(d, GAP)) / GAP
+        F[q.g][0] += (dx / d) * f; F[q.g][1] += (dy / d) * f; F[q.g][2]++
+      }
+    })
+    F.forEach(([fx, fy, n], g) => {
+      if (!n) return
+      const k = GAP * 0.45 * Math.sqrt(small / mass[g]) ** 0.6
+      D[g][0] += (fx / Math.sqrt(n)) * k * 0.25; D[g][1] += (fy / Math.sqrt(n)) * k * 0.25
+    })
+  }
+  D.forEach((d, g) => { SPLIT[g][0] = d[0]; SPLIT[g][1] = d[1] })
+}
 
 // the sprigs: each company tied to its two nearest (a second strand on the longer ties), and three more right across
 // the middle of the country, so it's laced through the centre and not only round the edge
@@ -88,7 +159,11 @@ const PAIRS: [number, number][] = []
 MID.forEach((a, i) => {
   MID.map((b, j) => [j, Math.hypot(a[0] - b[0], a[1] - b[1])] as const).filter(([j]) => j !== i)
     .sort((x, y) => x[1] - y[1]).slice(0, 3)
-    .forEach(([j]) => { if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j]) })
+    .forEach(([j]) => {
+      // Tasmania is an island already: no sprig across Bass Strait
+      if (NETS[STEPS[i][0]].name === "TasNetworks" || NETS[STEPS[j][0]].name === "TasNetworks") return
+      if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j])
+    })
 })
 const group = (name: string) => STEPS.findIndex((g) => NETS[g[0]].name === name)
 const ACROSS = ([["Western Power", "Ergon Energy"], ["Power and Water", "SA Power Networks"], ["Horizon Power", "Essential Energy"]] as const)
@@ -97,20 +172,21 @@ const tie = (a: number, b: number) => Math.hypot(MID[a][0] - MID[b][0], MID[a][1
 const STRANDS = [
   ...PAIRS.flatMap(([a, b], k) => {
     const one = { a, b, bend: (k % 2 ? -1 : 1) * (0.12 + (k % 3) * 0.03) }
-    return tie(a, b) > 170 ? [one, { a, b, bend: -one.bend * 0.8 }] : [one]
+    const two = { a, b, bend: -one.bend * 0.8 }, three = { a, b, bend: one.bend * 0.45 }
+    return tie(a, b) > 220 ? [one, two, three] : tie(a, b) > 120 ? [one, two] : [one]
   }),
   ...ACROSS.map(([a, b], k) => ({ a, b, bend: (k % 2 ? -1 : 1) * 0.07 })),
 ]
 // each sprig: a stem in four lengths that go under, over, under, over the pieces (the start alternating), thin leaves
 // along it, and two small clusters of wattle balls
 const SEGS = 4
-const LEAVES = [0.07, 0.16, 0.27, 0.38, 0.5, 0.62, 0.74, 0.86]
-const BLOOMS = [0.33, 0.69]
+const LEAVES = [0.06, 0.13, 0.2, 0.28, 0.36, 0.44, 0.52, 0.6, 0.68, 0.76, 0.84, 0.92]
+const BLOOMS = [0.24, 0.5, 0.78]
 const BALLS: [number, number][] = [[0, -9], [6.5, -5], [-6, -4], [1.5, -15]]
 // every length runs under the pieces: the sprigs show only in the gaps, and vanish as the gaps close
 const over = (_k: number, _u: number) => false
 // each sprig its own size, from slight to sturdy
-const SIZE = (k: number) => 0.65 + ((k * 7) % 10) / 10 * 0.9
+const SIZE = (k: number) => 0.45 + (((k * 7) % 11) / 10) * 1.25
 type Pt = [number, number]
 const lerpP = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 const halves = ([a, b, c, d]: Pt[], t: number) => {
@@ -250,6 +326,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const tieWords = useRef<HTMLSpanElement>(null)
   const tieSub = useRef<HTMLParagraphElement>(null)
   const overcast = useRef<HTMLDivElement>(null)
+  const seams = useRef<SVGSVGElement>(null)
   const aurora = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState(0)
 
@@ -257,6 +334,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const sec = section.current, st = stage.current, rg = rig.current, cv = canvas.current, bs = base.current
     if (!sec || !st || !rg || !cv || !bs) return
     const dots = makeDots(Array.from(bs.querySelectorAll("path")))
+    evenSplit(Array.from(bs.querySelectorAll("path")))
     const dark = window.matchMedia("(prefers-color-scheme: dark)")
     const ctx = cv.getContext("2d")
     // the country's sides, one path per area, coloured in an area's colour once it has landed
@@ -275,14 +353,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const tie = tieMark.current ? makeTie(tieMark.current) : null
     let tied = -1, tiedReach = -1
     const au = aurora.current, actx = au?.getContext("2d") ?? null
-    // the wordmark as tall as the words beside it: the height of an l in whatever font the words are set in
+    // the wordmark as wide as the line of words under it
     const fitMark = () => {
-      const row = tieRow.current, mk = tieMark.current, c = document.createElement("canvas").getContext("2d")
-      if (!row || !mk || !c) return
-      const cs = getComputedStyle(row)
-      c.font = `${cs.fontWeight} 100px ${cs.fontFamily}`
-      const asc = c.measureText("l").actualBoundingBoxAscent / 100
-      mk.style.height = `${((asc || 0.72) * TIE_VIEW.h / 71.45).toFixed(4)}em`
+      const mk = tieMark.current, tw = tieWords.current
+      if (!mk || !tw) return
+      mk.style.width = `${tw.offsetWidth}px`
     }
     fitMark()
     document.fonts?.ready.then(fitMark)
@@ -315,7 +390,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT]) > 0.04 && drop) now = g })
       const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
       const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
-      const reserve = (() => { const w = words.current[2]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
+      const reserve = (() => { const w = words.current[1]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
       const secTop = sec.getBoundingClientRect().top
       const mk = tieMark.current?.getBoundingClientRect()
 
@@ -330,16 +405,14 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const v = tu > 0 ? 1 - ease(seg(p, TIE_OUT)) : 0
         tb.style.visibility = v > 0.001 ? "visible" : "hidden"
         tb.style.opacity = v.toFixed(3)
-        // the right half of the mark starts where the words will be, so the wire pulls it across the whole line
-        const wr = tieWords.current?.getBoundingClientRect(), mw = mk?.width ?? 0
-        const oneLine = !!(wr && mk && wr.top < mk.bottom)
-        const reach = oneLine && wr && mk ? Math.round(wr.right - mk.right) : 0
-        if (v > 0.001 && tie && (Math.abs(tu - tied) > 0.0002 || reach !== tiedReach)) {
-          tied = tu; tiedReach = reach
-          tie(tu, mw > 0 && reach > 0 ? (reach * TIE_VIEW.w) / mw : 150)
+        // the two halves start as far apart as the screen allows, and meet in the middle of the word
+        const mw = mk?.width ?? 0, room = Math.max(0, sr.width * 0.92 - mw)
+        if (v > 0.001 && tie && (Math.abs(tu - tied) > 0.0002 || room !== tiedReach)) {
+          tied = tu; tiedReach = room
+          tie(tu, mw > 0 ? Math.min(TIE_VIEW.w * 1.1, (room * TIE_VIEW.w) / mw) : 200)
         }
-        if (tieWords.current) tieWords.current.style.opacity = ease(seg(tu, [0.64, 0.8])).toFixed(3)
-        if (tieSub.current) tieSub.current.style.opacity = ease(seg(tu, [0.76, 0.94])).toFixed(3)
+        if (tieWords.current) tieWords.current.style.opacity = ease(seg(tu, [0.04, 0.18])).toFixed(3)
+        if (tieSub.current) tieSub.current.style.opacity = ease(seg(tu, [0.88, 1])).toFixed(3)
       }
 
       // the page: grey and still while it's fifteen companies; from the moment the t's meet, Wattle's paper and aurora
@@ -389,15 +462,22 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
-      const tilt = ease(seg(p, TILT)) * (1 - ease(seg(p, FLAT)))
+      const tilt = 1 - ease(seg(p, FACE))
+      const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
       const fit = wide ? Math.min(0.96, Math.max(0.7, (sr.width - 2 * (cw + 64)) / Math.max(1, rg.offsetWidth))) : 0.96
-      rg.style.transform = tilt > 0.0005
-        ? `translateY(${(tilt * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${(1 - tilt * (1 - fit)).toFixed(4)})`
+      rg.style.transform = tilt > 0.0005 || room > 0.0005
+        ? `translateY(${(tilt * 3 + room * 8).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.15 * room)).toFixed(4)})`
         : "none"
-      rg.classList.toggle(styles.flat, tilt < 0.02)
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
       rg.classList.toggle(styles.allIn, allIn)
+      // the patches' borders draw themselves as the section comes up, and go as the areas land on them
+      const sm = seams.current
+      if (sm) {
+        const drawIn = ease(clamp(1.15 - secTop / Math.max(1, window.innerHeight)))
+        sm.style.setProperty("--draw", (1 - drawIn).toFixed(4))
+        sm.style.opacity = (1 - ease(seg(p, [DROPS[0], DROPS[0] + 0.03]))).toFixed(3)
+      }
 
       // apart, then laced back together
       const apart = ease(seg(p, FLAT)) * (1 - ease(seg(p, LACE))) * (wide ? 1 : 0.55)
@@ -411,7 +491,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         // whole dots of its own colour, which then shrink
         const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t > 0 ? 1 : 0
         const glass = t >= 1 ? 1 : clamp(t / 0.06) * (0.32 + 0.68 * ease(t))
-        const down = t >= 1 && tilt > 0.02
+        const down = t >= 1
         if (down !== landed[g]) {
           landed[g] = down
           group.forEach((i) => sides.forEach((sp, k) => { if (k % NETS.length === i) sp.classList.toggle(styles.on, down) }))
@@ -423,7 +503,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           el.style.opacity = String(op)
           if (dotted && qd < 1) {
             const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
-            const rb = qd * 1.35 * R, ra = rb - 0.035 * R
+            const rb = qd * 1.35 * R, ra = rb - 0.018 * R
             const m = `radial-gradient(circle at ${((CX / NET_VIEW.w) * 100).toFixed(2)}% ${(((CY + 40) / NET_VIEW.h) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
@@ -450,7 +530,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]
-          const g = clamp(grow * 1.15 - (k % 5) * 0.03) * (1 - ease(clamp((tight - 0.45) / 0.55)))
+          const g = clamp(grow * 1.15 - (k % 5) * 0.03) * (1 - ease(clamp((tight - 0.9) / 0.1)))
           for (let j = 0; j < SEGS; j++) {
             const el = stems.current[k * SEGS + j]
             if (!el) continue
@@ -504,7 +584,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               for (const d of list) {
                 const front = q * 1.35 - d.d
                 if (front <= 0) continue
-                const m = ease(clamp(front * 4))
+                const m = ease(clamp(front * 9))
                 const c = dark.matches ? d.cd : d.c
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
@@ -554,13 +634,17 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         <div className={styles.mapBox}>
           <div ref={rig} className={styles.rig}>
             {/* the country's thickness, seen while it's tipped back: three layers make a solid side */}
-            {[3, 2, 1].map((k) => (
-              <svg key={k} className={`${styles.base} ${styles.slab}`} style={{ ["--z" as string]: `${-k * 5}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+            {[5, 4, 3, 2, 1].map((k) => (
+              <svg key={k} className={`${styles.base} ${styles.slab}`} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
                 {NETS.map((n) => <path key={n.name} d={n.d} style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }} />)}
               </svg>
             ))}
             <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               {NETS.map((n) => <path key={n.name} d={n.d} />)}
+            </svg>
+            {/* the fifteen patches, drawn on the grey country as the section arrives */}
+            <svg ref={seams} className={styles.seams} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              {NETS.map((n) => <path key={n.name} d={n.d} pathLength={1} style={{ ["--c" as string]: tint(n.name) }} />)}
             </svg>
             {/* the lengths of sprig that pass under the pieces */}
             <svg ref={vinesUnder} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
@@ -571,8 +655,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               return (
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
-                  {[3, 2, 1].map((k) => (
-                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 4}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                  {[4, 3, 2, 1].map((k) => (
+                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
                   ))}
                   <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
@@ -588,16 +672,18 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         <canvas ref={canvas} className={styles.dots} role="img" aria-label="A map of Australia made of wattle-gold dots" />
 
         {WORDS.map((w, i) => (
-          <p key={i} ref={(el) => { words.current[i] = el }} className={`${styles.words} ${styles[w.at]} ${w.big ? styles.big : ""}`}>
-            <span>{w.text}</span>
-          </p>
+          <div key={i} ref={(el) => { words.current[i] = el }} className={`${styles.words} ${styles[w.at]}`}>
+            <div>
+              {w.brand && <span className={styles.brandMark} role="img" aria-label="Wattle" />}
+              <p className={styles.big}>{w.text}</p>
+              {w.sub && <p className={styles.sub}>{w.sub}</p>}
+            </div>
+          </div>
         ))}
 
         <div ref={tieBox} className={styles.tie}>
-          <p ref={tieRow} className={styles.tieRow}>
-            <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
-            <span ref={tieWords}>ties them together.</span>
-          </p>
+          <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
+          <p ref={tieRow} className={styles.tieRow}><span ref={tieWords}>ties them together.</span></p>
           <p ref={tieSub} className={styles.tieSub}>All fifteen networks, in one place.</p>
         </div>
 
@@ -606,7 +692,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           <div ref={chipIn}>
             {net && key && (
               <div key={key} className={styles.company}>
-                <div className={styles.logo}><Logo k={key} h={wide ? 40 : 32} w={wide ? 230 : 190} /></div>
+                <div className={styles.logo}><Logo k={key} h={wide ? 68 : 40} w={wide ? 380 : 230} /></div>
                 <p className={styles.meta}>
                   <b>{net.states.join(" · ")}</b> {net.area}
                   {CUSTOMERS[key] && <> About {CUSTOMERS[key]} customers.</>}
