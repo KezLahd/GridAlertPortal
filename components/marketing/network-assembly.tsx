@@ -170,14 +170,14 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
 // Longer borders (the big states) get sturdier stitches; each one's thickness wanders a little
 const STRANDS = STITCHES.map((t, k) => ({
   ...t, bend: (k % 2 ? -1 : 1) * (0.1 + (k % 3) * 0.05),
-  w: (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.75 + (((k * 7) % 11) / 10) * 0.5),
+  w: (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.4 + (((k * 7) % 11) / 10) * 1.3),
 }))
 // each sprig: a stem in four lengths that go under, over, under, over the pieces (the start alternating), thin leaves
 // along it, and two small clusters of wattle balls
 const SEGS = 2
-const LEAVES = [0.3, 0.7]
+const LEAVES = [0.22, 0.5, 0.78]
 const BLOOMS = [0.5]
-const BALLS: [number, number][] = [[0, -5], [3.6, -2.6], [-3.4, -2.2]]
+const BALLS: [number, number][] = [[0, -6.4], [4.6, -3.2], [-4.4, -2.8]]
 // every length runs under the pieces: the sprigs show only in the gaps, and vanish as the gaps close
 const over = (_k: number, _u: number) => false
 // each sprig its own size, from slight to sturdy
@@ -546,22 +546,22 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             if (!el) return
             const sz = clamp((g - u) * 8)
             if (sz <= 0) { el.setAttribute("rx", "0"); el.setAttribute("ry", "0"); return }
-            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 6 * sz * SIZE(k)
+            const [x, y] = at(q, u), ang = heading(q, u) + (j % 2 ? 0.75 : -0.75), rx = 7.6 * sz * SIZE(k)
             const cx = x + Math.cos(ang) * rx, cy = y + Math.sin(ang) * rx
             el.setAttribute("cx", cx.toFixed(1)); el.setAttribute("cy", cy.toFixed(1))
-            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (1.6 * sz * SIZE(k)).toFixed(2))
+            el.setAttribute("rx", rx.toFixed(2)); el.setAttribute("ry", (2.1 * sz * SIZE(k)).toFixed(2))
             el.setAttribute("transform", `rotate(${((ang * 180) / Math.PI).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`)
           })
           BLOOMS.forEach((u, j) => {
-            // wattle only on every third stitch
-            const sz = k % 3 ? 0 : clamp((g - u) * 6), [x, y] = at(q, u), ang = heading(q, u), c = Math.cos(ang), sn = Math.sin(ang)
+            // wattle on every other stitch
+            const sz = k % 2 ? 0 : clamp((g - u) * 6), [x, y] = at(q, u), ang = heading(q, u), c = Math.cos(ang), sn = Math.sin(ang)
             const side = (j + k) % 2 ? 1 : -1
             BALLS.forEach(([ox, oy], m) => {
               const el = balls.current[(k * BLOOMS.length + j) * BALLS.length + m]
               if (!el) return
               const px = (ox * c - oy * side * sn) * SIZE(k), py = (ox * sn + oy * side * c) * SIZE(k)
               el.setAttribute("cx", (x + px).toFixed(1)); el.setAttribute("cy", (y + py).toFixed(1))
-              el.setAttribute("r", (2.3 * sz * SIZE(k)).toFixed(2))
+              el.setAttribute("r", (2.9 * sz * SIZE(k)).toFixed(2))
             })
           })
         })
