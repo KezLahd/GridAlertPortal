@@ -6,12 +6,11 @@ import { Wordmark } from "@/components/brand/wordmark"
 import Lenis from "lenis"
 import "lenis/dist/lenis.css"
 import { NetworkAssembly } from "./network-assembly"
-import { Backdrop } from "./backdrop"
 import styles from "./landing.module.css"
 
 // Wattle landing, round two. One story, in order: every network in one place → told the moment a site loses power →
 // planned work days ahead → the whole group sees the same thing. Paper, ink and one gold; rounded type for titles;
-// no cards. Scrolling is smoothed by Lenis; things have depth (patterned backdrops drifting at their own speed, the
+// no cards. Scrolling is smoothed by Lenis; things have depth (the
 // network map as an exploded 3D stack that assembles as you scroll, screens crossfading). All of it stops for
 // prefers-reduced-motion, which shows the end state and stills instead of the clips.
 
@@ -141,7 +140,7 @@ export default function Landing() {
   const wide = useMedia("(min-width: 900px)")
   const root = useRef<HTMLElement>(null)
 
-  // smooth scrolling, and the page's scroll as --sy for the backdrops' parallax
+  // smooth scrolling, and the page's scroll as --sy for the hero's parallax
   useEffect(() => {
     if (still) return
     const lenis = new Lenis({ autoRaf: true, lerp: 0.085 })
@@ -173,7 +172,6 @@ export default function Landing() {
         </nav>
 
         <section className={styles.hero}>
-          <Backdrop by="sy" className={styles.heroBackdrop} />
           <div className={styles.heroText} data-rise>
             <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
             <h1 className={styles.title}>Know the moment your sites lose power.</h1>

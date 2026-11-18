@@ -106,9 +106,7 @@
 .lede { font-size: 20px; line-height: 1.5; color: var(--muted) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
 .heroShot { justify-self: center; width: min(330px, 100%); }
 .heroShot { position: relative; }
-.heroBackdrop { left: 50% !important; right: auto !important; width: 100vw; transform: translateX(-50%); top: -120px !important; bottom: -80px !important; }
 .heroShot .screen { translate: 0 calc(var(--sy, 0) * -0.07px); }
-.hero > :not(.heroBackdrop) { position: relative; z-index: 1; }
 .heroShot > :not(.head) { position: relative; z-index: 1; }
 .head {
   position: absolute; z-index: 0; width: 150px; height: auto; top: -58px; left: -78px; opacity: 0.95; pointer-events: none;

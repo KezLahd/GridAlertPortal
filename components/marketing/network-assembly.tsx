@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
-import { Backdrop } from "./backdrop"
 import styles from "./network-assembly.module.css"
 
 // Every network, as an exploded view. Australia's sixteen network areas start as coloured sheets hovering in a tilted
 // stack over an empty outline of the country. Scrolling drops them into place one company at a time, the one landing
-// lifted with a shadow and its own logo pinned beside it on a leader line; a wash of its colour moves behind the map.
-// Once the last one lands the map swings flat and the outages pulse. Driven per frame from the scroll position (Lenis
+// lifted with a shadow, while the column on the left names it: its logo, its name, its state and the area it serves.
+// Once the last one lands the map swings flat, the outages pulse and the column shows every logo together. Driven per frame from the scroll position (Lenis
 // smooths it); nothing runs while the section is off screen, and reduced motion shows the finished, flat map.
 
 // Each network in the strongest colour of its own logo (the app's brand table, NetworkBrand in Models.swift), swapped
@@ -82,11 +81,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const rig = useRef<HTMLDivElement>(null)
   const layers = useRef<(HTMLDivElement | null)[]>([])
   const marks = useRef<(HTMLElement | null)[]>([])
-  const callout = useRef<HTMLDivElement>(null)
-  const leader = useRef<SVGLineElement>(null)
-  const pin = useRef<HTMLSpanElement>(null)
-  const wash = useRef<HTMLDivElement>(null)
-  const [step, setStep] = useState(still ? G : -1)
+  const [step, setStep] = useState(still ? G : 0)
 
   useEffect(() => {
     const sec = section.current, stg = stage.current, rg = rig.current
@@ -98,7 +93,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       return
     }
     let raf = 0, visible = false, shown = -2
-    const pos = { x: 0, y: 0, set: false }
     const tiltX = wide ? 50 : 38, tiltZ = wide ? -16 : -10
 
     const frame = () => {
@@ -132,37 +126,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       rg.style.transform = `rotateX(${((1 - f) * tiltX).toFixed(2)}deg) rotateZ(${((1 - f) * tiltZ).toFixed(2)}deg) scale(${(0.9 + 0.1 * f).toFixed(4)})`
 
       // which company the caption is about: the one landing, else the last that landed; all of them at the end
-      const now = p >= FLAT_FROM ? G : landing >= 0 ? landing : Math.min(G - 1, Math.floor((p - START) / SLOT))
+      const now = p >= FLAT_FROM ? G : landing >= 0 ? landing : Math.max(0, Math.min(G - 1, Math.floor((p - START) / SLOT)))
       if (now !== shown) { shown = now; setStep(now) }
 
-      // pin the logo to where that area is on screen right now, easing towards it
-      const s = stg.getBoundingClientRect()
-      const at = now >= 0 && now < G ? marks.current[STEPS[now][0]] : null
-      if (at && callout.current && leader.current && pin.current) {
-        const m = at.getBoundingClientRect()
-        const mx = m.left - s.left, my = m.top - s.top
-        const cw = callout.current.offsetWidth, ch = callout.current.offsetHeight
-        let tx: number, ty: number
-        if (wide) {
-          // right of the pin when it fits on screen, otherwise left of it; never past either edge
-          const left = mx + 64 + cw > s.width - 28
-          tx = Math.min(s.width - cw - 28, Math.max(28, left ? mx - cw - 64 : mx + 64))
-          ty = Math.min(s.height - ch - 40, Math.max(90, my - ch / 2 - 40))
-        } else {
-          tx = (s.width - cw) / 2
-          ty = Math.max(12, Math.min(my - ch - 70, s.height - ch - 20))
-        }
-        if (!pos.set) { pos.x = tx; pos.y = ty; pos.set = true }
-        pos.x += (tx - pos.x) * 0.14
-        pos.y += (ty - pos.y) * 0.14
-        callout.current.style.transform = `translate3d(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
-        const ex = wide ? (pos.x + cw / 2 < mx ? pos.x + cw + 10 : pos.x - 10) : pos.x + cw / 2
-        const ey = wide ? pos.y + ch / 2 : pos.y + ch + 8
-        leader.current.setAttribute("x1", ex.toFixed(1)); leader.current.setAttribute("y1", ey.toFixed(1))
-        leader.current.setAttribute("x2", mx.toFixed(1)); leader.current.setAttribute("y2", my.toFixed(1))
-        pin.current.style.transform = `translate3d(${mx.toFixed(1)}px, ${my.toFixed(1)}px, 0)`
-        if (wash.current) wash.current.style.transform = `translate3d(${mx.toFixed(1)}px, ${my.toFixed(1)}px, 0)`
-      }
       raf = requestAnimationFrame(frame)
     }
 
@@ -178,30 +144,37 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const name = current ? NETS[current[0]].name : null
   const key = name ? netKey(name) : null
   const colour = name ? tint(name) : "#F2B300"
-  const landed = step >= G ? NETS.length : step < 0 ? 0 : STEPS[step][STEPS[step].length - 1] + 1
+  const net = key ? NET[key] : null
 
   return (
     <section ref={section} className={`${styles.section} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
       <div ref={stage} className={styles.stage} style={{ ["--tint" as string]: colour }}>
-        <Backdrop className={styles.backdrop} />
-        <div ref={wash} className={styles.wash} aria-hidden />
-
         <div className={styles.grid}>
           <div className={styles.text}>
-            <span className={styles.kicker}>Every network</span>
-            <h2 id="nets-title" className={styles.h2}>Sixteen networks. One place to look.</h2>
-            <p className={styles.body}>
-              Each of Australia&apos;s sixteen electricity networks runs its own outage map. Wattle reads every one of
-              them, every few minutes, so you don&apos;t have to.
-            </p>
+            <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, one by one</h2>
+            {net && key ? (
+              <div key={key} className={styles.company} aria-live="polite">
+                <span className={styles.num}>{String(step + 1).padStart(2, "0")}<i> / {String(G).padStart(2, "0")}</i></span>
+                <div className={styles.logo}><Logo k={key} h={wide ? 64 : 44} w={wide ? 360 : 280} /></div>
+                <h3 className={styles.name}>{net.name}</h3>
+                <p className={styles.area}><b>{net.states.join(" · ")}</b>{net.area}</p>
+              </div>
+            ) : (
+              <div className={styles.all} aria-live="polite">
+                <p className={styles.allLine}>Every network, watched in one place.</p>
+                <div className={styles.logoWall}>
+                  {STEPS.map((g) => {
+                    const k = netKey(NETS[g[0]].name)
+                    return k ? <Logo key={k} k={k} h={wide ? 32 : 24} w={wide ? 160 : 132} /> : null
+                  })}
+                </div>
+              </div>
+            )}
             <div className={styles.rail} aria-hidden>
-              {NETS.map((n, i) => (
-                <i key={n.name} style={{ background: i < landed ? tint(n.name) : undefined }} className={i < landed ? styles.on : ""} />
+              {STEPS.map((g, i) => (
+                <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} className={i === step ? styles.on : ""} />
               ))}
             </div>
-            <p className={styles.count} aria-live="polite">
-              {step >= G ? <><b>All sixteen</b>, in one place.</> : step < 0 ? "Scroll to bring them in" : <><b>{landed}</b> of 16 · {name}</>}
-            </p>
           </div>
 
           <div className={styles.mapBox}>
@@ -230,12 +203,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           </div>
         </div>
 
-        {/* the logo of the network landing now, on a leader line to its area */}
-        <svg className={`${styles.lines} ${key ? styles.show : ""}`} aria-hidden><line ref={leader} /></svg>
-        <span ref={pin} className={`${styles.pin} ${key ? styles.show : ""}`} aria-hidden />
-        <div ref={callout} className={`${styles.callout} ${key ? styles.show : ""}`}>
-          {key && <div key={key} className={styles.logoIn}><Logo k={key} h={wide ? 64 : 46} w={wide ? 340 : 260} /></div>}
-        </div>
       </div>
     </section>
   )
