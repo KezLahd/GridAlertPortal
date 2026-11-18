@@ -245,8 +245,8 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
 // the sprigs: short stitches across every border where two pieces meet, evenly spaced along it (network-stitches.ts),
 // so as the country breaks apart each gap is laced across its whole length, and the stitches draw it back together.
 // Longer borders (the big states) get sturdier stitches; each one's thickness wanders a little
-// the strip's own sprigs: three across its top edge from Western Power down to it, and two from the rest of Horizon's
-// area to its far end, so it's held from both sides
+// the strip's own sprigs: three across its top edge from Western Power down to it, and one skinny one from the rest of
+// Horizon's area to its far end
 const SNIP_STITCHES = (() => {
   const HG = STEPS.findIndex((g) => g.includes(HORIZON))
   if (!SNIP_D || WP < 0 || HG < 0) return []
@@ -262,15 +262,15 @@ const SNIP_STITCHES = (() => {
   for (let k = 0; k + 1 < hv.length; k += 2) hp.push([hv[k], hv[k + 1]])
   const east = pts.reduce((m, q) => (q[0] > m[0] ? q : m), pts[0])
   const from = hp.reduce((m, q) => (Math.hypot(q[0] - east[0], q[1] - east[1]) < Math.hypot(m[0] - east[0], m[1] - east[1]) ? q : m), hp[0])
-  return [...wp, ...[0.86, 0.97].map((f, j) => {
+  return [...wp, ...[0.92].map((f, j) => {
     const x = x0 + (x1 - x0) * f, near = pts.filter((q) => Math.abs(q[0] - x) < (x1 - x0) * 0.08)
     const y = Math.min(...(near.length ? near : pts).map((q) => q[1]))
-    return { a: HG, b: WP, pa: [from[0] - 4 - j * 8, from[1] - 4] as [number, number], pb: [x, y + 4] as [number, number], len: 60, drop: true }
+    return { a: HG, b: WP, pa: [from[0] - 4 - j * 8, from[1] - 4] as [number, number], pb: [x, y + 4] as [number, number], len: 0, drop: true, thin: true }
   })]
 })()
-const STRANDS = [...STITCHES.map((t) => ({ ...t, drop: false })), ...SNIP_STITCHES].map((t, k) => ({
+const STRANDS = [...STITCHES.map((t) => ({ ...t, drop: false, thin: false })), ...SNIP_STITCHES.map((t) => ({ thin: false, ...t }))].map((t, k) => ({
   ...t, bend: (k % 2 ? -1 : 1) * (0.1 + (k % 3) * 0.05),
-  w: (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.4 + (((k * 7) % 11) / 10) * 1.3),
+  w: t.thin ? 0.32 : (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.4 + (((k * 7) % 11) / 10) * 1.3),
 }))
 // how far out each stitch is from the middle of the country (0 to 1), so the sprigs creep outwards from there
 const SPREAD = (() => {
@@ -637,8 +637,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the headline: the wordmark's t's pulled together, then the line under it; it stays up through the dots
       const tu = seg(p, TIE), tb = tieBox.current
-      // how far apart the two halves of the wordmark start, in its own units: about half the word's width again
-      const reachU = mk && mk.width > 0 ? Math.min(TIE_VIEW.w * 0.55, (Math.max(0, sr.width * 0.92 - mk.width) * TIE_VIEW.w) / mk.width) : 200
+      // how far apart the two halves of the wordmark start, in its own units: as far as the screen allows
+      const reachU = mk && mk.width > 0 ? Math.min(TIE_VIEW.w * 1.1, (Math.max(0, sr.width * 0.92 - mk.width) * TIE_VIEW.w) / mk.width) : 200
       if (tb) {
         const v = p >= VINES[0] ? 1 - ease(seg(p, TIE_OUT)) : 0
         tb.style.visibility = v > 0.001 ? "visible" : "hidden"
@@ -744,7 +744,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // facing you it sits a little smaller and lower, to stay clear of the words above it
       // the jolt as the wordmark locks them all together: a quick squeeze the moment the t's meet, settling in a few beats
       const lockS = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9, lock = p > MEET ? 1 - 0.028 * Math.exp(-8 * lockS) * Math.cos(lockS * 28) : 1
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
+      // while it's in pieces the whole map drifts a little lower, clear of the words and the wordmark over it, and comes
+      // back up as the sprigs pull it together
+      const low = (1 - Math.pow(1 - seg(p, [FLAT[0], LACE[0]]), 3)) * ease(seg(p, [FLAT[0], FLAT[0] + 0.015])) * (1 - ease(seg(p, LACE)))
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 + 7 * low).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
       rg.classList.toggle(styles.flat, p >= FLATTEN[1])
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= FLY[1]
