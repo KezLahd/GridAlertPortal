@@ -645,6 +645,12 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         tb.style.opacity = v.toFixed(3)
         // "But tying it all together" is up while the sprigs grow and the t's are pulled together, then goes once the
         // word has settled; the wordmark stays on its own
+        // the line takes over from "15 websites." in its place, then rises to make room for the wordmark under it
+        const web = words.current[1]?.querySelectorAll<HTMLElement>("[data-line]")[1], row = tieRow.current
+        if (web && row) {
+          const from = web.getBoundingClientRect().top - (tb.getBoundingClientRect().top + row.offsetTop)
+          row.style.transform = `translateY(${(from * (1 - ease(seg(p, [VINES[1] - 0.03, TIE[0] + 0.004])))).toFixed(1)}px)`
+        }
         if (tieWords.current) tieWords.current.style.opacity = (ease(seg(p, [VINES[0] + 0.003, VINES[0] + 0.015])) * (1 - ease(seg(p, [TIE[1], TIE[1] + 0.02])))).toFixed(3)
         // the two halves start as far apart as the screen allows, and meet in the middle of the word
         const mw = mk?.width ?? 0, room = Math.max(0, sr.width * 0.92 - mw)
@@ -747,7 +753,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // while it's in pieces the whole map drifts a little lower, clear of the words and the wordmark over it, and comes
       // back up as the sprigs pull it together
       const low = (1 - Math.pow(1 - seg(p, [FLAT[0], LACE[0]]), 3)) * ease(seg(p, [FLAT[0], FLAT[0] + 0.015])) * (1 - ease(seg(p, LACE)))
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 + 7 * low).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 + 3 * low).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
       rg.classList.toggle(styles.flat, p >= FLATTEN[1])
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= FLY[1]
@@ -765,8 +771,15 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // as the sprigs anchor in, the pieces keep drifting slowly further apart (easing out) until the pull starts
       // one unbroken move, from the split right up to the pull: quick at first, slowing but never stopping
       const drift = (1 - Math.pow(1 - seg(p, [FLAT[0], LACE[0]]), 3)) * ease(seg(p, [FLAT[0], FLAT[0] + 0.015]))
-      const apart = (1.45 * drift * (1 - lace) + knock) * (wide ? 2.4 : 1)
+      const apart = (1.0 * drift * (1 - lace) + knock) * (wide ? 2.4 : 1)
       const apX = apart, apY = apart
+      // each piece's slight turn, and where a point on a piece ends up once it's moved out and turned about its middle,
+      // so the sprigs stay fixed to the pieces
+      const turn = (g: number) => TURN[g] * drift * (1 - lace) + TURN[g] * 0.6 * knock
+      const onPiece = (g: number, x: number, y: number): Pt => {
+        const r = (turn(g) * Math.PI) / 180, c = Math.cos(r), sn = Math.sin(r), dx = x - MID[g][0], dy = y - MID[g][1]
+        return [MID[g][0] + dx * c - dy * sn + SPLIT[g][0] * apX, MID[g][1] + dx * sn + dy * c + SPLIT[g][1] * apY]
+      }
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, span(g)), e = ease(t)
@@ -785,7 +798,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         // as it grows on its way in
         const d3 = (t >= 1 ? 1 : ease(seg(e, [0.18, 0.5]))) * (1 - ease(seg(p, FLATTEN)))
         // a slight turn as it drifts away while the sprigs anchor in, gone again as they're laced back together
-        const rot = TURN[g] * drift * (1 - lace) + TURN[g] * 0.6 * knock
+        const rot = turn(g)
         const fx = ((st[0] - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((st[1] - MID[g][1]) * from / NET_VIEW.h) * 100
         const down = t >= 1
         if (down !== landed[g]) {
@@ -828,8 +841,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const on = grow > 0 && tight < 1
         vs.style.opacity = vu.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
-          const A: Pt = [s.pa[0] + SPLIT[s.a][0] * apX, s.pa[1] + SPLIT[s.a][1] * apY]
-          const B: Pt = [s.pb[0] + (SPLIT[s.b][0] + (s.drop ? SNIP_DROP[0] : 0)) * apX, s.pb[1] + (SPLIT[s.b][1] + (s.drop ? SNIP_DROP[1] : 0)) * apY]
+          const A = onPiece(s.a, s.pa[0], s.pa[1])
+          const B = onPiece(s.b, s.pb[0] + (s.drop ? SNIP_DROP[0] * apX : 0), s.pb[1] + (s.drop ? SNIP_DROP[1] * apY : 0))
           const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]
