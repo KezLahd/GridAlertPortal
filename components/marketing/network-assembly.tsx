@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW } from "./network-map-data"
 import styles from "./network-assembly.module.css"
-import { makeTie, TIE_VIEW } from "./brand-tie"
+import { makeTie, TIE_VIEW, MEET as TIE_MEET } from "./brand-tie"
 import { STITCHES } from "./network-stitches"
 
 // The page's story, told on one map of Australia as you scroll. Every step is tied to the scroll position (smoothed
@@ -43,22 +43,24 @@ const G = STEPS.length
 type Span = [number, number]
 // the country is a 3D slab throughout. Tipped back while the areas drop onto it, it turns to face you once they're all
 // in (FACE), keeping its depth; only then does it break apart (FLAT), the sprigs grow and pull it back together
+// It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
+const TIP: Span = [0.004, 0.066], TIP0 = 0.28
 const DROPS: Span = [0.07, 0.4], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.58]
 const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
-// "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), slowing as they near,
-// while the sprigs pull the pieces of the country together in step (LACE). They meet at 86% of TIE; once the word has
+// "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
+// while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
 // The map steps down and back a little while the headline is up (ROOM), to leave it space.
 const TIE: Span = [0.55, 0.72], TIE_OUT: Span = [0.765, 0.79]
-const MEET = TIE[0] + (TIE[1] - TIE[0]) * 0.86, LACE: Span = [0.585, MEET]
+const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [0.585, MEET]
 const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04], ROOM: Span = [0.525, 0.56], ROOM_OUT: Span = [0.765, 0.795]
 
 // the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
 // it; the last one carries the wordmark above it
 type Words = { text: string; sub?: string; brand?: boolean; at: string; inn: Span; out: Span }
 const WORDS: Words[] = [
-  { text: "Australia\u2019s power comes through fifteen companies.", sub: "Not your retailer: the networks that own the poles and wires in your street. These are their patches.", at: "top", inn: [-0.02, -0.01], out: [0.05, 0.068] },
+  { text: "Australia\u2019s power comes through fifteen companies.", sub: "Not your retailer: the networks that own the poles and wires in your street.", at: "top", inn: [-0.02, -0.01], out: [0.05, 0.068] },
   { text: "Each one looks after its own patch.", at: "top", inn: [0.068, 0.085], out: [0.4, 0.42] },
   { text: "Fifteen companies. Fifteen websites.", sub: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "top", inn: [0.42, 0.45], out: [0.515, 0.54] },
   { text: "Every network, on one map.", sub: "Wattle checks all fifteen, every few minutes.", at: "bottomLeft", inn: [0.795, 0.82], out: [0.89, 0.915] },
@@ -321,7 +323,6 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const tieWords = useRef<HTMLSpanElement>(null)
   const tieSub = useRef<HTMLParagraphElement>(null)
   const overcast = useRef<HTMLDivElement>(null)
-  const seams = useRef<SVGSVGElement>(null)
   const aurora = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState(0)
 
@@ -457,26 +458,25 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
-      const tilt = 1 - ease(seg(p, FACE))
+      const tilt = (TIP0 + (1 - TIP0) * ease(seg(p, TIP))) * (1 - ease(seg(p, FACE)))
+      // while it's in pieces it sits smaller, so the gaps and the sprigs across them have room; it grows back as the
+      // sprigs pull it together
+      const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
       const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
       // it only makes room for the company beside it while a company is showing; the rest of the time it's full size
       const beside = wide ? Math.min(1, Math.max(0.72, (sr.width - 2 * (cw + 48)) / Math.max(1, rg.offsetWidth))) : 1
       const fit = 1 - (1 - beside) * ca * (1 - cb)
       // facing you it sits a little smaller and lower, to stay clear of the words above it
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 + room * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.05 * room)).toFixed(4)})`
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5 - room * 2).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.2 * spread)).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
       rg.classList.toggle(styles.allIn, allIn)
-      // the patches' borders draw themselves as the section comes up, and go as the areas land on them
-      const sm = seams.current
-      if (sm) {
-        const drawIn = ease(clamp(1.15 - secTop / Math.max(1, window.innerHeight)))
-        sm.style.setProperty("--draw", (1 - drawIn).toFixed(4))
-        sm.style.opacity = (1 - ease(seg(p, [DROPS[0], DROPS[0] + 0.03]))).toFixed(3)
-      }
-
       // apart, then laced back together
-      const apart = ease(seg(p, FLAT)) * (1 - ease(seg(p, LACE))) * (wide ? 1 : 0.55)
+      // the pull is hard at first and quicker as they near, like the wordmark's t's; when they meet the pieces knock and
+      // bounce apart twice, in step with the t's
+      const lace = Math.pow(seg(p, LACE), 2.2), since = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9
+      const knock = p > MEET ? 0.12 * Math.exp(-5.2 * since) * Math.abs(Math.sin((Math.PI * since) / 0.34)) : 0
+      const apart = (ease(seg(p, FLAT)) * (1 - lace) + knock) * (wide ? 1.8 : 0.8)
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT])
@@ -520,7 +520,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the sprigs grow from the middle of each piece, weaving over and under the pieces, then pull tight like a lace
       // and draw back in, so once the country is whole there's nothing left of them
-      const grow = seg(p, VINES), tight = ease(seg(p, LACE))
+      const grow = seg(p, VINES), tight = lace
       const vs = vines.current, vu = vinesUnder.current
       if (vs && vu) {
         const on = grow > 0 && tight < 1
@@ -586,7 +586,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               for (const d of list) {
                 const front = q * 1.35 - d.d
                 if (front <= 0) continue
-                const m = ease(clamp(front * 9))
+                const m = ease(clamp(front * 40))
                 const c = dark.matches ? d.cd : d.c
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
@@ -637,16 +637,18 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           <div ref={rig} className={styles.rig}>
             {/* the country's thickness, seen while it's tipped back: three layers make a solid side */}
             {[5, 4, 3, 2, 1].map((k) => (
-              <svg key={k} className={`${styles.base} ${styles.slab}`} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              <svg key={k} className={`${styles.base} ${styles.slab} ${k === 5 ? styles.floor : ""}`} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
                 {NETS.map((n) => <path key={n.name} d={n.d} style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }} />)}
               </svg>
             ))}
             <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              {/* lit from the top left, so the slab reads as solid even while it faces you */}
+              <defs>
+                <linearGradient id="land-light" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={NET_VIEW.w} y2={NET_VIEW.h}>
+                  <stop offset="0" className={styles.landHi} /><stop offset="1" className={styles.landLo} />
+                </linearGradient>
+              </defs>
               {NETS.map((n) => <path key={n.name} d={n.d} />)}
-            </svg>
-            {/* the fifteen patches, drawn on the grey country as the section arrives */}
-            <svg ref={seams} className={styles.seams} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
-              {NETS.map((n) => <path key={n.name} d={n.d} pathLength={1} style={{ ["--c" as string]: tint(n.name) }} />)}
             </svg>
             {/* the lengths of sprig that pass under the pieces */}
             <svg ref={vinesUnder} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>

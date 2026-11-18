@@ -43,6 +43,15 @@
 .pin { position: absolute; width: 2px; height: 2px; margin: -1px 0 0 -1px; pointer-events: none; }
 /* one shape, no lines inside it: every area drawn in the land colour with a matching edge to close the seams */
 .base path { fill: var(--map-land); stroke: var(--map-land); stroke-width: 1.6; stroke-linejoin: round; }
+/* the slab's top, lit from the top left, with a soft shadow under it; both go once the pieces carry their own */
+.base:not(.slab) path { fill: url(#land-light); stroke: url(#land-light); }
+.floor { filter: drop-shadow(0 22px 26px rgba(40, 48, 58, 0.16)); }
+.landHi { stop-color: color-mix(in srgb, var(--map-land), #fff 38%); }
+.landLo { stop-color: color-mix(in srgb, var(--map-land), #000 6%); }
+@media (prefers-color-scheme: dark) {
+  .floor { filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.4)); }
+  .landHi { stop-color: color-mix(in srgb, var(--map-land), #fff 16%); }
+}
 /* no will-change: opacity here: it flattens the piece and hides its sides */
 .layer { opacity: 0; will-change: transform; transform-style: preserve-3d; }
 .layer svg { position: absolute; inset: 0; }
@@ -57,6 +66,7 @@
 /* only once landed: while it falls a piece is just see-through glass, with no layers showing through it */
 .allIn .edge { display: block; }
 .allIn .base { visibility: hidden; }
+.allIn .floor { filter: none; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
 .layer .snip { transform: translate(var(--sx, 0), var(--sy, 0)); }
 .layer .edge path { fill: color-mix(in srgb, var(--c), #000 38%); stroke: color-mix(in srgb, var(--c), #000 38%); }
@@ -83,9 +93,10 @@
 }
 .words > div { opacity: 0; will-change: opacity; }
 .words p { margin: 0; }
-.big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.4vw, 50px); line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); }
+/* .words .big, not .big: the page's own `.page p { color: inherit }` would otherwise win and grey it out */
+.words .big { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 3.4vw, 50px); line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); }
 /* the smaller line under a big one */
-.sub { margin-top: 0.7em !important; font-size: clamp(16px, 1.25vw, 19px); line-height: 1.5; color: var(--muted); max-width: 560px; text-wrap: balance; }
+.words .sub { margin-top: 0.7em !important; font-size: clamp(16px, 1.25vw, 19px); line-height: 1.5; color: var(--muted); max-width: 560px; text-wrap: balance; }
 .top .sub, .centre .sub { margin-left: auto !important; margin-right: auto !important; }
 /* the wordmark over the last line */
 .brandMark {
@@ -98,7 +109,7 @@
 .bottomLeft { bottom: clamp(28px, 10vh, 100px); left: clamp(24px, 6vw, 96px); max-width: 520px; }
 .bottom { bottom: clamp(28px, 8vh, 80px); left: 0; right: 0; margin: 0 auto; text-align: center; max-width: 640px; padding: 0 24px; }
 .centre { top: 50%; left: 0; right: 0; margin: 0 auto; transform: translateY(-50%); text-align: center; max-width: 980px; padding: 0 24px; }
-.centre .big { font-size: clamp(38px, 5vw, 76px); letter-spacing: -0.035em; }
+.words.centre .big { font-size: clamp(38px, 5vw, 76px); letter-spacing: -0.035em; }
 .centre .brandMark { height: clamp(44px, 4.6vw, 72px); font-size: inherit; margin-bottom: 0.45em; }
 
 /* the headline: the wordmark (its t's pulled together by the script) as tall as the words beside it, a line under it */
@@ -106,11 +117,11 @@
 /* the wordmark, as wide as the words under it (set by the script); its halves start out far beyond that */
 .tieMark { display: block; margin: 0 auto 0.18em; width: 320px; height: auto; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); }
 .tieRow {
-  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(30px, 3.3vw, 48px); line-height: 1.1;
+  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(22px, 2.3vw, 34px); line-height: 1.1;
   letter-spacing: -0.025em; color: var(--ink); white-space: nowrap;
 }
 .tieRow span { display: inline-block; opacity: 0; }
-.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
+.tieSub { margin: 0.5em auto 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
 
 /* the company landing now: beside the map, level with its area (placed by the script), joined to it by a line */
 .chip {
@@ -143,8 +154,8 @@
   .section { height: 900vh; }
   .rig { width: 86vw; margin-top: 0; }
   .words { font-size: 16px; }
-  .big, .centre .big { font-size: clamp(25px, 7vw, 32px); }
-  .sub { font-size: 15px; }
+  .words .big, .words.centre .big { font-size: clamp(25px, 7vw, 32px); }
+  .words .sub { font-size: 15px; }
   .top, .topLeft, .topRight { top: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .bottom, .bottomLeft { bottom: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .centre { left: 20px; right: 20px; padding: 0; }

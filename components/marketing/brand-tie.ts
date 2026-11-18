@@ -6,6 +6,8 @@
 
 const LETTERS = { w: "M19.44 72.43Q16.38 72.43 14.58 70.92Q12.79 69.41 11.84 66.19L0.62 27.49Q0.29 26.38 0.14 25.55Q0.00 24.71 0.00 23.90Q0.00 21.55 1.64 20.12Q3.27 18.68 5.89 18.68Q8.15 18.68 9.56 19.97Q10.97 21.26 11.55 23.80L20.13 59.41L20.39 59.41L29.40 24.23Q30.67 18.68 36.34 18.68Q41.90 18.68 43.17 24.21L52.27 59.41L52.53 59.41L61.13 23.73Q61.69 21.23 63.08 19.96Q64.48 18.68 66.72 18.68Q69.31 18.68 70.91 20.11Q72.52 21.54 72.52 23.85Q72.52 24.67 72.37 25.48Q72.23 26.30 71.91 27.42L60.69 66.16Q59.78 69.36 57.93 70.90Q56.09 72.43 52.98 72.43Q49.73 72.43 47.88 70.93Q46.03 69.43 45.19 66.13L36.29 33.60L36.04 33.60L27.18 66.19Q26.40 69.37 24.49 70.90Q22.59 72.43 19.44 72.43Z", a: "M90.55 72.29Q85.56 72.29 81.65 70.33Q77.73 68.36 75.49 64.83Q73.25 61.31 73.25 56.67Q73.25 49.74 78.37 45.73Q83.49 41.73 92.91 41.19L106.63 40.39L106.63 36.66Q106.63 32.62 104.05 30.37Q101.47 28.13 96.97 28.13Q93.39 28.13 90.90 29.50Q88.41 30.87 86.12 34.19Q84.23 36.62 81.22 36.62Q78.95 36.62 77.52 35.27Q76.08 33.93 76.08 31.77Q76.08 30.08 76.90 28.42Q78.86 23.92 84.44 21.28Q90.02 18.64 97.44 18.64Q103.88 18.64 108.65 20.76Q113.42 22.88 116.02 26.73Q118.63 30.58 118.63 35.78L118.63 66.30Q118.63 69.25 116.98 70.84Q115.33 72.43 112.75 72.43Q110.26 72.43 108.67 70.97Q107.08 69.51 106.93 66.82Q106.93 65.92 106.93 65.00Q106.93 64.09 106.93 63.19L106.67 63.19Q105.19 65.99 102.66 68.04Q100.14 70.09 97.00 71.19Q93.87 72.29 90.55 72.29ZM94.22 63.11Q97.66 63.11 100.48 61.70Q103.29 60.28 104.96 57.82Q106.63 55.36 106.63 52.24L106.63 48.29L94.63 49.04Q90.24 49.34 87.83 51.21Q85.41 53.07 85.41 56.17Q85.41 59.34 87.83 61.22Q90.25 63.11 94.22 63.11Z", l: "M225.70 72.43Q223.04 72.43 221.33 70.77Q219.62 69.10 219.62 66.05L219.62 6.39Q219.62 3.33 221.33 1.67Q223.04 0.00 225.70 0.00Q228.36 0.00 230.07 1.67Q231.78 3.33 231.78 6.40L231.78 66.05Q231.78 69.10 230.07 70.77Q228.36 72.43 225.70 72.43Z", e: "M260.60 72.48Q248.74 72.48 242.08 65.42Q235.43 58.35 235.43 45.78Q235.43 37.51 238.42 31.42Q241.42 25.32 246.94 21.98Q252.45 18.64 259.90 18.64Q266.99 18.64 272.35 21.73Q277.71 24.81 280.72 30.24Q283.73 35.68 283.73 42.75Q283.73 45.45 282.25 46.96Q280.77 48.47 278.08 48.47L247.52 48.47Q247.52 48.58 247.52 48.68Q247.52 48.77 247.52 48.88Q247.52 55.36 251.04 59.23Q254.56 63.09 260.47 63.09Q264.60 63.09 267.54 61.52Q270.48 59.94 273.41 56.20Q274.37 55.12 275.32 54.68Q276.27 54.25 277.51 54.25Q279.60 54.25 281.00 55.50Q282.41 56.75 282.41 58.94Q282.41 60.32 281.56 62.03Q279.04 66.99 273.51 69.73Q267.99 72.48 260.60 72.48ZM247.65 40.50L271.80 40.50Q271.69 36.73 270.15 33.93Q268.61 31.13 266.00 29.59Q263.39 28.04 259.94 28.04Q256.53 28.04 253.85 29.60Q251.17 31.16 249.54 33.96Q247.91 36.76 247.65 40.50Z" }
 export const TIE_VIEW = { w: 283.73, h: 72.48 }
+/** where in the moment (0 to 1) the t's meet; the rest is the bounce */
+export const MEET = 0.62
 
 const STEM = 12.17, BAR = 11.19, ARM = 22.695, T1 = 142.785, T2 = 193.28, BASE = 71.45, TOP = 5, CY = 24.28
 const YL = BASE - (BASE - 18.68) * 0.45, HB = YL - (TOP + STEM / 2), HC = YL - CY, WW = BAR * 0.22
@@ -62,14 +64,14 @@ export function makeTie(svg: SVGSVGElement) {
   return (u: number, reach: number) => {
     const GAP = Math.max(60, reach)
     const inn = seg(u, 0, 0.12)
-    // the wire takes up its slack and goes gold, then draws the halves in: quickly at first, slower and slower as they
-    // near, like a hand easing off. They meet in the middle of the word, knock once with a flash, and settle
+    // the wire takes up its slack and goes gold, then drags the halves in: a hard pull at first, quicker and quicker as
+    // they near. They meet in the middle of the word at MEET, knock with a flash, bounce apart twice and settle
     const slack = 1 - easeOut(seg(u, 0.06, 0.18), 2)
-    const k = seg(u, 0.18, 0.86)
-    const tb = (Math.max(0, u - 0.86) / 0.14) * 0.75                // seconds after they meet, as the app counts them
+    const k = seg(u, 0.18, MEET)
+    const tb = (Math.max(0, u - MEET) / (1 - MEET)) * 0.9            // seconds after they meet, as the app counts them
     let gap: number, lean: number
-    if (u < 0.86) { gap = GAP * (1 - easeOut(k, 2.2)); lean = STEM * 0.7 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 0.8)) * (1 - k * 0.6) }
-    else { gap = STEM * 0.9 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.45 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
+    if (u < MEET) { gap = GAP * (1 - Math.pow(k, 2.2)); lean = STEM * 0.9 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 1.3)) }
+    else { gap = GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
     const L = -gap / 2, R = gap / 2
     reveal(w, 2, inn, L); reveal(a, 1, inn, L); reveal(l, 1, inn, R); reveal(e, 2, inn, R)
     const to = clamp(inn * 1.6).toFixed(3)
