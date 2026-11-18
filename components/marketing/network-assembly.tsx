@@ -44,6 +44,18 @@ const LOCKUP: Partial<Record<NetKey, { light: string; dark: string; aspect: numb
   tasnetworks: { light: "/networks/tasnetworks-lockup.png", dark: "/networks/tasnetworks-lockup-dark.png", aspect: 2.19 },
 }
 
+// customers on each network, rounded, from the networks' own 2024-26 reports and regulatory filings with the AER and
+// ERA WA (CitiPower and Powercor added together)
+const CUSTOMERS: Partial<Record<NetKey, string>> = {
+  ausgrid: "1.8 million", endeavour: "1.2 million", essential: "900,000", evoenergy: "200,000", energex: "1.6 million",
+  ergon: "790,000", citipowercor: "1.27 million", jemena: "384,000", unitedenergy: "720,000", ausnet: "800,000",
+  sapower: "930,000", tasnetworks: "300,000", wpower: "1.2 million", horizonpower: "50,000", powerwater: "90,000",
+}
+
+// desktop: where an area first appears, facing you (fractions of the stage), and the box it's fitted into
+const FACE_AT = [0.5, 0.19], FACE_W = 260, FACE_H = 170
+const RIG_SCALE = 0.9
+
 const clamp = (v: number) => Math.min(1, Math.max(0, v))
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
@@ -81,6 +93,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const rig = useRef<HTMLDivElement>(null)
   const layers = useRef<(HTMLDivElement | null)[]>([])
   const marks = useRef<(HTMLElement | null)[]>([])
+  const centre = useRef<HTMLElement>(null)
   const [step, setStep] = useState(still ? G : 0)
 
   useEffect(() => {
@@ -94,6 +107,20 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     }
     let raf = 0, visible = false, shown = -2
     const tiltX = wide ? 50 : 38, tiltZ = wide ? -16 : -10
+    const drop = wide ? 300 : 210
+    // each company's areas together, as a box in the map's own units (measured once)
+    const boxes: { x: number; y: number; w: number; h: number }[] = []
+    const groupBox = (g: number) => {
+      if (boxes[g]) return boxes[g]
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+      STEPS[g].forEach((i) => {
+        const b = layers.current[i]?.querySelector("path")?.getBBox()
+        if (!b) return
+        x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height)
+      })
+      boxes[g] = isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : { x: CX, y: CY, w: 1, h: 1 }
+      return boxes[g]
+    }
 
     const frame = () => {
       raf = 0
@@ -102,28 +129,51 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const p = clamp(-r.top / Math.max(1, r.height - window.innerHeight))
       stg.style.setProperty("--p", p.toFixed(4))
 
-      // the stack: each company's sheet drops from its height to the outline as its slot of scroll passes
+      // the stack. Desktop: each company's area first appears flat, facing you, in the space above the map; then
+      // tilts to the map's angle while it moves over its place, and falls. Phones: it appears above its place and
+      // falls. The fall is slow at first, faster and faster, then a timed spring bounces it into place (timed, so the
+      // landing feels the same however fast you scroll).
+      const sr = stg.getBoundingClientRect()
+      const cr = centre.current?.getBoundingClientRect()
+      const unit = rg.offsetWidth / NET_VIEW.w
       let landing = -1
       STEPS.forEach((group, g) => {
-        const t = clamp((p - (START + g * SLOT)) / (SLOT * 1.35))
-        const e = ease(t)
+        const t = clamp((p - (START + g * SLOT)) / (SLOT * 0.9))
         if (t > 0 && t < 1) landing = g
+        let tf: string
+        if (wide && cr) {
+          const m = ease(clamp((t - 0.12) / 0.4))
+          const fl = Math.pow(clamp((t - 0.55) / 0.45), 2.4)
+          const bb = groupBox(g)
+          // flat and facing you, the area fitted into a box at the top of the stage, between the words and the map
+          const k = Math.min(3, FACE_W / (bb.w * unit), FACE_H / (bb.h * unit))
+          const qx = sr.left + sr.width * FACE_AT[0], qy = sr.top + sr.height * FACE_AT[1]
+          const offX = (bb.x + bb.w / 2 - CX) * unit, offY = (bb.y + bb.h / 2 - CY) * unit
+          const px = qx - (cr.left + cr.width / 2) - k * offX, py = qy - (cr.top + cr.height / 2) - k * offY
+          const L = (from: number, to: number) => from + (to - from) * m
+          tf = `scale(${L(1 / RIG_SCALE, 1).toFixed(4)}) rotateZ(${L(-tiltZ, 0).toFixed(2)}deg) rotateX(${L(-tiltX, 0).toFixed(2)}deg) ` +
+            `translate3d(${L(px, 0).toFixed(1)}px, ${L(py, 0).toFixed(1)}px, ${(L(0, drop) * (1 - fl)).toFixed(1)}px) scale(${L(k, 1).toFixed(4)})`
+        } else {
+          const out = 1 - Math.pow(t, 2.4)
+          tf = `translate3d(0, 0, ${(out * drop).toFixed(1)}px)`
+        }
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
-          const [ax, ay] = NETS[i].at
-          const out = 1 - e
-          const dx = ((ax - CX) / NET_VIEW.w) * 14 * out, dy = ((ay - CY) / NET_VIEW.h) * 14 * out
-          const z = out * (70 + g * 16)
-          el.style.transform = `translate3d(${dx.toFixed(2)}%, ${dy.toFixed(2)}%, ${z.toFixed(1)}px)`
-          el.style.opacity = (0.32 + 0.68 * e).toFixed(3)
+          el.style.transform = tf
+          el.style.opacity = clamp(t / 0.1).toFixed(3)
           el.classList.toggle(styles.lifting, t > 0 && t < 1)
+          const down = t >= 1
+          if (down !== (el.dataset.down === "1")) {
+            el.dataset.down = down ? "1" : "0"
+            el.classList.toggle(styles.landed, down)
+          }
         })
       })
 
       // after the last lands, the whole map swings flat to face you
       const f = ease(clamp((p - FLAT_FROM) / (FLAT_TO - FLAT_FROM)))
-      rg.style.transform = `rotateX(${((1 - f) * tiltX).toFixed(2)}deg) rotateZ(${((1 - f) * tiltZ).toFixed(2)}deg) scale(${(0.9 + 0.1 * f).toFixed(4)})`
+      rg.style.transform = `rotateX(${((1 - f) * tiltX).toFixed(2)}deg) rotateZ(${((1 - f) * tiltZ).toFixed(2)}deg) scale(${(RIG_SCALE + (1 - RIG_SCALE) * f).toFixed(4)})`
 
       // which company the caption is about: the one landing, else the last that landed; all of them at the end
       const now = p >= FLAT_FROM ? G : landing >= 0 ? landing : Math.max(0, Math.min(G - 1, Math.floor((p - START) / SLOT)))
@@ -158,6 +208,12 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 <div className={styles.logo}><Logo k={key} h={wide ? 64 : 44} w={wide ? 360 : 280} /></div>
                 <h3 className={styles.name}>{net.name}</h3>
                 <p className={styles.area}><b>{net.states.join(" · ")}</b>{net.area}</p>
+                {CUSTOMERS[key] && (
+                  <p className={styles.stat}>About <span>{CUSTOMERS[key]}</span> homes and businesses on its network</p>
+                )}
+                <a className={styles.site} href={net.website} target="_blank" rel="noopener noreferrer">
+                  {net.website.replace(/^https?:\/\/(www\.)?/, "")}<span aria-hidden> ↗</span>
+                </a>
               </div>
             ) : (
               <div className={styles.all} aria-live="polite">
@@ -179,6 +235,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
           <div className={styles.mapBox}>
             <div ref={rig} className={styles.rig}>
+              <i ref={centre} className={styles.mark} style={{ left: "50%", top: "50%" }} aria-hidden />
               <svg className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
                 {NETS.map((n) => <path key={n.name} d={n.d} />)}
               </svg>

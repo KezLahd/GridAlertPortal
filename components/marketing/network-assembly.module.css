@@ -22,7 +22,11 @@
 .num i { font-style: normal; color: var(--muted); font-weight: 600; }
 .logo { min-height: 80px; display: flex; align-items: center; margin-bottom: 22px; }
 .name { font-family: var(--rounded); font-weight: 700; font-size: clamp(28px, 3.2vw, 38px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 10px; color: var(--ink); }
-.area { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 0 28px; text-wrap: pretty; min-height: 54px; }
+.area { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 0 18px; text-wrap: pretty; }
+.stat { margin: 0 0 18px; font-size: 16px; color: var(--muted); }
+.stat span { display: block; font-family: var(--rounded); font-weight: 800; font-size: 34px; line-height: 1.1; letter-spacing: -0.02em; color: var(--tint); transition: color 0.6s var(--ease); font-variant-numeric: tabular-nums; }
+.site { display: inline-block; margin-bottom: 28px; font-family: var(--rounded); font-weight: 700; font-size: 15px; color: var(--ink); text-decoration: none; border-bottom: 1.5px solid color-mix(in srgb, var(--tint) 60%, transparent); padding-bottom: 2px; transition: border-color 0.3s; }
+.site:hover { border-bottom-color: var(--tint); }
 .area b { display: block; font-family: var(--rounded); font-weight: 700; font-size: 14px; letter-spacing: 0.04em; color: var(--tint); margin-bottom: 4px; transition: color 0.6s var(--ease); }
 
 /* the end: every logo together */
@@ -36,7 +40,7 @@
 .rail i.on { transform: scaleY(1.5); }
 
 /* the map: an outline of the country at the bottom, a sheet per network above it, tilted in 3D */
-.mapBox { position: relative; perspective: 1700px; perspective-origin: 50% 30%; display: grid; place-items: center; }
+.mapBox { position: relative; perspective: 2600px; perspective-origin: 60% 40%; display: grid; place-items: center; }
 .rig {
   position: relative; width: min(100%, calc(78vh * 955 / 885)); aspect-ratio: 955 / 885;
   transform-style: preserve-3d; transform-origin: 50% 55%; will-change: transform;
@@ -47,7 +51,17 @@
 .layer { will-change: transform, opacity; transform-style: preserve-3d; }
 .layer svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .layer path { fill: var(--c); stroke: var(--paper); stroke-width: 1.6; stroke-linejoin: round; }
-.lifting { filter: drop-shadow(0 22px 26px rgba(20, 16, 10, 0.28)); }
+.lifting { filter: drop-shadow(0 30px 34px rgba(20, 16, 10, 0.3)); }
+/* the landing: it hits the outline, gives a little, springs back up and locks */
+.layer svg { transform-origin: 50% 50%; }
+.landed svg { animation: land 0.62s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@keyframes land {
+  0% { transform: translateZ(0) scale(1); filter: brightness(1); }
+  16% { transform: translateZ(-8px) scale(0.982); filter: brightness(1.22); }
+  42% { transform: translateZ(12px) scale(1.014); filter: brightness(1.06); }
+  68% { transform: translateZ(-3px) scale(0.997); filter: brightness(1); }
+  100% { transform: translateZ(0) scale(1); filter: brightness(1); }
+}
 .mark { position: absolute; width: 1px; height: 1px; pointer-events: none; }
 @media (prefers-color-scheme: dark) { .layer path { fill: var(--cd, var(--c)); filter: brightness(1.12); } }
 
@@ -72,7 +86,10 @@
   .num { margin-bottom: 14px; }
   .logo { min-height: 56px; margin-bottom: 14px; }
   .name { font-size: 26px; margin-bottom: 6px; }
-  .area { font-size: 15.5px; margin-bottom: 18px; min-height: 0; }
+  .area { font-size: 15.5px; margin-bottom: 12px; }
+  .stat { font-size: 14.5px; margin-bottom: 12px; }
+  .stat span { font-size: 26px; }
+  .site { font-size: 14px; margin-bottom: 16px; }
   .logoWall { gap: 12px 18px; }
   .all { margin-bottom: 18px; }
   .rail { max-width: none; }
@@ -85,5 +102,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .layer, .rig { transform: none !important; opacity: 1 !important; }
-  .company, .all, .dotsOn .pulse { animation: none; }
+  .company, .all, .dotsOn .pulse, .landed svg { animation: none; }
 }
