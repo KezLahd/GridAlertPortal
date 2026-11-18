@@ -93,24 +93,17 @@
 .primary:focus-visible, .ghost:focus-visible, .signIn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 30px; }
 
-/* hero: full-bleed gold, one line, one real alert. As it scrolls away (--hp 0 to 1) the gold fades into exactly the
-   map story's background, so the two meet with no seam, and the words lift out faster than the page. */
+/* hero: one line, one real alert, on paper. As it scrolls away (--hp 0 to 1) the paper turns into exactly the map
+   story's grey, so the two meet with no seam, and the words lift out faster than the page. */
 .hero { position: relative; height: 100vh; height: 100svh; min-height: 620px; overflow: hidden; isolation: isolate; }
-.hero::before, .heroGrey, .heroBg { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.hero::before, .heroGrey { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 /* the map story's overcast grey, rising exactly as the story's own does as it scrolls up underneath */
 .heroGrey { background: radial-gradient(75% 65% at 50% 50%, #f1f3f5 0%, #e1e5e9 100%); opacity: var(--hpe, 0); }
-/* gold over the dark grey goes muddy half way, so in dark mode it clears faster */
-@media (prefers-color-scheme: dark) { .heroBg { opacity: calc(1 - var(--hp, 0) * 2.4); } }
 @media (prefers-color-scheme: dark) { .heroGrey { background: radial-gradient(75% 65% at 50% 50%, #23272c 0%, #181b1f 100%); } }
 .hero::before { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 70%) 0%, var(--paper) 100%); }
 @media (prefers-color-scheme: dark) {
   .hero::before { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 6%) 0%, var(--paper) 100%); }
 }
-.heroBg {
-  background: radial-gradient(90% 70% at 50% 8%, #ffcf3d 0%, var(--gold) 55%, #e5a400 100%);
-  opacity: calc(1 - var(--hp, 0) * 1.7);
-}
-.hero .nav, .hero .logo, .hero .logo:hover, .hero .title { color: #24211c !important; }
 .heroGrid {
   display: grid; grid-template-columns: 1.15fr 0.85fr; align-items: center; gap: 40px;
   height: calc(100svh - 84px); min-height: 536px; padding-bottom: 3vh; box-sizing: border-box;
@@ -120,25 +113,20 @@
   transform: translate3d(0, calc(var(--hp, 0) * -45vh), 0); opacity: calc(1 - var(--hp, 0) * 2.2);
 }
 .title { font-family: var(--rounded); font-weight: 700; font-size: clamp(44px, 5.6vw, 84px); line-height: 1; letter-spacing: -0.035em; margin: 0 0 18px; text-wrap: balance; }
-.lede { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.5; color: rgba(36, 33, 28, 0.72) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
+.lede { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.5; color: var(--muted) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
 .hero .ctas { margin-top: 30px; }
-.hero .primary { color: #fbf8f2 !important; background: #24211c; box-shadow: 0 10px 24px -12px rgba(36, 33, 28, 0.6); }
-.hero .signIn { --g-fill: rgba(255, 255, 255, 0.35); --g-rim: rgba(255, 255, 255, 0.55); --g-hi: rgba(255, 255, 255, 0.7); --g-glow: transparent;
-  --g-drop: 0 6px 18px -10px rgba(120, 80, 0, 0.5); color: #24211c !important; }
 .heroShot {
   position: relative; z-index: 1; justify-self: center; width: min(340px, 100%, calc((100svh - 150px) * 0.46));
   transform: translate3d(0, calc(var(--hp, 0) * -16vh), 0) scale(calc(1 - var(--hp, 0) * 0.08)); transform-origin: 50% 0;
   opacity: calc(1 - var(--hp, 0) * 1.7);
 }
-.heroShot .glow { display: none; }
-.heroShot .screen video, .heroShot .screen img { box-shadow: 0 40px 80px -24px rgba(90, 60, 0, 0.55), 0 0 0 1px rgba(36, 33, 28, 0.12); }
 
 /* the App Store button: Apple's black badge shape, greyed out with "Coming soon" until the app is live */
 .store {
   display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 20px 0 16px; border-radius: 14px;
-  background: transparent; color: #24211c !important; border: 1.5px solid rgba(36, 33, 28, 0.32); opacity: 0.55;
-  cursor: not-allowed; user-select: none; box-sizing: border-box;
+  background: #24211c; color: #fbf8f2 !important; opacity: 0.5; cursor: not-allowed; user-select: none;
 }
+@media (prefers-color-scheme: dark) { .store { background: #f3eee4; color: #12100d !important; opacity: 0.42; } }
 .store svg { width: 22px; height: 22px; margin-top: -3px; flex: none; }
 .storeText { display: flex; flex-direction: column; line-height: 1.05; color: inherit !important; text-align: left; }
 .storeText small { font-family: var(--text); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }

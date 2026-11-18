@@ -204,11 +204,10 @@ export default function Landing() {
 
   return (
     <main ref={root} className={`${styles.page} ${rubik.variable}`}>
-      {/* The hero: one line, one real alert. Full-bleed gold that fades into the map story's paper as you scroll,
-          while the words lift out of frame ahead of the phone. */}
+      {/* The hero: one line, one real alert, on the page's own paper. As you scroll, the paper turns into the map
+          story's grey while the words lift out of frame ahead of the phone. */}
       <section className={styles.hero}>
         <div className={styles.heroGrey} aria-hidden />
-        <div className={styles.heroBg} aria-hidden />
         <div className={styles.wrap}>
           <nav className={styles.nav}>
             <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>
