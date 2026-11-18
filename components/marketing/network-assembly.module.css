@@ -57,7 +57,10 @@
 .layer { opacity: 0; will-change: transform; transform-style: preserve-3d; }
 .layer svg { position: absolute; inset: 0; }
 /* thickness: the country and each area are slabs, their sides a darker copy just beneath; hidden once flat */
+/* while the pieces fly: only the flat top, fading out under them (--base-a) */
+.flying .slab { visibility: hidden; }
 .slab { transform: translateZ(var(--z)); }
+.base { opacity: var(--base-a, 1); }
 .slab path { fill: color-mix(in srgb, var(--map-land), #000 22%); stroke: color-mix(in srgb, var(--map-land), #000 22%); transition: fill 0.4s, stroke 0.4s; }
 /* once an area has landed, the side of the country under it takes its colour */
 .slab path.on { fill: color-mix(in srgb, var(--c), #000 35%); stroke: color-mix(in srgb, var(--c), #000 35%); }

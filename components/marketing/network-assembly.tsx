@@ -51,7 +51,7 @@ const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
 // painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
 // screen and the "15 companies." line grows and fades with them
-const LOGOS: Span = [0.05, 0.085], FLY: Span = [0.1, 0.26], ZOOM: Span = [0.275, 0.37]
+const LOGOS: Span = [0.036, 0.07], FLY: Span = [0.085, 0.25], ZOOM: Span = [0.262, 0.37]
 // the timeline against the real scroll: the opening is short, the flying in a little longer, the rest as before, and
 // the last screen stays put for the final stretch of the section (raw 0.88 to 1)
 const WARP: [number, number][] = [[0, 0], [0.08, 0.09], [0.3, 0.4], [0.88, 1], [1, 1]]
@@ -78,12 +78,13 @@ type Line = { text: string; inn: Span }
 type Words = { lines: Line[]; sub?: Line; brand?: boolean; hero?: boolean; at: string; out: Span }
 const WORDS: Words[] = [
   // the opening line, alone and big; it goes as the country tips back
-  { lines: [{ text: "Australia\u2019s power network.", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
+  // a small lead-in, then the big claim; the kicker and the claim are split by "|"
+  { lines: [{ text: "Australia\u2019s power grid|isn\u2019t one company.", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
   // as the logos come in, then as the country breaks apart
-  { lines: [{ text: "**15** companies.", inn: [0.05, 0.07] }, { text: "**15** websites.", inn: [0.447, 0.462] }], at: "top", out: [0.49, 0.5] },
+  { lines: [{ text: "**15** companies.", inn: [0.026, 0.044] }, { text: "**15** websites.", inn: [0.372, 0.392] }], at: "top", out: [0.49, 0.5] },
   // as the dots turn gold
-  { lines: [{ text: "**15** networks. **1** map.", inn: [0.88, 0.9] }], at: "bottomLeft", out: [0.925, 0.94] },
-  { lines: [{ text: "Be the first to know.", inn: [0.95, 0.98] }], brand: true, at: "centre", out: [2, 3] },
+  { lines: [{ text: "**15** networks. **1** map.", inn: [0.832, 0.852] }], at: "bottomLeft", out: [0.925, 0.94] },
+  { lines: [{ text: "Be the first to know.", inn: [0.94, 0.965] }], brand: true, at: "centre", out: [2, 3] },
 ]
 /** a line with its **numbers** set big and bold */
 function Rich({ text }: { text: string }) {
@@ -105,6 +106,9 @@ const CX = NET_VIEW.w / 2, CY = NET_VIEW.h / 2
 
 // the middle of each company's areas, and how far it moves out when the country breaks apart
 const MID = STEPS.map((g) => g.reduce((a, i) => [a[0] + NETS[i].at[0] / g.length, a[1] + NETS[i].at[1] / g.length], [0, 0]))
+// the pieces start out all about the same size, whatever their real size: START[g] is the scale that does it (filled
+// in once the pieces are drawn, from their bounds)
+const START: number[] = []
 // which company each area belongs to
 const OWN = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
 // which side of the map each company's logo sits on, and where down that side: the western half of the pieces on the
@@ -406,7 +410,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
-    const TX = wide ? 62 : 52, GAPX = wide ? 22 : 6
+    const TX = wide ? 62 : 52, GAPX = wide ? 64 : 10
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
     // how big a dot is as the ring first reaches it: just big enough that neighbouring dots cover the area between them
@@ -459,7 +463,19 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       STEPS.forEach((_, g) => { const t = seg(p, span(g)); if (t > 0 && t < 1) now = g })
       // the camera moving in, eased at both ends
       const zq = seg(p, ZOOM), zoom = zq * zq * (3 - 2 * zq)
+      // a real camera moving in: the logos and the "15 companies." line are a frame close to it, Australia is further
+      // back. Something at depth d grows by d / (d - travel), so the frame rushes past while the map grows only to its
+      // full size (from SMALL), all from the middle of the map
+      const SMALL = wide ? 0.68 : 0.84, TRAVEL = 0.74, DEEP = (TRAVEL / SMALL) / (1 / SMALL - 1)
+      const near = 1 / (1 - TRAVEL * zoom), back = DEEP / (DEEP - TRAVEL * zoom)
       const mw = marks.current.map((m) => m?.offsetWidth ?? 0), mh = marks.current.map((m) => m?.offsetHeight ?? 0)
+      if (!START.length && layers.current.every(Boolean)) STEPS.forEach((group, g) => {
+        let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
+        group.forEach((i) => { const bb = [...layers.current[i]!.querySelectorAll("svg")].pop()?.getBBox(); if (bb && bb.width > 0) { a = Math.min(a, bb.x); b = Math.min(b, bb.y); c = Math.max(c, bb.x + bb.width); d = Math.max(d, bb.y + bb.height) } })
+        START[g] = Number.isFinite(a) ? Math.min(3, Math.max(0.12, (NET_VIEW.w * 0.075) / Math.max(1, c - a, d - b))) : NaN
+      })
+      // not drawn yet: try again next frame
+      if (START.some((v) => !Number.isFinite(v))) START.length = 0
       const secTop = sec.getBoundingClientRect().top
       const mk = tieMark.current?.getBoundingClientRect()
 
@@ -470,10 +486,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         el?.querySelectorAll<HTMLElement>("[data-line]").forEach((ln, j) => {
           const at = j < w.lines.length ? w.lines[j].inn : w.sub?.inn
           if (!at) return
-          // "15 companies." comes towards you with the camera and goes
+          // "15 companies." is part of the frame the camera flies through, and goes as it passes
           const toward = i === 1 && j === 0 ? zoom : 0
-          ln.style.opacity = (ease(seg(p, at)) * (1 - ease(seg(toward, [0.25, 0.9])))).toFixed(3)
-          ln.style.transform = toward > 0 ? `scale(${(1 + 0.9 * toward).toFixed(4)})` : ""
+          ln.style.opacity = (ease(seg(p, at)) * (1 - ease(seg(toward, [0.45, 0.9])))).toFixed(3)
         })
       })
 
@@ -518,12 +533,12 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the fifteen logos, down both sides of the map, all the same height; each piece starts small and faint just inside
       // its logo, on the map's side of it (start[g], in the map's own units)
-      const li = ease(seg(p, LOGOS)), lo = ease(seg(zoom, [0.35, 0.95]))
+      const li = ease(seg(p, LOGOS)), lo = ease(seg(near, [2, 3.2]))
       const start: Pt[] = []
       // close in round the map: down its sides, from just under its top edge to just over its bottom
       const fh = Math.max(fr.bottom - fr.top, sr.height * 0.42), fm = (fr.top + fr.bottom) / 2 - sr.top
-      const y0 = fm - fh * 0.62, y1 = fm + fh * 0.62
-      const cx = sr.width / 2, cy = sr.height / 2, push = 1 + 1.6 * zoom
+      const y0 = fm - fh * 0.66, y1 = fm + fh * 0.66
+      const cx = (fr.left + fr.right) / 2 - sr.left, cy = fm
       STEPS.forEach((_, g) => {
         const m = marks.current[g], c = COL[g]
         const y = y0 + (y1 - y0) * (c.n > 1 ? c.j / (c.n - 1) : 0.5) - mh[g] / 2
@@ -535,12 +550,21 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const a = ease(seg(p, [LOGOS[0] + c.j * 0.003, LOGOS[1] + c.j * 0.003])) * (1 - lo)
         m.style.opacity = a.toFixed(3)
         m.style.visibility = a > 0.001 ? "visible" : "hidden"
-        // as the camera moves in they fly outwards from the middle of the screen, growing, and off the edges
-        const zx = cx + (x + mw[g] / 2 - cx) * push - mw[g] / 2, zy = cy + (y + mh[g] / 2 - cy) * push - mh[g] / 2
-        m.style.transform = `translate3d(${zx.toFixed(1)}px, ${zy.toFixed(1)}px, 0) scale(${((0.97 + 0.03 * a) * (1 + 1.3 * zoom)).toFixed(4)})`
+        // as the camera moves in they come towards it and past, off the edges
+        const zx = cx + (x + mw[g] / 2 - cx) * near - mw[g] / 2, zy = cy + (y + mh[g] / 2 - cy) * near - mh[g] / 2
+        m.style.transform = `translate3d(${zx.toFixed(1)}px, ${zy.toFixed(1)}px, 0) scale(${((0.97 + 0.03 * a) * near).toFixed(4)})`
       })
-      // while the logos are up the map sits smaller, with them close round it, until the camera moves in
-      const shrink = (wide ? 0.3 : 0.16) * li * (1 - zoom)
+      // "15 companies." sits just over the top of the frame of logos, and comes past the camera with them
+      {
+        const box = words.current[1], ln = box?.querySelector<HTMLElement>("[data-line]")
+        if (box && ln) {
+          const at = box.getBoundingClientRect().top - sr.top + ln.offsetTop + ln.offsetHeight / 2
+          const home = y0 - (wide ? 56 : 30), y = cy + (home - cy) * near
+          ln.style.transform = p < ZOOM[1] + 0.02 ? `translateY(${(y - at).toFixed(1)}px) scale(${near.toFixed(4)})` : ""
+        }
+      }
+      // while the logos are up the map sits further back, smaller, until the camera moves in on it
+      const shrink = (1 - SMALL * back) * li
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
@@ -553,8 +577,13 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // facing you it sits a little smaller and lower, to stay clear of the words above it
       rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - Math.max(0.2 * opening, shrink))).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
-      const allIn = p >= DROPS[1]
+      const allIn = p >= FLY[1]
       rg.classList.toggle(styles.allIn, allIn)
+      // while the pieces fly only the country's flat top shows (no grey sides under them; they carry their own), and it
+      // fades away as they arrive, so it's gone by the time they're in place
+      const flying = p < FLY[1] && p > FLY[0] - 0.01
+      rg.classList.toggle(styles.flying, flying)
+      rg.style.setProperty("--base-a", flying ? (1 - ease(seg(seg(p, FLY), [0.55, 0.95]))).toFixed(3) : "1")
       // apart, then laced back together
       // the pull is hard at first and quicker as they near, like the wordmark's t's; when they meet the pieces knock and
       // bounce apart twice, in step with the t's
@@ -564,15 +593,15 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, span(g)), e = ease(t)
-        // a small hop as it flies, so it passes over the country rather than through it
-        const z = t >= 1 ? 0 : 2 + 34 * Math.sin(Math.PI * e)
+        // a hop as it flies, and it stays above the country (which sits back, SINK) all the way down
+        const z = t >= 1 ? 0 : 6 + 34 * Math.sin(Math.PI * e)
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
         // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
         // whole dots of its own colour, which then shrink
         // faint and small beside its logo, then solid and full size as it reaches its place
         const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t >= 1 ? 1 : li * (0.18 + 0.82 * e)
-        const glass = 1, sc = t >= 1 ? 1 : 0.32 + 0.68 * e
+        const s0 = START[g] || 0.32, glass = 1, sc = t >= 1 ? 1 : s0 + (1 - s0) * e
         const from = t >= 1 ? 0 : 1 - e, st = start[g] ?? MID[g]
         const fx = ((st[0] - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((st[1] - MID[g][1]) * from / NET_VIEW.h) * 100
         const down = t >= 1
@@ -772,7 +801,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             <div>
               {w.brand && <span className={styles.brandMark} role="img" aria-label="Wattle" />}
               {w.lines.map((l, j) => w.hero
-                ? <h2 key={j} className={`${styles.big} ${styles.hero}`} data-line><span className={styles.kicker}>{l.text.split(" ")[0]}</span>{l.text.split(" ").slice(1).join(" ")}</h2>
+                ? <h2 key={j} className={`${styles.big} ${styles.hero}`} data-line><span className={styles.kicker}>{l.text.split("|")[0]}</span>{l.text.split("|")[1]}</h2>
                 : <p key={j} className={styles.big} data-line><Rich text={l.text} /></p>)}
               {w.sub && <p className={styles.sub} data-line><Rich text={w.sub.text} /></p>}
             </div>
