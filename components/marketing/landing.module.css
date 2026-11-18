@@ -140,8 +140,8 @@
 .netMap { width: 100%; height: auto; max-height: 82vh; overflow: visible; }
 .netMap path { stroke: var(--land-edge); stroke-width: 1.6; stroke-linejoin: round; transition: fill 0.7s var(--ease), fill-opacity 0.7s var(--ease); }
 .netOff { fill: var(--land); }
-.netOn { fill: var(--c); fill-opacity: 0.82; }
-@media (prefers-color-scheme: dark) { .netOn { fill-opacity: 0.72; } }
+.netOn { fill: var(--c); fill-opacity: 0.92; }
+@media (prefers-color-scheme: dark) { .netOn { fill-opacity: 1; filter: brightness(1.25); } }
 .netLabel { font-family: var(--rounded); font-weight: 700; font-size: 19px; fill: #fff; text-anchor: middle; opacity: 0; transition: opacity 0.6s var(--ease); paint-order: stroke; stroke: rgba(36, 33, 28, 0.35); stroke-width: 3px; stroke-linejoin: round; }
 .netLabel.shown { opacity: 0.95; }
 .outage { opacity: 0; transition: opacity 0.6s var(--ease); }

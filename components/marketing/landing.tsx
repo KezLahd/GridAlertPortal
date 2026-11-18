@@ -15,8 +15,24 @@ import styles from "./landing.module.css"
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
 const V = "/landing/v2"
 
-// Each network in its own brand colour, and its own logo in the caption: the same as the portal's network pages.
-const tint = (name: string) => { const k = netKey(name); return k ? NET[k].tint : "#8A8170" }
+// Each network in the strongest colour of its own logo (icon mark first, then wordmark), swapped for its logo's other
+// colour where a neighbour on the map would look the same. Evoenergy's logo is all orange, inside Essential's orange,
+// so it takes SA Power Networks' grey; Western Power's and Power and Water's logo files carry no colour.
+const COLOUR: Record<string, string> = {
+  "Ausgrid": "#0C6C9C", "Endeavour Energy": "#76C04E", "Essential Energy": "#F2540F", "Evoenergy": "#505050",
+  "Energex": "#A6D30F", "Ergon Energy": "#2A2A8A", "CitiPower": "#E42424", "Powercor": "#E42424", "Jemena": "#24B4CC",
+  "United Energy": "#E40C6C", "AusNet Services": "#243C6C", "SA Power Networks": "#505050", "TasNetworks": "#30B0D0",
+  "Western Power": "#F36C12", "Horizon Power": "#103050", "Power and Water": "#6E7F3A",
+}
+const tint = (name: string) => COLOUR[name] ?? "#8A8170"
+// one step per company: CitiPower and Powercor are one business, one logo, so they light up together
+const STEPS: number[][] = []
+NETS.forEach((n, i) => {
+  const prev = STEPS[STEPS.length - 1]
+  if (prev && netKey(NETS[prev[0]].name) && netKey(NETS[prev[0]].name) === netKey(n.name)) prev.push(i)
+  else STEPS.push([i])
+})
+const STEP_OF = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
 // names drawn on the map itself; the small metro networks are named in the caption instead
 const ON_MAP = new Set(["Essential Energy", "Ergon Energy", "SA Power Networks", "Power and Water", "Western Power", "Horizon Power", "TasNetworks", "Powercor", "AusNet Services"])
 
@@ -47,12 +63,12 @@ function Clip({ src, poster, alt, still, eager }: { src?: string; poster: string
 /** Australia, network by network: the areas fill in one at a time as the section scrolls past, then outages pulse. */
 function NetworkMap({ still }: { still: boolean }) {
   const ref = useRef<HTMLElement>(null)
-  const [lit, setLit] = useState(still ? NETS.length : 0)
+  const [step, setStep] = useState(still ? STEPS.length + 1 : 0)
   const [dots, setDots] = useState(still)
   const big = useMedia("(min-width: 900px)")
 
   useEffect(() => {
-    if (still) { setLit(NETS.length); setDots(true); return }
+    if (still) { setStep(STEPS.length + 1); setDots(true); return }
     let raf = 0
     const tick = () => {
       raf = 0
@@ -61,7 +77,7 @@ function NetworkMap({ still }: { still: boolean }) {
       const r = el.getBoundingClientRect()
       const span = Math.max(1, r.height - window.innerHeight)
       const p = Math.min(1, Math.max(0, -r.top / span))
-      setLit(Math.min(NETS.length, Math.floor(p / 0.86 * NETS.length + (p > 0.01 ? 1 : 0))))
+      setStep(Math.min(STEPS.length + 1, Math.floor(p / 0.9 * (STEPS.length + 1) + (p > 0.01 ? 1 : 0))))
       setDots(p > 0.9)
     }
     const on = () => { if (!raf) raf = requestAnimationFrame(tick) }
@@ -71,7 +87,10 @@ function NetworkMap({ still }: { still: boolean }) {
     return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf) }
   }, [still])
 
-  const last = NETS[Math.max(0, lit - 1)]
+  // step 0: nothing yet; 1…15: that company has just lit; 16: all of them
+  const shownStep = Math.min(step, STEPS.length)
+  const lit = shownStep === 0 ? 0 : STEPS[shownStep - 1][STEPS[shownStep - 1].length - 1] + 1
+  const last = NETS[STEPS[Math.max(0, shownStep - 1)][0]]
   return (
     <section ref={ref} className={`${styles.netSection} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
       <div className={styles.netSticky}>
@@ -84,10 +103,10 @@ function NetworkMap({ still }: { still: boolean }) {
           </p>
           <div className={styles.netNow} aria-live="polite">
             {lit === 0 ? <span className={styles.netHint}>Scroll to light them up</span>
-              : lit < NETS.length ? (
-                <div key={last.name} className={styles.netBrand}>
+              : step <= STEPS.length ? (
+                <div key={step} className={styles.netBrand}>
                   {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={(big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.62)} /> : <b>{last.name}</b>}
-                  <span className={styles.netCount}>{netKey(last.name) && NET[netKey(last.name)!].name !== last.name ? `${last.name} · ` : ""}{lit} of {NETS.length}</span>
+                  <span className={styles.netCount}>{lit} of {NETS.length}</span>
                 </div>
               )
               : <div key="all" className={styles.netBrand}><b className={styles.netAll}>All {NETS.length}, in one place.</b><span className={styles.netCount}>Every network, one map.</span></div>}
@@ -96,11 +115,11 @@ function NetworkMap({ still }: { still: boolean }) {
         <svg className={styles.netMap} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} role="img"
           aria-label="A map of Australia divided into its sixteen electricity network areas">
           {NETS.map((n, i) => (
-            <path key={n.name} d={n.d} className={i < lit ? styles.netOn : styles.netOff}
+            <path key={n.name} d={n.d} className={STEP_OF[i] < step ? styles.netOn : styles.netOff}
               style={{ ["--c" as any]: tint(n.name) }} />
           ))}
           {NETS.map((n, i) => ON_MAP.has(n.name) && (
-            <text key={n.name} x={n.at[0]} y={n.at[1]} className={`${styles.netLabel} ${i < lit ? styles.shown : ""}`}>{n.name}</text>
+            <text key={n.name} x={n.at[0]} y={n.at[1]} className={`${styles.netLabel} ${STEP_OF[i] < step ? styles.shown : ""}`}>{n.name}</text>
           ))}
           {OUTAGE_DOTS.map((d, i) => (
             <g key={d.name} className={`${styles.outage} ${dots ? styles.shown : ""}`} style={{ ["--d" as any]: `${i * 0.35}s` }}>
