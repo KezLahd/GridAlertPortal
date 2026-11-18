@@ -47,7 +47,10 @@ type Span = [number, number]
 // It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
 const TIP: Span = [0.05, 0.06], TIP0 = 0.28
 const DROPS: Span = [0.09, 0.37], FACE: Span = [0.312, 0.37], FLAT: Span = [0.38, 0.43], VINES: Span = [0.44, 0.6]
-const SCATTER: Span = [0.92, 1]
+const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
+// the wordmark ripples into wattle dots (RIPPLE), then they fly down onto the map (FLIGHT), one onto every dot. GOLD is
+// only the fallback for when the wordmark couldn't be loaded: then the dots just turn gold together
+const RIPPLE: Span = [0.886, 0.896], FLIGHT: Span = [0.896, 0.936]
 // The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
 // painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
@@ -70,14 +73,11 @@ const warp = (r: number) => {
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
-const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.8, 0.81]
+const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.925, 0.94]
 const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * TIE_PULL, MEET]
-const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04]
-// the moment the t's first meet, the wordmark ripples into wattle dots (RIPPLE) while the 3D map turns into flat dots
-// (DOTS); then the word's dots fly down onto the map (FLIGHT), one onto every dot. GOLD is only the fallback for when the
-// wordmark couldn't be loaded: then the dots just turn gold together
-const RIPPLE: Span = [MEET, MEET + 0.012], DOTS: Span = [MEET + 0.002, MEET + 0.03], FLIGHT: Span = [MEET + 0.012, MEET + 0.065]
-const GOLD: Span = [MEET + 0.03, MEET + 0.06]
+// the moment the t's first meet, Wattle's paper and aurora ripple out from where they met (THEME), and the map goes from
+// 3D to flat under it (FLATTEN): the pieces' sides sink away to nothing
+const THEME: Span = [MEET, MEET + 0.045], FLATTEN: Span = [MEET, MEET + 0.035]
 
 // the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
 // it; the last one carries the wordmark above it
@@ -95,8 +95,8 @@ const WORDS: Words[] = [
   // "15 companies." first, then the logos under it; "Across the nation." only once the columns part and Australia shows
   { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.112, 0.128], noteOut: [0.15, 0.164] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
   // as the dots turn gold
-  { lines: [{ text: "**15** networks. **1** map.", inn: [0.8, 0.82] }], at: "bottomLeft", out: [0.9, 0.915] },
-  { lines: [{ text: "Be the first to know.", inn: [0.915, 0.94] }], brand: true, at: "centre", out: [2, 3] },
+  { lines: [{ text: "**15** networks. **1** map.", inn: [0.832, 0.852] }], at: "bottomLeft", out: [0.925, 0.94] },
+  { lines: [{ text: "Be the first to know.", inn: [0.94, 0.965] }], brand: true, at: "centre", out: [2, 3] },
 ]
 /** a line with its **numbers** set big and bold */
 function Rich({ text }: { text: string }) {
@@ -128,6 +128,8 @@ const PIECE_SLICES = Array.from({ length: PIECE_DEPTH }, (_, i) => PIECE_DEPTH -
 const BASE_SLICES = Array.from({ length: BASE_DEPTH }, (_, i) => BASE_DEPTH - i)
 // which company each area belongs to
 const OWN = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
+// how far each piece turns as it drifts apart, in degrees: a little, each its own way
+const TURN = STEPS.map((_, g) => (g % 2 ? 1 : -1) * (1.2 + ((g * 37) % 10) * 0.22))
 // which side of the map each company's logo sits on, and where down that side: the western half of the pieces on the
 // left, the eastern half on the right, each side top to bottom in the order their pieces sit
 const COL: { side: number; j: number; n: number }[] = (() => {
@@ -150,6 +152,14 @@ const [SNIP_D, HORIZON_D] = (() => {
 const shapeOf = (i: number) => (i === HORIZON && SNIP_D ? HORIZON_D : NETS[i].d)
 // filled in by evenSplit() once the shapes are on the page
 const SPLIT: number[][] = MID.map(() => [0, 0])
+// each piece's own box on the map (x, y, w, h, in the map's units), a little padded. Its layer and its SVGs are cropped
+// to it, so a moving piece is a small layer for the browser to move about, not a map-sized one (times 13, for its sides)
+const BOX = NETS.map((_, i) => {
+  const v = (shapeOf(i).match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
+  for (let k = 0; k + 1 < v.length; k += 2) { a = Math.min(a, v[k]); c = Math.max(c, v[k]); b = Math.min(b, v[k + 1]); d = Math.max(d, v[k + 1]) }
+  return [a - 3, b - 3, c - a + 6, d - b + 6]
+})
 const TAS = STEPS.findIndex((g) => NETS[g[0]].name === "TasNetworks")
 const WP = STEPS.findIndex((g) => NETS[g[0]].name === "Western Power")
 
@@ -684,7 +694,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // sprigs pull it together
       const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
       // facing you it sits a little smaller and lower, to stay clear of the words above it
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - Math.max(0.2 * opening, shrink))).toFixed(4)})`
+      // the jolt as the wordmark locks them all together: a quick squeeze the moment the t's meet, settling in a few beats
+      const lockS = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9, lock = p > MEET ? 1 - 0.028 * Math.exp(-8 * lockS) * Math.cos(lockS * 28) : 1
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - Math.max(0.2 * opening, shrink)) * lock).toFixed(4)})`
+      rg.classList.toggle(styles.flat, p >= FLATTEN[1])
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= FLY[1]
       rg.classList.toggle(styles.allIn, allIn)
@@ -698,7 +711,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // bounce apart twice, in step with the t's
       const lace = Math.pow(seg(p, LACE), 2.2), since = (Math.max(0, p - MEET) / (TIE[1] - MEET)) * 0.9
       const knock = p > MEET ? 0.12 * Math.exp(-5.2 * since) * Math.abs(Math.sin((Math.PI * since) / 0.34)) : 0
-      const apart = (ease(seg(p, FLAT)) * (1 - lace) + knock) * (wide ? 1.8 : 0.8)
+      // as the sprigs anchor in, the pieces keep drifting slowly further apart (easing out) until the pull starts
+      const drift = 1 - Math.pow(1 - seg(p, [VINES[0], LACE[0]]), 3)
+      const apart = ((ease(seg(p, FLAT)) + 0.45 * drift) * (1 - lace) + knock) * (wide ? 2.4 : 1)
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, span(g)), e = ease(t)
@@ -710,12 +725,14 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
         // whole dots of its own colour, which then shrink
         // faint and small beside its logo, then solid and full size as it reaches its place
-        const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t >= 1 ? 1 : ls * (0.18 + 0.82 * e)
+        const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t >= 1 ? 1 : ls
         const s0 = START[g] || 0.32, glass = 1, sc = t >= 1 ? 1 : s0 + (1 - s0) * e
         const from = t >= 1 ? 0 : 1 - e, st = start[g] ?? MID[g]
         // beside its logo it's a flat shape with no sides (a small 3D piece looks smudgy); its sides grow out from nothing
         // as it grows on its way in
-        const d3 = t >= 1 ? 1 : ease(seg(e, [0.18, 0.5]))
+        const d3 = (t >= 1 ? 1 : ease(seg(e, [0.18, 0.5]))) * (1 - ease(seg(p, FLATTEN)))
+        // a slight turn as it drifts away while the sprigs anchor in, gone again as they're laced back together
+        const rot = TURN[g] * drift * (1 - lace) + TURN[g] * 0.6 * knock
         const fx = ((st[0] - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((st[1] - MID[g][1]) * from / NET_VIEW.h) * 100
         const down = t >= 1
         if (down !== landed[g]) {
@@ -725,13 +742,15 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
-          el.style.transform = t < 1 || apart > 0.0005 ? `translate3d(${(sx + fx).toFixed(2)}%, ${(sy + fy).toFixed(2)}%, ${z.toFixed(1)}px) scale(${sc.toFixed(4)})` : "none"
+          const bx = NET_VIEW.w / BOX[i][2], by = NET_VIEW.h / BOX[i][3]
+          el.style.transform = t < 1 || apart > 0.0005 || Math.abs(rot) > 0.01
+            ? `translate3d(${((sx + fx) * bx).toFixed(2)}%, ${((sy + fy) * by).toFixed(2)}%, ${z.toFixed(1)}px) scale(${sc.toFixed(4)}) rotate(${rot.toFixed(3)}deg)` : "none"
           // faded by its fill, never by the layer's opacity: opacity under 1 flattens a 3D piece and hides its sides
           el.style.opacity = op > 0.001 ? "1" : "0"
           if (dotted && qd < 1) {
-            const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
+            const k = el.offsetWidth / BOX[i][2], R = Math.hypot(CX, CY) * k
             const rb = qd * 1.35 * R, ra = rb - 0.018 * R
-            const m = `radial-gradient(circle at ${((CX / NET_VIEW.w) * 100).toFixed(2)}% ${(((CY + 40) / NET_VIEW.h) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
+            const m = `radial-gradient(circle at ${(((CX - BOX[i][0]) / BOX[i][2]) * 100).toFixed(2)}% ${(((CY + 40 - BOX[i][1]) / BOX[i][3]) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", (glass * op).toFixed(3))
@@ -942,17 +961,19 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               return (
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name),
-                    transformOrigin: `${(MID[OWN[i]][0] / NET_VIEW.w) * 100}% ${(MID[OWN[i]][1] / NET_VIEW.h) * 100}%` }}>
+                    left: `${(BOX[i][0] / NET_VIEW.w) * 100}%`, top: `${(BOX[i][1] / NET_VIEW.h) * 100}%`,
+                    width: `${(BOX[i][2] / NET_VIEW.w) * 100}%`, height: `${(BOX[i][3] / NET_VIEW.h) * 100}%`,
+                    transformOrigin: `${((MID[OWN[i]][0] - BOX[i][0]) / BOX[i][2]) * 100}% ${((MID[OWN[i]][1] - BOX[i][1]) / BOX[i][3]) * 100}%` }}>
                   {PIECE_SLICES.map((k) => (
-                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k}px` }} viewBox={BOX[i].join(" ")} preserveAspectRatio="none" aria-hidden>
                       <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
                     </svg>
                   ))}
-                  <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                  <svg viewBox={BOX[i].join(" ")} preserveAspectRatio="none" aria-hidden>
                     <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
                   </svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
-                    style={{ left: `${(MID[g][0] / NET_VIEW.w) * 100}%`, top: `${(MID[g][1] / NET_VIEW.h) * 100}%` }} />}
+                    style={{ left: `${((MID[g][0] - BOX[i][0]) / BOX[i][2]) * 100}%`, top: `${((MID[g][1] - BOX[i][1]) / BOX[i][3]) * 100}%` }} />}
                 </div>
               )
             })}

@@ -68,6 +68,8 @@
 .layer .edge { transform: translateZ(calc(var(--z) * var(--d, 1))); display: none; }
 /* only once landed: while it falls a piece is just see-through glass, with no layers showing through it */
 .allIn .edge, .lifting .edge { display: block; }
+/* once the map has gone flat its sides aren't drawn at all, which also saves the browser the work */
+.flat .edge { display: none; }
 .allIn .base { visibility: hidden; }
 .allIn .floor { filter: none; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
