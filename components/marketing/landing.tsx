@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
-import { NET, NetLogo, netKey } from "@/components/wattle/networks"
+import { NET, NetLogo, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
 import styles from "./landing.module.css"
 
@@ -37,6 +37,17 @@ const STEP_OF = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
 // names drawn on the map itself; the small metro networks are named in the caption instead
 const ON_MAP = new Set(["Essential Energy", "Ergon Energy", "SA Power Networks", "Power and Water", "Western Power", "Horizon Power", "TasNetworks", "Powercor", "AusNet Services"])
 
+/** The tallest a network's logo can be and still fit `room` pixels across (laid out as NetLogo lays it out). */
+function logoHeight(k: NetKey, h: number, room: number) {
+  const n = NET[k]
+  const icon = n.icon?.[0] ?? 0
+  const wordScale = n.word && n.icon && n.word[0] > 2.5 ? 0.62 : 1
+  const word = (n.word?.[0] ?? 0) * wordScale
+  const gap = n.icon && n.word ? 14 : 0
+  const across = icon + word
+  return across ? Math.max(24, Math.min(h, (room - gap) / across)) : h
+}
+
 function useMedia(q: string) {
   const [on, setOn] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches)
   useEffect(() => {
@@ -67,6 +78,16 @@ function NetworkMap({ still }: { still: boolean }) {
   const [step, setStep] = useState(still ? STEPS.length + 1 : 0)
   const [dots, setDots] = useState(still)
   const big = useMedia("(min-width: 900px)")
+  // the logo is sized to fit the text column, so a wide one (TasNetworks, Power and Water) never runs off the edge
+  const col = useRef<HTMLDivElement>(null)
+  const [room, setRoom] = useState(9999)
+  useEffect(() => {
+    const el = col.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setRoom(el.clientWidth))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     if (still) { setStep(STEPS.length + 1); setDots(true); return }
@@ -95,7 +116,7 @@ function NetworkMap({ still }: { still: boolean }) {
   return (
     <section ref={ref} className={`${styles.netSection} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
       <div className={styles.netSticky}>
-        <div className={styles.netText}>
+        <div className={styles.netText} ref={col}>
           <span className={styles.kicker}>Every network</span>
           <h2 id="nets-title" className={styles.h2}>Sixteen networks. One place to look.</h2>
           <p className={styles.body}>
@@ -106,7 +127,7 @@ function NetworkMap({ still }: { still: boolean }) {
             {lit === 0 ? <span className={styles.netHint}>Scroll to light them up</span>
               : step <= STEPS.length ? (
                 <div key={step} className={styles.netBrand}>
-                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={(big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.7)} /> : <b>{last.name}</b>}
+                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={logoHeight(netKey(last.name)!, (big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.7), room - 4)} /> : <b>{last.name}</b>}
                   <span className={styles.netCount}>{lit} of {NETS.length}</span>
                 </div>
               )

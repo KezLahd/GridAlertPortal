@@ -130,7 +130,9 @@
 .netHint { font-family: var(--rounded); font-weight: 600; font-size: 16px; color: var(--faint) !important; padding-top: 6px; }
 .netBrand { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; animation: brandIn 0.55s var(--ease) both; }
 .netBrand :global(.nlogo) { display: inline-flex; align-items: center; gap: 14px; }
-.netBrand :global(.nlogo) img { display: block; object-fit: contain; max-width: min(440px, 80vw); }
+.netBrand { max-width: 100%; }
+.netBrand :global(.nlogo) { max-width: 100%; }
+.netBrand :global(.nlogo) img { display: block; object-fit: contain; flex: none; }
 .netBrand :global(.nlogo-t), .netBrand > b { font-family: var(--rounded); font-weight: 800; font-size: 40px; letter-spacing: -0.02em; line-height: 72px; }
 .netAll { color: var(--ink); }
 .netCount { font-family: var(--rounded); font-weight: 600; font-size: 14.5px; color: var(--faint) !important; font-variant-numeric: tabular-nums; }
@@ -203,7 +205,6 @@
   .netText .body { font-size: 16px; margin-bottom: 8px; }
   .netNow { min-height: 92px; }
   .netBrand :global(.nlogo-t), .netBrand > b { font-size: 30px; line-height: 52px; }
-  .netBrand :global(.nlogo) img { max-width: 78vw; }
   .netMap { max-height: 50svh; }
   .netLabel { display: none; }
   .groups { padding: 64px 0 20px; }
