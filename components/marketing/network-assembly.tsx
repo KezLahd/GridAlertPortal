@@ -48,10 +48,10 @@ const TIP: Span = [0.03, 0.075], TIP0 = 0.28
 const DROPS: Span = [0.09, 0.37], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.6]
 const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
 // The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
-// then, as you scroll, the pieces fly in from beside their logos to their places, one after another but overlapping, so
-// it's quick (DROPS); once they're all in, the logos go (LOGOS_OUT)
-const LOGOS: Span = [0.05, 0.085], LOGOS_OUT: Span = [0.37, 0.395]
-const FLY = 0.09, STAG = (DROPS[1] - DROPS[0] - FLY) / Math.max(1, G - 1)
+// then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
+// painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
+// screen and the "15 companies." line grows and fades with them
+const LOGOS: Span = [0.05, 0.085], FLY: Span = [0.1, 0.26], ZOOM: Span = [0.275, 0.37]
 // the timeline against the real scroll: the opening is short, the flying in a little longer, the rest as before, and
 // the last screen stays put for the final stretch of the section (raw 0.88 to 1)
 const WARP: [number, number][] = [[0, 0], [0.08, 0.09], [0.3, 0.4], [0.88, 1], [1, 1]]
@@ -406,7 +406,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
-    const TX = wide ? 62 : 52, GAPX = wide ? 40 : 6
+    const TX = wide ? 62 : 52, GAPX = wide ? 22 : 6
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
     // how big a dot is as the ring first reaches it: just big enough that neighbouring dots cover the area between them
@@ -450,10 +450,15 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const sr = st.getBoundingClientRect(), rr = rg.getBoundingClientRect()
       // where the map's four corners are on screen, tilted as it is; turns a point on the screen into a point on the map
       const toMap = unproject(corners.current.map((el) => { const r = el?.getBoundingClientRect(); return r ? [r.left, r.top] as Pt : null }))
-      const fr = toMap ? (() => { const xs = corners.current.map((el) => el!.getBoundingClientRect().left); return { left: Math.min(...xs), right: Math.max(...xs) } })() : rr
+      const fr = toMap ? (() => {
+        const rs = corners.current.map((el) => el!.getBoundingClientRect()), xs = rs.map((r) => r.left), ys = rs.map((r) => r.top)
+        return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) }
+      })() : rr
       let now = -1
-      const span = (g: number): Span => [DROPS[0] + g * STAG, DROPS[0] + g * STAG + FLY]
+      const span = (_g: number): Span => FLY
       STEPS.forEach((_, g) => { const t = seg(p, span(g)); if (t > 0 && t < 1) now = g })
+      // the camera moving in, eased at both ends
+      const zq = seg(p, ZOOM), zoom = zq * zq * (3 - 2 * zq)
       const mw = marks.current.map((m) => m?.offsetWidth ?? 0), mh = marks.current.map((m) => m?.offsetHeight ?? 0)
       const secTop = sec.getBoundingClientRect().top
       const mk = tieMark.current?.getBoundingClientRect()
@@ -464,7 +469,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         slide(el, el?.firstElementChild as HTMLElement | null, ease(seg(p, w.lines[0].inn)), ease(seg(p, w.out)))
         el?.querySelectorAll<HTMLElement>("[data-line]").forEach((ln, j) => {
           const at = j < w.lines.length ? w.lines[j].inn : w.sub?.inn
-          if (at) ln.style.opacity = ease(seg(p, at)).toFixed(3)
+          if (!at) return
+          // "15 companies." comes towards you with the camera and goes
+          const toward = i === 1 && j === 0 ? zoom : 0
+          ln.style.opacity = (ease(seg(p, at)) * (1 - ease(seg(toward, [0.25, 0.9])))).toFixed(3)
+          ln.style.transform = toward > 0 ? `scale(${(1 + 0.9 * toward).toFixed(4)})` : ""
         })
       })
 
@@ -509,25 +518,29 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the fifteen logos, down both sides of the map, all the same height; each piece starts small and faint just inside
       // its logo, on the map's side of it (start[g], in the map's own units)
-      const li = ease(seg(p, LOGOS)), lo = ease(seg(p, LOGOS_OUT))
+      const li = ease(seg(p, LOGOS)), lo = ease(seg(zoom, [0.35, 0.95]))
       const start: Pt[] = []
+      // close in round the map: down its sides, from just under its top edge to just over its bottom
+      const fh = Math.max(fr.bottom - fr.top, sr.height * 0.42), fm = (fr.top + fr.bottom) / 2 - sr.top
+      const y0 = fm - fh * 0.62, y1 = fm + fh * 0.62
+      const cx = sr.width / 2, cy = sr.height / 2, push = 1 + 1.6 * zoom
       STEPS.forEach((_, g) => {
         const m = marks.current[g], c = COL[g]
-        const y0 = sr.height * 0.22, y1 = sr.height * 0.9
         const y = y0 + (y1 - y0) * (c.n > 1 ? c.j / (c.n - 1) : 0.5) - mh[g] / 2
         const x = c.side < 0 ? Math.max(16, fr.left - sr.left - GAPX - mw[g]) : Math.min(sr.width - 16 - mw[g], fr.right - sr.left + GAPX)
-        const sx = c.side < 0 ? x + mw[g] + (wide ? 64 : 24) : x - (wide ? 64 : 24), sy = y + mh[g] / 2
+        const sx = c.side < 0 ? x + mw[g] + (wide ? 58 : 18) : x - (wide ? 58 : 18), sy = y + mh[g] / 2
         const uv = toMap?.(sx + sr.left, sy + sr.top) ?? [0.5, 0.5]
         start[g] = [uv[0] * NET_VIEW.w, uv[1] * NET_VIEW.h]
         if (!m) return
         const a = ease(seg(p, [LOGOS[0] + c.j * 0.003, LOGOS[1] + c.j * 0.003])) * (1 - lo)
         m.style.opacity = a.toFixed(3)
         m.style.visibility = a > 0.001 ? "visible" : "hidden"
-        m.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${(0.97 + 0.03 * a).toFixed(4)})`
+        // as the camera moves in they fly outwards from the middle of the screen, growing, and off the edges
+        const zx = cx + (x + mw[g] / 2 - cx) * push - mw[g] / 2, zy = cy + (y + mh[g] / 2 - cy) * push - mh[g] / 2
+        m.style.transform = `translate3d(${zx.toFixed(1)}px, ${zy.toFixed(1)}px, 0) scale(${((0.97 + 0.03 * a) * (1 + 1.3 * zoom)).toFixed(4)})`
       })
-      // while the logos are up the map sits a little smaller, to leave them room either side
-      const widest = Math.max(0, ...mw)
-      const beside = wide ? Math.min(1, Math.max(0.6, (sr.width - 2 * (widest + GAPX + 24)) / Math.max(1, rg.offsetWidth))) : 1
+      // while the logos are up the map sits smaller, with them close round it, until the camera moves in
+      const shrink = (wide ? 0.3 : 0.16) * li * (1 - zoom)
 
       // the country tips back for the drops, then comes flat again
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
@@ -537,9 +550,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // while it's in pieces it sits smaller, so the gaps and the sprigs across them have room; it grows back as the
       // sprigs pull it together
       const spread = ease(seg(p, FLAT)) * (1 - Math.pow(seg(p, LACE), 2.2))
-      const fit = 1 - (1 - beside) * li * (1 - lo)
       // facing you it sits a little smaller and lower, to stay clear of the words above it
-      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - 0.2 * opening)).toFixed(4)})`
+      rg.style.transform = `translateY(${(tilt * 2 + (1 - tilt) * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((0.82 + 0.18 * tilt) * (1 - 0.2 * spread) * (1 - Math.max(0.2 * opening, shrink))).toFixed(4)})`
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]
       rg.classList.toggle(styles.allIn, allIn)
@@ -775,7 +787,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
         {STEPS.map((group, g) => {
           const k = netKey(NETS[group[0]].name)
-          return k && <div key={k} ref={(el) => { marks.current[g] = el }} className={styles.mark}><Logo k={k} h={wide ? 30 : 15} w={wide ? 190 : 84} area={wide ? 3400 : 820} /></div>
+          return k && <div key={k} ref={(el) => { marks.current[g] = el }} className={styles.mark}><Logo k={k} h={wide ? 24 : 13} w={wide ? 150 : 70} area={wide ? 2100 : 600} /></div>
         })}
       </div>
     </section>

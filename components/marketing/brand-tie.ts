@@ -33,7 +33,7 @@ export function makeTie(svg: SVGSVGElement) {
   const pole = () => {
     const g = el("g", svg)
     return { g, stem: el("path", g, { fill: "none", stroke: INK, "stroke-width": String(STEM), "stroke-linecap": "round", "stroke-linejoin": "round" }),
-      bar: el("rect", g, { width: String(2 * ARM), height: String(BAR), rx: String(BAR / 2), fill: INK }) }
+      bar: el("path", g, { fill: "none", stroke: INK, "stroke-width": String(BAR), "stroke-linecap": "round", pathLength: "1" }) }
   }
   // drawing order: the wires pass in front of the right t and behind the left one
   const w = letter(LETTERS.w), a = letter(LETTERS.a), p2 = pole()
@@ -44,13 +44,24 @@ export function makeTie(svg: SVGSVGElement) {
 
   const bendAt = (t: number, dir: number, h: number, lean: number): [number, number] => { const k = clamp(h / HB, 0, 1.2); return [t + dir * lean * k * k, YL - h] }
   const angAt = (dir: number, h: number, lean: number) => Math.atan((2 * lean * Math.max(h, 0)) / (HB * HB)) * dir
+  // a stretch `len` (0 to 1) of a path drawn out from `at` (0 to 1 along it), by dash offset: a dash pattern that starts
+  // with a zero-length dash would leave a round dot at the start of the path
+  const grow = (path: SVGPathElement, at: number, len: number) => {
+    if (len >= 1) { path.removeAttribute("stroke-dasharray"); path.removeAttribute("stroke-dashoffset"); path.removeAttribute("visibility"); return }
+    path.setAttribute("visibility", len > 0.002 ? "visible" : "hidden")
+    path.setAttribute("stroke-dasharray", `${len.toFixed(4)} 3`)
+    path.setAttribute("stroke-dashoffset", (-(at - at * len)).toFixed(4))
+  }
+  // where on the stem (0 bottom to 1 top) the lower wire meets it, which is where the stem draws out from
+  const STEM_AT = (BASE - STEM / 2 - YL + HC + (YL - TOP - HC) * 0.5) / (BASE - STEM / 2 - YL + HB)
   const drawPole = (P: ReturnType<typeof pole>, t: number, dir: number, lean: number) => {
     let d = `M${t} ${BASE - STEM / 2}L${t} ${YL}`
     for (let i = 1; i <= 12; i++) { const [x, y] = bendAt(t, dir, (HB * i) / 12, lean); d += `L${x.toFixed(2)} ${y.toFixed(2)}` }
     P.stem.setAttribute("d", d)
-    const [bx, by] = bendAt(t, dir, HC, lean)
-    P.bar.setAttribute("x", (bx - ARM).toFixed(2)); P.bar.setAttribute("y", (by - BAR / 2).toFixed(2))
-    P.bar.setAttribute("transform", `rotate(${((angAt(dir, HC, lean) * 180) / Math.PI).toFixed(2)} ${bx.toFixed(2)} ${by.toFixed(2)})`)
+    P.stem.setAttribute("pathLength", "1")
+    // the crossbar runs from the end its wire arrives at to the far end
+    const [ix, iy] = onBar(t, dir, dir * (ARM - BAR / 2), lean), [ox, oy] = onBar(t, dir, -dir * (ARM - BAR / 2), lean)
+    P.bar.setAttribute("d", `M${ix.toFixed(2)} ${iy.toFixed(2)}L${ox.toFixed(2)} ${oy.toFixed(2)}`)
   }
   const onBar = (t: number, dir: number, dx: number, lean: number): [number, number] => {
     const [bx, by] = bendAt(t, dir, HC, lean), q = angAt(dir, HC, lean); return [bx + dx * Math.cos(q), by + dx * Math.sin(q)]
@@ -65,8 +76,11 @@ export function makeTie(svg: SVGSVGElement) {
   /** u: 0 to 1 through the moment; reach: how far apart the halves start, in the mark's own units */
   return (u: number, reach: number) => {
     const GAP = Math.max(60, reach)
-    // first the wire, drawn out from the middle to both t's; the t's come in as it reaches them; then the other letters
-    const draw = easeOut(seg(u, 0, 0.12), 2), poles = seg(u, 0.09, 0.14), inn = seg(u, 0.12, 0.24)
+    // first the wire, drawn out from the middle to both t's; the t's draw on as it reaches them; then the other letters
+    const draw = easeOut(seg(u, 0, 0.12), 2), inn = seg(u, 0.12, 0.24)
+    // each t draws itself on from where its wires reach it: the crossbar from its inner end out, the stem from the
+    // lower wire up and down
+    const barIn = easeOut(seg(u, 0.095, 0.15), 2), stemIn = easeOut(seg(u, 0.11, 0.18), 2)
     // then it takes up its slack and goes gold, and drags the halves in: a hard pull at first, quicker and quicker as
     // they near. They meet in the middle of the word at MEET, knock with a flash, bounce apart twice and settle
     const slack = 1 - easeOut(seg(u, 0.2, PULL), 2)
@@ -77,9 +91,8 @@ export function makeTie(svg: SVGSVGElement) {
     else { gap = GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
     const L = -gap / 2, R = gap / 2
     reveal(w, 2, inn, L); reveal(a, 1, inn, L); reveal(l, 1, inn, R); reveal(e, 2, inn, R)
-    const to = poles.toFixed(3)
-    p1.g.setAttribute("opacity", to); p2.g.setAttribute("opacity", to)
     drawPole(p1, T1 + L, 1, lean); drawPole(p2, T2 + R, -1, lean)
+    for (const P of [p1, p2]) { grow(P.bar, 0, barIn); grow(P.stem, STEM_AT, stemIn) }
 
     // two wires: between the facing crossbar ends, and between the middles of the poles
     const wire = (draw > 0 ? 1 : 0) * (1 - seg(tb, 0, 0.35))
@@ -95,7 +108,7 @@ export function makeTie(svg: SVGSVGElement) {
       path.setAttribute("stroke", gold > 0.5 ? GOLD : INK)
       path.setAttribute("opacity", wire.toFixed(3))
       // drawn from its middle outwards
-      path.setAttribute("stroke-dasharray", draw >= 1 ? "none" : `0 ${(0.5 - draw / 2).toFixed(4)} ${draw.toFixed(4)} 2`)
+      grow(path, 0.5, draw)
     })
 
     // the knock: a gold flash where they meet, and sparks flying out and falling
