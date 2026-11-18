@@ -79,7 +79,7 @@ type Words = { lines: Line[]; sub?: Line; brand?: boolean; hero?: boolean; at: s
 const WORDS: Words[] = [
   // the opening line, alone and big; it goes as the country tips back
   // a small lead-in, then the big claim; the kicker and the claim are split by "|"
-  { lines: [{ text: "Australia\u2019s power grid|isn\u2019t one company.", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
+  { lines: [{ text: "When the power goes out,|who do you call?", inn: [-0.02, -0.01] }], hero: true, at: "top", out: [0.004, 0.026] },
   // as the logos come in, then as the country breaks apart
   { lines: [{ text: "**15** companies.", inn: [0.026, 0.044] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.6, 0.612] },
   // as the dots turn gold
@@ -566,7 +566,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // the time they're in place and they show only their own sides
       const flying = p < FLY[1] && p > FLY[0] - 0.01
       rg.classList.toggle(styles.flying, flying)
-      rg.style.setProperty("--base-a", flying ? (1 - ease(seg(seg(p, FLY), [0.55, 0.95]))).toFixed(3) : "1")
+      rg.style.setProperty("--base-a", flying ? (1 - ease(seg(seg(p, FLY), [0.86, 1]))).toFixed(3) : "1")
       // apart, then laced back together
       // the pull is hard at first and quicker as they near, like the wordmark's t's; when they meet the pieces knock and
       // bounce apart twice, in step with the t's
@@ -596,14 +596,15 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           const el = layers.current[i]
           if (!el) return
           el.style.transform = t < 1 || apart > 0.0005 ? `translate3d(${(sx + fx).toFixed(2)}%, ${(sy + fy).toFixed(2)}%, ${z.toFixed(1)}px) scale(${sc.toFixed(4)})` : "none"
-          el.style.opacity = String(op)
+          // faded by its fill, never by the layer's opacity: opacity under 1 flattens a 3D piece and hides its sides
+          el.style.opacity = op > 0.001 ? "1" : "0"
           if (dotted && qd < 1) {
             const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
             const rb = qd * 1.35 * R, ra = rb - 0.018 * R
             const m = `radial-gradient(circle at ${((CX / NET_VIEW.w) * 100).toFixed(2)}% ${(((CY + 40) / NET_VIEW.h) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
-          el.style.setProperty("--a", glass.toFixed(3))
+          el.style.setProperty("--a", (glass * op).toFixed(3))
           // how high it is, so its sides can stop short of the country underneath (see .lifting .edge)
           el.style.setProperty("--lift", z.toFixed(2))
           if (i === HORIZON && WP >= 0) {
