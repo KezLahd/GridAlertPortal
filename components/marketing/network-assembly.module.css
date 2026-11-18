@@ -1,8 +1,9 @@
 /* The map story (network-assembly.tsx). The map sits in the middle of a pinned stage; words come and go around it,
    some over it. Uses the landing page's colour and type variables. */
 
-.section { position: relative; height: 1000vh; --map-land: #dccdb0; }
-@media (prefers-color-scheme: dark) { .section { --map-land: #3b352c; } }
+/* before Wattle comes in the page is grey and flat (overcast), so the country is a cool grey too */
+.section { position: relative; height: 1000vh; --map-land: #c5ccd4; }
+@media (prefers-color-scheme: dark) { .section { --map-land: #3a414b; } }
 .stage {
   position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; --bloom: #c9b48a;
   /* a little light in the middle of the page, falling back to plain paper at the edges so there's no seam */
@@ -11,6 +12,13 @@
 @media (prefers-color-scheme: dark) {
   .stage { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 6%) 0%, var(--paper) 100%); }
 }
+/* the overcast page, over the paper until the t's meet; then the paper and the aurora spread out from the join */
+.overcast {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(75% 65% at 50% 50%, #f1f3f5 0%, #e1e5e9 100%);
+}
+@media (prefers-color-scheme: dark) { .overcast { background: radial-gradient(75% 65% at 50% 50%, #23272c 0%, #181b1f 100%); } }
+.aurora { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; visibility: hidden; }
 /* and a soft colour behind the map, taking the colour of whatever is happening; it fades out well inside the stage */
 @property --bloom { syntax: "<color>"; inherits: true; initial-value: #c9b48a; }
 .bloom {
@@ -81,6 +89,16 @@
   font-size: clamp(40px, 6.4vw, 96px); letter-spacing: -0.035em;
 }
 
+/* the headline: the wordmark (its t's pulled together by the script) as tall as the words beside it, a line under it */
+.tie { position: absolute; z-index: 3; top: clamp(20px, 5vh, 56px); left: 0; right: 0; padding: 0 24px; text-align: center; visibility: hidden; }
+.tieRow {
+  margin: 0; font-family: var(--rounded); font-weight: 600; font-size: clamp(32px, 4vw, 58px); line-height: 1.1;
+  letter-spacing: -0.025em; color: var(--ink); white-space: nowrap;
+}
+.tieMark { display: inline-block; vertical-align: baseline; height: 0.72em; aspect-ratio: 283.73 / 72.48; overflow: visible; color: var(--ink); margin-right: 0.24em; }
+.tieRow span { display: inline-block; opacity: 0; }
+.tieSub { margin: 0.35em auto 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: var(--muted); opacity: 0; text-wrap: balance; }
+
 /* the company landing now: beside the map, level with its area (placed by the script), joined to it by a line */
 .chip {
   position: absolute; z-index: 3; top: 0; left: 0; width: clamp(200px, 22vw, 320px); visibility: hidden;
@@ -116,6 +134,9 @@
   .top, .topLeft, .topRight { top: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .bottom, .bottomLeft { bottom: 28px; left: 20px; right: 20px; margin: 0; max-width: none; text-align: left; padding: 0; }
   .centre { font-size: clamp(34px, 10vw, 46px); left: 20px; right: 20px; padding: 0; }
+  .tie { top: 28px; padding: 0 20px; }
+  .tieRow { font-size: clamp(26px, 7.4vw, 34px); white-space: normal; }
+  .tieSub { font-size: 16px; }
   .chip { top: auto; bottom: 24px; left: 20px; right: 20px; width: auto; transform: none !important; }
   .leader { display: none; }
   .meta { font-size: 14px; }

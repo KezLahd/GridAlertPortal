@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW } from "./network-map-data"
 import styles from "./network-assembly.module.css"
+import { makeTie, TIE_VIEW } from "./brand-tie"
 
 // The page's story, told on one map of Australia as you scroll. Every step is tied to the scroll position (smoothed
 // a little more on top of Lenis, like a scrubbed timeline), so nothing fires and vanishes on one flick of the wheel:
@@ -42,6 +43,10 @@ type Span = [number, number]
 const TILT: Span = [0.05, 0.13], DROPS: Span = [0.14, 0.465], FLAT: Span = [0.495, 0.57], VINES: Span = [0.58, 0.68]
 const LACE: Span = [0.68, 0.77], DOTS: Span = [0.77, 0.84], GOLD: Span = [0.83, 0.89], SCATTER: Span = [0.94, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
+// "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts); they knock at 62% of TIE,
+// and from there the grey page gives way to Wattle's own: paper, with the aurora spreading out from where they met
+const TIE: Span = [0.625, 0.735], TIE_OUT: Span = [0.75, 0.775]
+const KNOCK = TIE[0] + (TIE[1] - TIE[0]) * 0.62, THEME: Span = [KNOCK, KNOCK + 0.045]
 
 // the words, each with where it sits and when it comes in and goes out
 const WORDS: { text: string; at: string; big?: boolean; inn: Span; out: Span }[] = [
@@ -50,7 +55,6 @@ const WORDS: { text: string; at: string; big?: boolean; inn: Span; out: Span }[]
   { text: "Each one looks after its own patch.", at: "top", big: true, inn: [0.14, 0.17], out: [0.48, 0.51] },
   { text: "Fifteen companies. Fifteen websites.", at: "top", big: true, inn: [0.51, 0.545], out: [0.6, 0.63] },
   { text: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "bottomLeft", inn: [0.525, 0.555], out: [0.6, 0.63] },
-  { text: "Wattle ties them together.", at: "topRight", big: true, inn: [0.6, 0.635], out: [0.74, 0.77] },
   { text: "Every network, on one map.", at: "bottomLeft", big: true, inn: [0.77, 0.8], out: [0.86, 0.89] },
   { text: "Wattle checks all fifteen, every few minutes.", at: "top", big: true, inn: [0.87, 0.9], out: [0.93, 0.955] },
   { text: "So you know the moment a site loses power.", at: "centre", big: true, inn: [0.95, 0.98], out: [2, 3] },
@@ -143,10 +147,9 @@ function makeDots(paths: SVGPathElement[]): Dot[] {
       if (n < 0) continue
       const name = NETS[n].name
       const dist = Math.hypot(x - ox, y - oy) / R
-      const turn = (Math.atan2(y - oy, x - ox) + Math.PI) / (Math.PI * 2)
       const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 1500 + rand() * 2300
       out.push({
-        n, x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
+        n, x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist),
         c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(),
       })
     }
@@ -188,6 +191,24 @@ function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
   )
 }
 
+/** Wattle's aurora (kept from the app's backgrounds, 15 Nov): three slow curtains of gold light across the top. */
+function drawAurora(c: CanvasRenderingContext2D, w: number, h: number, t: number, dk: boolean) {
+  c.setTransform(1, 0, 0, 1, 0, 0)
+  c.clearRect(0, 0, w, h)
+  c.globalCompositeOperation = dk ? "lighter" : "source-over"
+  const s = h / 450
+  ;([[0.13, 0, 0.16, "242,179,0"], [0.21, 2.1, 0.11, "201,138,0"], [0.29, 4.2, 0.08, "242,179,0"]] as const).forEach(([at, ph, a, rgb], k) => {
+    for (let x = -2; x <= w + 2; x += 2) {
+      const y = h * at + (Math.sin(x / s * 0.012 + t * 0.35 + ph) * 22 + Math.sin(x / s * 0.031 - t * 0.2 + ph) * 8) * s
+      const len = (70 + Math.sin(x / s * 0.05 + t * 0.6 + k) * 30) * s
+      const g = c.createLinearGradient(0, y - len, 0, y)
+      g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(0.8, `rgba(${rgb},${dk ? a * 0.8 : a})`); g.addColorStop(1, `rgba(${rgb},0)`)
+      c.fillStyle = g; c.fillRect(x, y - len, 2.2, len)
+    }
+  })
+  c.globalCompositeOperation = "source-over"
+}
+
 type Refs<T> = { current: (T | null)[] }
 /** The parts of every sprig that sit on one side of the pieces: over them (upper) or under them. */
 function Sprigs({ upper, stems, leaves, balls }: { upper: boolean; stems: Refs<SVGPathElement>; leaves: Refs<SVGEllipseElement>; balls: Refs<SVGCircleElement> }) {
@@ -223,6 +244,13 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
   const chip = useRef<HTMLDivElement>(null)
   const chipIn = useRef<HTMLDivElement>(null)
   const leader = useRef<HTMLDivElement>(null)
+  const tieBox = useRef<HTMLDivElement>(null)
+  const tieRow = useRef<HTMLParagraphElement>(null)
+  const tieMark = useRef<SVGSVGElement>(null)
+  const tieWords = useRef<HTMLSpanElement>(null)
+  const tieSub = useRef<HTMLParagraphElement>(null)
+  const overcast = useRef<HTMLDivElement>(null)
+  const aurora = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -240,13 +268,31 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const H = wide ? 300 : 190, TX = wide ? 50 : 40
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
-    // a disc this big, on the dot grid, leaves no gaps: the shapes become discs without a seam
-    const COVER = 9
+    // how big a dot is as the ring first reaches it: about the gap between dots, so it starts as part of the area
+    const COVER = 6.8
+
+    const tie = tieMark.current ? makeTie(tieMark.current) : null
+    let tied = -1, tiedReach = -1
+    const au = aurora.current, actx = au?.getContext("2d") ?? null
+    // the wordmark as tall as the words beside it: the height of an l in whatever font the words are set in
+    const fitMark = () => {
+      const row = tieRow.current, mk = tieMark.current, c = document.createElement("canvas").getContext("2d")
+      if (!row || !mk || !c) return
+      const cs = getComputedStyle(row)
+      c.font = `${cs.fontWeight} 100px ${cs.fontFamily}`
+      const asc = c.measureText("l").actualBoundingBoxAscent / 100
+      mk.style.height = `${((asc || 0.72) * TIE_VIEW.h / 71.45).toFixed(4)}em`
+    }
+    fitMark()
+    document.fonts?.ready.then(fitMark)
 
     const size = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1)
       cv.width = Math.round(st.offsetWidth * dpr); cv.height = Math.round(st.offsetHeight * dpr)
+      // the aurora is soft light: half the pixels is plenty
+      if (au) { au.width = Math.round(st.offsetWidth / 2); au.height = Math.round(st.offsetHeight / 2) }
       drawn = ""
+      fitMark()
     }
     size()
     const ro = new ResizeObserver(size)
@@ -269,11 +315,51 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
       const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
       const reserve = (() => { const w = words.current[2]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
+      const secTop = sec.getBoundingClientRect().top
+      const mk = tieMark.current?.getBoundingClientRect()
 
       WORDS.forEach((w, i) => {
         const el = words.current[i]
         slide(el, el?.firstElementChild as HTMLElement | null, ease(seg(p, w.inn)), ease(seg(p, w.out)))
       })
+
+      // the headline: the wordmark's t's pulled together, then the words beside it, then the line under it
+      const tu = seg(p, TIE), tb = tieBox.current
+      if (tb) {
+        const v = tu > 0 ? 1 - ease(seg(p, TIE_OUT)) : 0
+        tb.style.visibility = v > 0.001 ? "visible" : "hidden"
+        tb.style.opacity = v.toFixed(3)
+        // the right half of the mark starts where the words will be, so the wire pulls it across the whole line
+        const wr = tieWords.current?.getBoundingClientRect(), mw = mk?.width ?? 0
+        const oneLine = !!(wr && mk && wr.top < mk.bottom)
+        const reach = oneLine && wr && mk ? Math.round(wr.right - mk.right) : 0
+        if (v > 0.001 && tie && (Math.abs(tu - tied) > 0.0002 || reach !== tiedReach)) {
+          tied = tu; tiedReach = reach
+          tie(tu, mw > 0 && reach > 0 ? (reach * TIE_VIEW.w) / mw : 150)
+        }
+        if (tieWords.current) tieWords.current.style.opacity = ease(seg(tu, [0.64, 0.8])).toFixed(3)
+        if (tieSub.current) tieSub.current.style.opacity = ease(seg(tu, [0.76, 0.94])).toFixed(3)
+      }
+
+      // the page: grey and still while it's fifteen companies; from the moment the t's meet, Wattle's paper and aurora
+      // spread out from where they met. The grey also comes in softly as the section scrolls up, so there's no edge.
+      const th = seg(p, THEME), oc = overcast.current
+      const jx = mk ? mk.left - sr.left + mk.width * (168 / TIE_VIEW.w) : sr.width / 2, jy = mk ? mk.top - sr.top + mk.height * (24.28 / TIE_VIEW.h) : 100
+      const far = Math.hypot(Math.max(jx, sr.width - jx), Math.max(jy, sr.height - jy)) + 200, rad = ease(th) * far
+      if (oc) {
+        oc.style.opacity = ease(clamp(1 - secTop / Math.max(1, window.innerHeight))).toFixed(3)
+        const m = th > 0 ? `radial-gradient(circle at ${jx.toFixed(0)}px ${jy.toFixed(0)}px, transparent ${(rad - 160).toFixed(0)}px, #000 ${rad.toFixed(0)}px)` : ""
+        oc.style.maskImage = m; oc.style.webkitMaskImage = m
+        oc.style.visibility = th >= 1 ? "hidden" : "visible"
+      }
+      if (au && actx) {
+        au.style.visibility = th > 0 ? "visible" : "hidden"
+        if (th > 0) {
+          const m = th < 1 ? `radial-gradient(circle at ${jx.toFixed(0)}px ${jy.toFixed(0)}px, #000 ${(rad - 160).toFixed(0)}px, transparent ${rad.toFixed(0)}px)` : ""
+          au.style.maskImage = m; au.style.webkitMaskImage = m
+          drawAurora(actx, au.width, au.height, performance.now() / 1000, dark.matches)
+        }
+      }
 
       // the company that's landing: beside the map on the side its area is on, in a fixed spot; only its line moves,
       // following the area down
@@ -320,7 +406,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
-        const op = dotted ? 0 : t > 0 ? 1 : 0
+        // into dots: the area stays until a soft ring spreading from the middle melts it away, in step with the dots
+        const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t > 0 ? 1 : 0
         const glass = t >= 1 ? 1 : clamp(t / 0.06) * (0.32 + 0.68 * ease(t))
         const down = t >= 1 && tilt > 0.02
         if (down !== landed[g]) {
@@ -332,6 +419,12 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           if (!el) return
           el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${sx.toFixed(2)}%, ${sy.toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
           el.style.opacity = String(op)
+          if (dotted && qd < 1) {
+            const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
+            const ra = (qd * 1.35 - 0.2) * R, rb = qd * 1.35 * R
+            const m = `radial-gradient(circle at ${((CX / NET_VIEW.w) * 100).toFixed(2)}% ${(((CY + 40) / NET_VIEW.h) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
+            el.style.maskImage = m; el.style.webkitMaskImage = m
+          } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", glass.toFixed(3))
           el.classList.toggle(styles.lifting, t > 0 && t < 1)
         })
@@ -402,29 +495,20 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           if (q > 0 && o < 1) {
             ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy)
             const shrink = 1 - 0.28 * gold
-            // the morph: each dot starts as a big disc; with its neighbours, and clipped to its own area's exact edge, the
-            // discs make that solid area, so the hand-over from the shapes shows nothing. As the ripple passes, each disc
-            // shrinks to its dot, so the areas break up smoothly from the middle out
-            const morphing = q < 1
-            byNet.forEach((list, i) => {
-              if (morphing) { ctx.save(); ctx.clip(areas[i]) }
+            // the morph: as the ring passes, each dot starts as a disc a little bigger than the gap between dots, over its
+            // still-solid area, and shrinks to its dot while the area melts away under it. Nothing is clipped: a disc may
+            // spill a touch past its edge, but every dot stays whole
+            byNet.forEach((list) => {
               for (const d of list) {
-                const m = ease(clamp((q * 1.35 - d.d) * 2.2))
+                const front = q * 1.35 - d.d
+                if (front <= 0) continue
+                const m = ease(clamp(front * 2.4))
                 const c = dark.matches ? d.cd : d.c
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
                 ctx.beginPath()
                 ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (COVER + (d.r - COVER) * m) * shrink * (1 + 1.6 * o * o), 0, Math.PI * 2)
                 ctx.fill()
-              }
-              if (morphing) {
-                ctx.restore()
-                // the shapes overlapped a hair at their shared edges; do the same here so no seam shows at the start
-                const seam = 1 - clamp(q * 2.5)
-                if (seam > 0) {
-                  const c = dark.matches ? list[0]?.cd : list[0]?.c
-                  if (c) { ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${seam.toFixed(3)})`; ctx.lineWidth = 1.4; ctx.stroke(areas[i]) }
-                }
               }
             })
           }
@@ -461,6 +545,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     <section ref={section} className={`${styles.section} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
       <div ref={stage} className={styles.stage} style={{ ["--tint" as string]: tint(name) }}>
         <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, and Wattle</h2>
+        <div ref={overcast} className={styles.overcast} aria-hidden />
+        <canvas ref={aurora} className={styles.aurora} aria-hidden />
         <div className={styles.bloom} aria-hidden />
 
         <div className={styles.mapBox}>
@@ -504,6 +590,14 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             <span>{w.text}</span>
           </p>
         ))}
+
+        <div ref={tieBox} className={styles.tie}>
+          <p ref={tieRow} className={styles.tieRow}>
+            <svg ref={tieMark} className={styles.tieMark} viewBox={`0 0 ${TIE_VIEW.w} ${TIE_VIEW.h}`} role="img" aria-label="Wattle" />
+            <span ref={tieWords}>ties them together.</span>
+          </p>
+          <p ref={tieSub} className={styles.tieSub}>All fifteen networks, in one place.</p>
+        </div>
 
         <div ref={leader} className={styles.leader} aria-hidden />
         <div ref={chip} className={styles.chip} aria-live="polite">
