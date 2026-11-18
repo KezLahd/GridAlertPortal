@@ -474,9 +474,11 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
       const tilt = 1 - ease(seg(p, FACE))
       const room = ease(seg(p, ROOM)) * (1 - ease(seg(p, ROOM_OUT)))
-      const fit = wide ? Math.min(0.96, Math.max(0.7, (sr.width - 2 * (cw + 64)) / Math.max(1, rg.offsetWidth))) : 0.96
+      // it only makes room for the company beside it while a company is showing; the rest of the time it's full size
+      const beside = wide ? Math.min(1, Math.max(0.72, (sr.width - 2 * (cw + 48)) / Math.max(1, rg.offsetWidth))) : 1
+      const fit = 1 - (1 - beside) * ca * (1 - cb)
       rg.style.transform = tilt > 0.0005 || room > 0.0005
-        ? `translateY(${(tilt * 3 + room * 6).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.05 * room)).toFixed(4)})`
+        ? `translateY(${(tilt * 2 + room * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${((1 - tilt * (1 - fit)) * (1 - 0.05 * room)).toFixed(4)})`
         : "none"
       // once every area has landed the country underneath goes, sides and all: the pieces carry their own sides now
       const allIn = p >= DROPS[1]

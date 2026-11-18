@@ -35,7 +35,7 @@
 /* the map, centred; tipped back in 3D for the drops */
 .mapBox { position: absolute; inset: 0; display: grid; place-items: center; perspective: 1150px; perspective-origin: 50% 30%; z-index: 1; }
 .rig {
-  position: relative; width: min(84vw, calc(70svh * 955 / 885)); aspect-ratio: 955 / 885; margin-top: 8svh;
+  position: relative; width: min(88vw, calc(80svh * 955 / 885)); aspect-ratio: 955 / 885; margin-top: 4svh;
   transform-style: preserve-3d; transform-origin: 50% 60%; will-change: transform;
 }
 .base, .layer, .vines { position: absolute; inset: 0; width: 100%; height: 100%; }
