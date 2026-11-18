@@ -170,6 +170,26 @@ export default function Landing() {
     return () => lenis.destroy()
   }, [still])
 
+  // how far the hero has scrolled away, as --hp (0 to 1): drives its colour fading into the paper below
+  useEffect(() => {
+    const el = root.current
+    let raf = 0
+    const put = () => {
+      raf = 0
+      const H = window.innerHeight, hero = el?.querySelector("section")
+      const tall = Math.max(H, hero?.offsetHeight ?? H), y = window.scrollY
+      const h = Math.min(1, Math.max(0, y / tall))
+      // the map story brings its grey in over the last screen before it reaches the top; match that exactly (same
+      // curve, same timing) so the two greys rise together and meet with no edge, even when the hero is taller
+      const g = Math.min(1, Math.max(0, (y - (tall - H)) / H))
+      el?.style.setProperty("--hp", h.toFixed(4))
+      el?.style.setProperty("--hpe", (g < 0.5 ? 4 * g * g * g : 1 - Math.pow(-2 * g + 2, 3) / 2).toFixed(4))
+    }
+    const on = () => { if (!raf) raf = requestAnimationFrame(put) }
+    put(); window.addEventListener("scroll", on, { passive: true }); window.addEventListener("resize", on)
+    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf) }
+  }, [])
+
   // fade and rise as things come into view
   useEffect(() => {
     const el = root.current
@@ -184,32 +204,32 @@ export default function Landing() {
 
   return (
     <main ref={root} className={`${styles.page} ${rubik.variable}`}>
-      <div className={styles.wrap}>
-        <nav className={styles.nav}>
-          <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>
-          <Link href="/login" className={styles.signIn}>Sign in</Link>
-        </nav>
-
-        <section className={styles.hero}>
-          <div className={styles.heroText} data-rise>
-            <h1 className={styles.title}>Know the moment your sites lose power.</h1>
-            <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
-            <div className={styles.ctas}>
-              <AppStoreSoon />
-              <a href={MAIL} className={styles.primary}>Get in touch</a>
+      {/* The hero: one line, one real alert. Full-bleed gold that fades into the map story's paper as you scroll,
+          while the words lift out of frame ahead of the phone. */}
+      <section className={styles.hero}>
+        <div className={styles.heroGrey} aria-hidden />
+        <div className={styles.heroBg} aria-hidden />
+        <div className={styles.wrap}>
+          <nav className={styles.nav}>
+            <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>
+            <Link href="/login" className={styles.signIn}>Sign in</Link>
+          </nav>
+          <div className={styles.heroGrid}>
+            <div className={styles.heroText}>
+              <h1 className={styles.title}>Know the moment your sites lose power.</h1>
+              <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
+              <div className={styles.ctas}>
+                <AppStoreSoon />
+                <a href={MAIL} className={styles.primary}>Get in touch</a>
+              </div>
             </div>
-            <p className={styles.also}>
-              For iPhone, iPad and Mac. Already with us? <Link href="/login">Sign in on the web</Link>
-            </p>
+            <div className={styles.heroShot}>
+              <Clip src={`${V}/alert-lockscreen.mp4`} poster={`${V}/alert-lockscreen.jpg`} still={still} eager
+                alt="Wattle alerts arriving on an iPhone lock screen: a power outage near Bondi Junction Pharmacy, then power back" />
+            </div>
           </div>
-          <div className={styles.heroShot} data-rise>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${V}/wattle-head.png`} alt="" aria-hidden className={styles.head} />
-            <Clip src={`${V}/alert-lockscreen.mp4`} poster={`${V}/alert-lockscreen.jpg`} still={still} eager
-              alt="Wattle alerts arriving on an iPhone lock screen: a power outage near Bondi Junction Pharmacy, then power back" />
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
       <NetworkAssembly still={still} wide={wide} />
 

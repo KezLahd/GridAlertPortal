@@ -93,36 +93,56 @@
 .primary:focus-visible, .ghost:focus-visible, .signIn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 30px; }
 
-/* hero */
-.hero { position: relative; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 48px;
-  min-height: calc(100svh - 84px); padding: 8px 0 48px; box-sizing: border-box; }
-.heroText { position: relative; z-index: 1; max-width: 580px; }
-.title { font-family: var(--rounded); font-weight: 700; font-size: clamp(42px, 6vw, 68px); line-height: 1.02; letter-spacing: -0.03em; margin: 22px 0 18px; text-wrap: balance; }
-.lede { font-size: 20px; line-height: 1.5; color: var(--muted) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
-.heroShot { justify-self: center; width: min(330px, 100%, calc((100svh - 190px) * 0.46)); }
+/* hero: full-bleed gold, one line, one real alert. As it scrolls away (--hp 0 to 1) the gold fades into exactly the
+   map story's background, so the two meet with no seam, and the words lift out faster than the page. */
+.hero { position: relative; height: 100vh; height: 100svh; min-height: 620px; overflow: hidden; isolation: isolate; }
+.hero::before, .heroGrey, .heroBg { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* the map story's overcast grey, rising exactly as the story's own does as it scrolls up underneath */
+.heroGrey { background: radial-gradient(75% 65% at 50% 50%, #f1f3f5 0%, #e1e5e9 100%); opacity: var(--hpe, 0); }
+/* gold over the dark grey goes muddy half way, so in dark mode it clears faster */
+@media (prefers-color-scheme: dark) { .heroBg { opacity: calc(1 - var(--hp, 0) * 2.4); } }
+@media (prefers-color-scheme: dark) { .heroGrey { background: radial-gradient(75% 65% at 50% 50%, #23272c 0%, #181b1f 100%); } }
+.hero::before { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 70%) 0%, var(--paper) 100%); }
+@media (prefers-color-scheme: dark) {
+  .hero::before { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 6%) 0%, var(--paper) 100%); }
+}
+.heroBg {
+  background: radial-gradient(90% 70% at 50% 8%, #ffcf3d 0%, var(--gold) 55%, #e5a400 100%);
+  opacity: calc(1 - var(--hp, 0) * 1.7);
+}
+.hero .nav, .hero .logo, .hero .logo:hover, .hero .title { color: #24211c !important; }
+.heroGrid {
+  display: grid; grid-template-columns: 1.15fr 0.85fr; align-items: center; gap: 40px;
+  height: calc(100svh - 84px); min-height: 536px; padding-bottom: 3vh; box-sizing: border-box;
+}
+.heroText {
+  position: relative; max-width: 640px;
+  transform: translate3d(0, calc(var(--hp, 0) * -45vh), 0); opacity: calc(1 - var(--hp, 0) * 2.2);
+}
+.title { font-family: var(--rounded); font-weight: 700; font-size: clamp(44px, 5.6vw, 84px); line-height: 1; letter-spacing: -0.035em; margin: 0 0 18px; text-wrap: balance; }
+.lede { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.5; color: rgba(36, 33, 28, 0.72) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
+.hero .ctas { margin-top: 30px; }
+.hero .primary { color: #fbf8f2 !important; background: #24211c; box-shadow: 0 10px 24px -12px rgba(36, 33, 28, 0.6); }
+.hero .signIn { --g-fill: rgba(255, 255, 255, 0.35); --g-rim: rgba(255, 255, 255, 0.55); --g-hi: rgba(255, 255, 255, 0.7); --g-glow: transparent;
+  --g-drop: 0 6px 18px -10px rgba(120, 80, 0, 0.5); color: #24211c !important; }
+.heroShot {
+  position: relative; z-index: 1; justify-self: center; width: min(340px, 100%, calc((100svh - 150px) * 0.46));
+  transform: translate3d(0, calc(var(--hp, 0) * -16vh), 0) scale(calc(1 - var(--hp, 0) * 0.08)); transform-origin: 50% 0;
+  opacity: calc(1 - var(--hp, 0) * 1.7);
+}
+.heroShot .glow { display: none; }
+.heroShot .screen video, .heroShot .screen img { box-shadow: 0 40px 80px -24px rgba(90, 60, 0, 0.55), 0 0 0 1px rgba(36, 33, 28, 0.12); }
 
 /* the App Store button: Apple's black badge shape, greyed out with "Coming soon" until the app is live */
 .store {
   display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 20px 0 16px; border-radius: 14px;
-  background: #24211c; color: #fbf8f2 !important; opacity: 0.5; cursor: not-allowed; user-select: none;
+  background: transparent; color: #24211c !important; border: 1.5px solid rgba(36, 33, 28, 0.32); opacity: 0.55;
+  cursor: not-allowed; user-select: none; box-sizing: border-box;
 }
 .store svg { width: 22px; height: 22px; margin-top: -3px; flex: none; }
-.storeText { display: flex; flex-direction: column; line-height: 1.05; color: inherit !important; }
+.storeText { display: flex; flex-direction: column; line-height: 1.05; color: inherit !important; text-align: left; }
 .storeText small { font-family: var(--text); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
 .storeText b { font-family: var(--text); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
-@media (prefers-color-scheme: dark) { .store { background: #f3eee4; color: #12100d !important; opacity: 0.42; } }
-.also { margin: 18px 0 0; font-size: 14.5px; color: var(--faint) !important; }
-.also a { color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.also a:hover { color: var(--ink); }
-.heroShot { position: relative; }
-.heroShot .screen { translate: 0 calc(var(--sy, 0) * -0.07px); }
-.heroShot > :not(.head) { position: relative; z-index: 1; }
-.head {
-  position: absolute; z-index: 0; width: 150px; height: auto; top: -58px; left: -78px; opacity: 0.95; pointer-events: none;
-  filter: drop-shadow(0 0 36px rgba(242, 179, 0, 0.45)); animation: drift 18s ease-in-out infinite alternate;
-  translate: 0 calc(var(--sy, 0) * -0.22px);
-}
-@keyframes drift { from { transform: translate(0, 0) rotate(-6deg); } to { transform: translate(-18px, 22px) rotate(8deg); } }
 
 /* a clip or still from the app: the phone's own screen, rounded like the display, with a soft gold glow behind */
 .screen { position: relative; }
@@ -171,13 +191,15 @@
 
 /* phones */
 @media (max-width: 899px) {
-  .hero { grid-template-columns: 1fr; gap: 30px; min-height: 0; padding: 8px 0 40px; }
-  .title { font-size: clamp(38px, 10.5vw, 52px); margin: 18px 0 14px; }
-  .lede { font-size: 17.5px; }
-  .ctas { margin-top: 24px; flex-direction: column; align-items: stretch; }
-  .store { justify-content: center; }
-  .heroShot { width: min(250px, 68vw); }
-  .head { width: 100px; top: -40px; left: -36px; }
+  .hero { height: auto; min-height: 0; }
+  .heroGrid { grid-template-columns: 1fr; height: auto; min-height: 0; gap: 36px; padding: 4px 0 0; }
+  .heroText { text-align: center; margin: 0 auto; }
+  .title { font-size: clamp(40px, 11vw, 54px); margin: 6px 0 14px; }
+  .lede { font-size: 17px; margin: 0 auto; }
+  .hero .ctas { margin-top: 22px; justify-content: center; }
+  .heroShot { width: min(270px, 70vw); margin-bottom: 48px; }
+  /* on phones the hero is taller than the screen: the words and phone just scroll, only the colour changes */
+  .heroText, .heroShot { transform: none; opacity: 1; }
   .groups { padding: 64px 0 20px; }
   .plans { padding: 40px 0 50px; }
   .planRow { grid-template-columns: 1fr; gap: 28px; }
@@ -188,7 +210,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .js [data-rise] { opacity: 1; transform: none; transition: none; }
-  .head { animation: none; }
   .layer, .step, .primary, .ghost, .signIn { transition: none; }
-  .heroShot .screen, .head { translate: none; }
+  .heroText { transform: none; }
+  .heroShot { transform: none; }
 }
