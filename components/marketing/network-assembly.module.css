@@ -2,7 +2,7 @@
    some over it. Uses the landing page's colour and type variables. */
 
 /* before Wattle comes in the page is grey and flat (overcast), so the country is a cool grey too */
-.section { position: relative; height: 1000vh; --map-land: #c5ccd4; }
+.section { position: relative; height: 1350vh; --map-land: #c5ccd4; }
 @media (prefers-color-scheme: dark) { .section { --map-land: #3a414b; } }
 .stage {
   position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; --bloom: #c9b48a;
@@ -152,7 +152,7 @@
 
 /* phones: words at the top or bottom only, the company under the map */
 @media (max-width: 899px) {
-  .section { height: 900vh; }
+  .section { height: 1200vh; }
   .rig { width: 86vw; margin-top: 0; }
   .words { font-size: 16px; }
   .words .big, .words.centre .big { font-size: clamp(25px, 7vw, 32px); }

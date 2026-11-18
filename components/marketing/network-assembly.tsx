@@ -48,6 +48,12 @@ const TIP: Span = [0.004, 0.066], TIP0 = 0.28
 const DROPS: Span = [0.07, 0.4], FACE: Span = [0.402, 0.44], FLAT: Span = [0.445, 0.495], VINES: Span = [0.5, 0.58]
 const DOTS: Span = [0.795, 0.86], GOLD: Span = [0.855, 0.9], SCATTER: Span = [0.94, 1]
 const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
+// each company lands in the first 80% of its slot and sits there for the rest, so there's time to read it. The drops
+// get more of the real scroll than their share of the timeline: about 45% of a screen each, out of a 1350vh section
+const RAW_DROPS: Span = [0.05, 0.57]
+const warp = (r: number) => r < RAW_DROPS[0] ? (r / RAW_DROPS[0]) * DROPS[0]
+  : r < RAW_DROPS[1] ? DROPS[0] + ((r - RAW_DROPS[0]) / (RAW_DROPS[1] - RAW_DROPS[0])) * (DROPS[1] - DROPS[0])
+  : DROPS[1] + ((r - RAW_DROPS[1]) / (1 - RAW_DROPS[1])) * (1 - DROPS[1])
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
@@ -383,7 +389,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const sr = st.getBoundingClientRect(), rr = rg.getBoundingClientRect()
       const drop = p > DROPS[0] - 0.01 && p < FLAT[0] + 0.01
       let now = -1
-      STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT]) > 0.04 && drop) now = g })
+      STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 0.8) * SLOT]) > 0.04 && drop) now = g })
       const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
       const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
       const reserve = (() => { const w = words.current[1]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
@@ -479,7 +485,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const apart = (ease(seg(p, FLAT)) * (1 - lace) + knock) * (wide ? 1.8 : 0.8)
       const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
-        const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT])
+        const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 0.8) * SLOT])
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
@@ -607,7 +613,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       raf = 0
       if (!visible) return
       const r = sec.getBoundingClientRect()
-      const target = clamp(-r.top / Math.max(1, r.height - window.innerHeight))
+      const target = warp(clamp(-r.top / Math.max(1, r.height - window.innerHeight)))
       ps = ps < 0 ? target : ps + (target - ps) * 0.12
       if (Math.abs(target - ps) < 0.00005) ps = target
       paint(ps)
