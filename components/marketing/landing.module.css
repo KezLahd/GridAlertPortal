@@ -106,10 +106,14 @@
 .lede { font-size: 20px; line-height: 1.5; color: var(--muted) !important; margin: 0; max-width: 500px; text-wrap: pretty; }
 .heroShot { justify-self: center; width: min(330px, 100%); }
 .heroShot { position: relative; }
+.heroBackdrop { left: 50% !important; right: auto !important; width: 100vw; transform: translateX(-50%); top: -120px !important; bottom: -80px !important; }
+.heroShot .screen { translate: 0 calc(var(--sy, 0) * -0.07px); }
+.hero > :not(.heroBackdrop) { position: relative; z-index: 1; }
 .heroShot > :not(.head) { position: relative; z-index: 1; }
 .head {
   position: absolute; z-index: 0; width: 150px; height: auto; top: -58px; left: -78px; opacity: 0.95; pointer-events: none;
   filter: drop-shadow(0 0 36px rgba(242, 179, 0, 0.45)); animation: drift 18s ease-in-out infinite alternate;
+  translate: 0 calc(var(--sy, 0) * -0.22px);
 }
 @keyframes drift { from { transform: translate(0, 0) rotate(-6deg); } to { transform: translate(-18px, 22px) rotate(8deg); } }
 
@@ -118,40 +122,6 @@
 .screen video, .screen img { position: relative; display: block; width: 100%; height: auto; aspect-ratio: 600 / 1304; object-fit: cover;
   border-radius: 13.5% / 6.2%; box-shadow: 0 30px 60px -20px rgba(36, 33, 28, 0.35), 0 0 0 1px var(--line); background: #0d0c0a; }
 .glow { position: absolute; inset: -14% -30%; background: radial-gradient(closest-side, var(--glow), transparent); pointer-events: none; }
-
-/* the network map: a tall section with the map pinned while it fills in */
-.netSection { position: relative; height: 560vh; }
-.netSticky { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; grid-template-columns: 0.8fr 1.2fr; align-items: center; gap: 40px; }
-.still { height: auto; }
-.still .netSticky { position: static; height: auto; padding: 60px 0; }
-.netText { max-width: 440px; }
-/* the network that just lit: its own logo, big, rising in; the count under it */
-.netNow { min-height: 124px; margin: 14px 0 0; display: flex; align-items: flex-start; }
-.netHint { font-family: var(--rounded); font-weight: 600; font-size: 16px; color: var(--faint) !important; padding-top: 6px; }
-.netBrand { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; animation: brandIn 0.55s var(--ease) both; }
-.netBrand :global(.nlogo) { display: inline-flex; align-items: center; gap: 14px; }
-.netBrand { max-width: 100%; }
-.netBrand :global(.nlogo) { max-width: 100%; }
-.netBrand :global(.nlogo) img { display: block; object-fit: contain; flex: none; }
-.netBrand :global(.nlogo-t), .netBrand > b { font-family: var(--rounded); font-weight: 800; font-size: 40px; letter-spacing: -0.02em; line-height: 72px; }
-.netAll { color: var(--ink); }
-.netCount { font-family: var(--rounded); font-weight: 600; font-size: 14.5px; color: var(--faint) !important; font-variant-numeric: tabular-nums; }
-@media (prefers-color-scheme: dark) { .netBrand :global(.tone-dark) { filter: brightness(0) invert(0.94); } }
-@media (prefers-color-scheme: light) { .netBrand :global(.tone-light) { filter: brightness(0) opacity(0.86); } }
-@keyframes brandIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.netMap { width: 100%; height: auto; max-height: 82vh; overflow: visible; }
-.netMap path { stroke: var(--land-edge); stroke-width: 1.6; stroke-linejoin: round; transition: fill 0.7s var(--ease), fill-opacity 0.7s var(--ease); }
-.netOff { fill: var(--land); }
-.netOn { fill: var(--c); fill-opacity: 0.92; }
-@media (prefers-color-scheme: dark) { .netOn { fill-opacity: 1; filter: brightness(1.25); } }
-.netLabel { font-family: var(--rounded); font-weight: 700; font-size: 19px; fill: #fff; text-anchor: middle; opacity: 0; transition: opacity 0.6s var(--ease); paint-order: stroke; stroke: rgba(36, 33, 28, 0.35); stroke-width: 3px; stroke-linejoin: round; }
-.netLabel.shown { opacity: 0.95; }
-.outage { opacity: 0; transition: opacity 0.6s var(--ease); }
-.outage.shown { opacity: 1; }
-.core { fill: var(--gold); stroke: var(--paper); stroke-width: 2.5; }
-.pulse { fill: var(--gold); opacity: 0.25; transform-box: fill-box; transform-origin: center; }
-.outage.shown .pulse { animation: pulse 2.4s var(--ease) infinite; animation-delay: var(--d); }
-@keyframes pulse { from { transform: scale(0.35); opacity: 0.55; } to { transform: scale(1.25); opacity: 0; } }
 
 /* the app, desktop: steps scroll past one pinned phone */
 .app { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; padding: 40px 0 40px; }
@@ -200,13 +170,6 @@
   .ctas { margin-top: 24px; flex-direction: column; align-items: stretch; }
   .heroShot { width: min(250px, 68vw); }
   .head { width: 100px; top: -40px; left: -36px; }
-  .netSection { height: 460vh; }
-  .netSticky { grid-template-columns: 1fr; align-content: center; gap: 18px; }
-  .netText .body { font-size: 16px; margin-bottom: 8px; }
-  .netNow { min-height: 92px; }
-  .netBrand :global(.nlogo-t), .netBrand > b { font-size: 30px; line-height: 52px; }
-  .netMap { max-height: 50svh; }
-  .netLabel { display: none; }
   .groups { padding: 64px 0 20px; }
   .plans { padding: 40px 0 50px; }
   .planRow { grid-template-columns: 1fr; gap: 28px; }
@@ -218,6 +181,6 @@
 @media (prefers-reduced-motion: reduce) {
   .js [data-rise] { opacity: 1; transform: none; transition: none; }
   .head { animation: none; }
-  .outage.shown .pulse { animation: none; }
-  .netBrand, .layer, .step, .netMap path, .netLabel, .outage, .primary, .ghost, .signIn { transition: none; }
+  .layer, .step, .primary, .ghost, .signIn { transition: none; }
+  .heroShot .screen, .head { translate: none; }
 }

@@ -3,50 +3,20 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
-import { NET, NetLogo, netKey, type NetKey } from "@/components/wattle/networks"
-import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
+import Lenis from "lenis"
+import "lenis/dist/lenis.css"
+import { NetworkAssembly } from "./network-assembly"
+import { Backdrop } from "./backdrop"
 import styles from "./landing.module.css"
 
 // Wattle landing, round two. One story, in order: every network in one place → told the moment a site loses power →
 // planned work days ahead → the whole group sees the same thing. Paper, ink and one gold; rounded type for titles;
-// no cards. Motion is quiet (fade and rise, the map filling in on scroll, screens crossfading) and all of it stops
-// for prefers-reduced-motion, which shows the end state and stills instead of the clips.
+// no cards. Scrolling is smoothed by Lenis; things have depth (patterned backdrops drifting at their own speed, the
+// network map as an exploded 3D stack that assembles as you scroll, screens crossfading). All of it stops for
+// prefers-reduced-motion, which shows the end state and stills instead of the clips.
 
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
 const V = "/landing/v2"
-
-// Each network in the strongest colour of its own logo (the app's brand table, NetworkBrand in Models.swift), swapped
-// for another colour from the same logo where a neighbour on the map would look alike: CitiPower Powercor takes its
-// blue (its red sits against Essential's orange), AusNet its green (its blue would meet Powercor's), Evoenergy its
-// teal (its orange sits inside Essential's).
-const COLOUR: Record<string, string> = {
-  "Ausgrid": "#006095", "Endeavour Energy": "#00A98E", "Essential Energy": "#FF5300", "Evoenergy": "#15909C",
-  "Energex": "#B2DB17", "Ergon Energy": "#212A86", "CitiPower": "#0979BF", "Powercor": "#0979BF", "Jemena": "#21BAD6",
-  "United Energy": "#A61D72", "AusNet Services": "#8DC63F", "SA Power Networks": "#525252", "TasNetworks": "#2196C6",
-  "Western Power": "#F36C12", "Horizon Power": "#00344F", "Power and Water": "#3D8704",
-}
-const tint = (name: string) => COLOUR[name] ?? "#8A8170"
-// one step per company: CitiPower and Powercor are one business, one logo, so they light up together
-const STEPS: number[][] = []
-NETS.forEach((n, i) => {
-  const prev = STEPS[STEPS.length - 1]
-  if (prev && netKey(NETS[prev[0]].name) && netKey(NETS[prev[0]].name) === netKey(n.name)) prev.push(i)
-  else STEPS.push([i])
-})
-const STEP_OF = NETS.map((_, i) => STEPS.findIndex((g) => g.includes(i)))
-// names drawn on the map itself; the small metro networks are named in the caption instead
-const ON_MAP = new Set(["Essential Energy", "Ergon Energy", "SA Power Networks", "Power and Water", "Western Power", "Horizon Power", "TasNetworks", "Powercor", "AusNet Services"])
-
-/** The tallest a network's logo can be and still fit `room` pixels across (laid out as NetLogo lays it out). */
-function logoHeight(k: NetKey, h: number, room: number) {
-  const n = NET[k]
-  const icon = n.icon?.[0] ?? 0
-  const wordScale = n.word && n.icon && n.word[0] > 2.5 ? 0.62 : 1
-  const word = (n.word?.[0] ?? 0) * wordScale
-  const gap = n.icon && n.word ? 14 : 0
-  const across = icon + word
-  return across ? Math.max(24, Math.min(h, (room - gap) / across)) : h
-}
 
 function useMedia(q: string) {
   const [on, setOn] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches)
@@ -69,89 +39,6 @@ function Clip({ src, poster, alt, still, eager }: { src?: string; poster: string
         // eslint-disable-next-line @next/next/no-img-element
         : <img src={poster} alt={alt} loading={eager ? "eager" : "lazy"} />}
     </div>
-  )
-}
-
-/** Australia, network by network: the areas fill in one at a time as the section scrolls past, then outages pulse. */
-function NetworkMap({ still }: { still: boolean }) {
-  const ref = useRef<HTMLElement>(null)
-  const [step, setStep] = useState(still ? STEPS.length + 1 : 0)
-  const [dots, setDots] = useState(still)
-  const big = useMedia("(min-width: 900px)")
-  // the logo is sized to fit the text column, so a wide one (TasNetworks, Power and Water) never runs off the edge
-  const col = useRef<HTMLDivElement>(null)
-  const [room, setRoom] = useState(9999)
-  useEffect(() => {
-    const el = col.current
-    if (!el) return
-    const ro = new ResizeObserver(() => setRoom(el.clientWidth))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (still) { setStep(STEPS.length + 1); setDots(true); return }
-    let raf = 0
-    const tick = () => {
-      raf = 0
-      const el = ref.current
-      if (!el) return
-      const r = el.getBoundingClientRect()
-      const span = Math.max(1, r.height - window.innerHeight)
-      const p = Math.min(1, Math.max(0, -r.top / span))
-      setStep(Math.min(STEPS.length + 1, Math.floor(p / 0.9 * (STEPS.length + 1) + (p > 0.01 ? 1 : 0))))
-      setDots(p > 0.9)
-    }
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick) }
-    tick()
-    window.addEventListener("scroll", on, { passive: true })
-    window.addEventListener("resize", on)
-    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf) }
-  }, [still])
-
-  // step 0: nothing yet; 1…15: that company has just lit; 16: all of them
-  const shownStep = Math.min(step, STEPS.length)
-  const lit = shownStep === 0 ? 0 : STEPS[shownStep - 1][STEPS[shownStep - 1].length - 1] + 1
-  const last = NETS[STEPS[Math.max(0, shownStep - 1)][0]]
-  return (
-    <section ref={ref} className={`${styles.netSection} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
-      <div className={styles.netSticky}>
-        <div className={styles.netText} ref={col}>
-          <span className={styles.kicker}>Every network</span>
-          <h2 id="nets-title" className={styles.h2}>Sixteen networks. One place to look.</h2>
-          <p className={styles.body}>
-            Each of Australia&apos;s sixteen electricity networks runs its own outage map. Wattle reads every one of
-            them, every few minutes, so you don&apos;t have to.
-          </p>
-          <div className={styles.netNow} aria-live="polite">
-            {lit === 0 ? <span className={styles.netHint}>Scroll to light them up</span>
-              : step <= STEPS.length ? (
-                <div key={step} className={styles.netBrand}>
-                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={logoHeight(netKey(last.name)!, (big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.7), room - 4)} /> : <b>{last.name}</b>}
-                  <span className={styles.netCount}>{lit} of {NETS.length}</span>
-                </div>
-              )
-              : <div key="all" className={styles.netBrand}><b className={styles.netAll}>All {NETS.length}, in one place.</b><span className={styles.netCount}>Every network, one map.</span></div>}
-          </div>
-        </div>
-        <svg className={styles.netMap} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} role="img"
-          aria-label="A map of Australia divided into its sixteen electricity network areas">
-          {NETS.map((n, i) => (
-            <path key={n.name} d={n.d} className={STEP_OF[i] < step ? styles.netOn : styles.netOff}
-              style={{ ["--c" as any]: tint(n.name) }} />
-          ))}
-          {NETS.map((n, i) => ON_MAP.has(n.name) && (
-            <text key={n.name} x={n.at[0]} y={n.at[1]} className={`${styles.netLabel} ${STEP_OF[i] < step ? styles.shown : ""}`}>{n.name}</text>
-          ))}
-          {OUTAGE_DOTS.map((d, i) => (
-            <g key={d.name} className={`${styles.outage} ${dots ? styles.shown : ""}`} style={{ ["--d" as any]: `${i * 0.35}s` }}>
-              <circle cx={d.at[0]} cy={d.at[1]} r="22" className={styles.pulse} />
-              <circle cx={d.at[0]} cy={d.at[1]} r="7.5" className={styles.core} />
-            </g>
-          ))}
-        </svg>
-      </div>
-    </section>
   )
 }
 
@@ -254,6 +141,17 @@ export default function Landing() {
   const wide = useMedia("(min-width: 900px)")
   const root = useRef<HTMLElement>(null)
 
+  // smooth scrolling, and the page's scroll as --sy for the backdrops' parallax
+  useEffect(() => {
+    if (still) return
+    const lenis = new Lenis({ autoRaf: true, lerp: 0.085 })
+    const el = root.current
+    const put = () => el?.style.setProperty("--sy", lenis.scroll.toFixed(1))
+    lenis.on("scroll", put)
+    put()
+    return () => lenis.destroy()
+  }, [still])
+
   // fade and rise as things come into view
   useEffect(() => {
     const el = root.current
@@ -275,6 +173,7 @@ export default function Landing() {
         </nav>
 
         <section className={styles.hero}>
+          <Backdrop by="sy" className={styles.heroBackdrop} />
           <div className={styles.heroText} data-rise>
             <span className={styles.soonPill}><i className={styles.dot} aria-hidden />Coming soon to the App Store</span>
             <h1 className={styles.title}>Know the moment your sites lose power.</h1>
@@ -293,7 +192,7 @@ export default function Landing() {
         </section>
       </div>
 
-      <div className={styles.wrap}><NetworkMap still={still} /></div>
+      <NetworkAssembly still={still} wide={wide} />
 
       <div className={styles.wrap}>
         {wide ? <StickyPhone still={still} /> : <Carousel still={still} />}
