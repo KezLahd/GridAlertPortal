@@ -156,13 +156,14 @@ const shapeOf = (i: number) => (i === HORIZON && SNIP_D ? HORIZON_D : NETS[i].d)
 const SPLIT: number[][] = MID.map(() => [0, 0])
 // each piece's own box on the map (x, y, w, h, in the map's units), a little padded. Its layer and its SVGs are cropped
 // to it, so a moving piece is a small layer for the browser to move about, not a map-sized one (times 13, for its sides)
-// Horizon's strip rides on Western Power, right where it sits, so it never drifts off on its own
+// Horizon's strip moves with Western Power and drifts off below it as the pieces part, held to it by sprigs of its own
 const WPN = NETS.findIndex((n) => n.name === "Western Power")
+const SNIP_DROP: [number, number] = [6, 30], SNIP_MAX = 3.6
 const BOX = NETS.map((_, i) => {
   const v = (shapeOf(i).match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
   if (i === WPN && SNIP_D) {
     const w = (SNIP_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
-    v.push(...w)
+    for (let k = 0; k + 1 < w.length; k += 2) v.push(w[k], w[k + 1], w[k] + SNIP_DROP[0] * SNIP_MAX, w[k + 1] + SNIP_DROP[1] * SNIP_MAX)
   }
   let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
   for (let k = 0; k + 1 < v.length; k += 2) { a = Math.min(a, v[k]); c = Math.max(c, v[k]); b = Math.min(b, v[k + 1]); d = Math.max(d, v[k + 1]) }
@@ -244,7 +245,19 @@ function evenSplit(paths: SVGPathElement[], GAP = 30) {
 // the sprigs: short stitches across every border where two pieces meet, evenly spaced along it (network-stitches.ts),
 // so as the country breaks apart each gap is laced across its whole length, and the stitches draw it back together.
 // Longer borders (the big states) get sturdier stitches; each one's thickness wanders a little
-const STRANDS = STITCHES.map((t, k) => ({
+// the strip's own sprigs: three across its top edge, from Western Power down to it
+const SNIP_STITCHES = (() => {
+  if (!SNIP_D || WP < 0) return []
+  const v = (SNIP_D.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number), pts: [number, number][] = []
+  for (let k = 0; k + 1 < v.length; k += 2) pts.push([v[k], v[k + 1]])
+  const x0 = Math.min(...pts.map((q) => q[0])), x1 = Math.max(...pts.map((q) => q[0]))
+  return [0.22, 0.5, 0.78].map((f) => {
+    const x = x0 + (x1 - x0) * f, near = pts.filter((q) => Math.abs(q[0] - x) < (x1 - x0) * 0.12)
+    const y = Math.min(...(near.length ? near : pts).map((q) => q[1]))
+    return { a: WP, b: WP, pa: [x, y - 3] as [number, number], pb: [x, y + 4] as [number, number], len: 60, drop: true }
+  })
+})()
+const STRANDS = [...STITCHES.map((t) => ({ ...t, drop: false })), ...SNIP_STITCHES].map((t, k) => ({
   ...t, bend: (k % 2 ? -1 : 1) * (0.1 + (k % 3) * 0.05),
   w: (0.5 + 1.2 * Math.min(1, t.len / 160)) * (0.4 + (((k * 7) % 11) / 10) * 1.3),
 }))
@@ -785,6 +798,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", (glass * op).toFixed(3))
+          if (i === WPN) {
+            el.style.setProperty("--sx", `${(SNIP_DROP[0] * apart).toFixed(2)}px`)
+            el.style.setProperty("--sy", `${(SNIP_DROP[1] * apart).toFixed(2)}px`)
+          }
           el.style.setProperty("--d", d3.toFixed(3))
           el.classList.toggle(styles.lifting, t < 1 && op > 0.001 && d3 > 0.02)
         })
@@ -803,7 +820,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         vs.style.opacity = vu.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
           const A: Pt = [s.pa[0] + SPLIT[s.a][0] * apart, s.pa[1] + SPLIT[s.a][1] * apart]
-          const B: Pt = [s.pb[0] + SPLIT[s.b][0] * apart, s.pb[1] + SPLIT[s.b][1] * apart]
+          const B: Pt = [s.pb[0] + (SPLIT[s.b][0] + (s.drop ? SNIP_DROP[0] : 0)) * apart, s.pb[1] + (SPLIT[s.b][1] + (s.drop ? SNIP_DROP[1] : 0)) * apart]
           const dx = B[0] - A[0], dy = B[1] - A[1], nx = -dy, ny = dx
           const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const q: Pt[] = [A, [A[0] + dx * 0.3 + nx * k1, A[1] + dy * 0.3 + ny * k1], [A[0] + dx * 0.7 + nx * k2, A[1] + dy * 0.7 + ny * k2], B]

@@ -65,6 +65,7 @@
 .slab path.on { fill: color-mix(in srgb, var(--c), #000 35%); stroke: color-mix(in srgb, var(--c), #000 35%); }
 @media (prefers-color-scheme: dark) { .slab path.on { fill: color-mix(in srgb, var(--cd), #000 40%); stroke: color-mix(in srgb, var(--cd), #000 40%); } }
 /* a falling area's own sides, only while it's in the air */
+.layer .snip { transform: translate(var(--sx, 0), var(--sy, 0)); }
 .layer .edge { transform: translateZ(calc(var(--z) * var(--d, 1))); display: none; }
 /* only once landed: while it falls a piece is just see-through glass, with no layers showing through it */
 .allIn .edge, .lifting .edge { display: block; }
