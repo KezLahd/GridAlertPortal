@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Wordmark } from "@/components/brand/wordmark"
+import { NET, NetLogo, netKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW, OUTAGE_DOTS } from "./network-map-data"
 import styles from "./landing.module.css"
 
@@ -14,13 +15,8 @@ import styles from "./landing.module.css"
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
 const V = "/landing/v2"
 
-// Each network's tint, the same as the portal's map.
-const NET_C: Record<string, string> = {
-  "Ausgrid": "#3B7FC4", "Endeavour Energy": "#2E9E6B", "Essential Energy": "#8A6FD1", "Evoenergy": "#D9467A",
-  "Energex": "#D9467A", "Ergon Energy": "#1F9DA3", "Jemena": "#C0563A", "CitiPower": "#D9467A", "AusNet Services": "#6C8A3A",
-  "United Energy": "#3B7FC4", "Powercor": "#8A6FD1", "Western Power": "#3B7FC4", "Horizon Power": "#C0563A",
-  "SA Power Networks": "#2E9E6B", "TasNetworks": "#1F9DA3", "Power and Water": "#6C8A3A",
-}
+// Each network in its own brand colour, and its own logo in the caption: the same as the portal's network pages.
+const tint = (name: string) => { const k = netKey(name); return k ? NET[k].tint : "#8A8170" }
 // names drawn on the map itself; the small metro networks are named in the caption instead
 const ON_MAP = new Set(["Essential Energy", "Ergon Energy", "SA Power Networks", "Power and Water", "Western Power", "Horizon Power", "TasNetworks", "Powercor", "AusNet Services"])
 
@@ -53,6 +49,7 @@ function NetworkMap({ still }: { still: boolean }) {
   const ref = useRef<HTMLElement>(null)
   const [lit, setLit] = useState(still ? NETS.length : 0)
   const [dots, setDots] = useState(still)
+  const big = useMedia("(min-width: 900px)")
 
   useEffect(() => {
     if (still) { setLit(NETS.length); setDots(true); return }
@@ -64,8 +61,8 @@ function NetworkMap({ still }: { still: boolean }) {
       const r = el.getBoundingClientRect()
       const span = Math.max(1, r.height - window.innerHeight)
       const p = Math.min(1, Math.max(0, -r.top / span))
-      setLit(Math.min(NETS.length, Math.floor(p / 0.78 * NETS.length + (p > 0.02 ? 1 : 0))))
-      setDots(p > 0.82)
+      setLit(Math.min(NETS.length, Math.floor(p / 0.86 * NETS.length + (p > 0.01 ? 1 : 0))))
+      setDots(p > 0.9)
     }
     const on = () => { if (!raf) raf = requestAnimationFrame(tick) }
     tick()
@@ -85,17 +82,22 @@ function NetworkMap({ still }: { still: boolean }) {
             Each of Australia&apos;s sixteen electricity networks runs its own outage map. Wattle reads every one of
             them, every few minutes, so you don&apos;t have to.
           </p>
-          <p className={styles.netNow} aria-live="polite">
-            {lit === 0 ? <span className={styles.faint}>Scroll to light them up</span>
-              : lit < NETS.length ? <><i style={{ background: NET_C[last.name] }} />{last.name}<span className={styles.faint}> · {lit} of {NETS.length}</span></>
-              : <><i style={{ background: "var(--gold)" }} />All {NETS.length}, in one place</>}
-          </p>
+          <div className={styles.netNow} aria-live="polite">
+            {lit === 0 ? <span className={styles.netHint}>Scroll to light them up</span>
+              : lit < NETS.length ? (
+                <div key={last.name} className={styles.netBrand}>
+                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={(big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.62)} /> : <b>{last.name}</b>}
+                  <span className={styles.netCount}>{netKey(last.name) && NET[netKey(last.name)!].name !== last.name ? `${last.name} · ` : ""}{lit} of {NETS.length}</span>
+                </div>
+              )
+              : <div key="all" className={styles.netBrand}><b className={styles.netAll}>All {NETS.length}, in one place.</b><span className={styles.netCount}>Every network, one map.</span></div>}
+          </div>
         </div>
         <svg className={styles.netMap} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} role="img"
           aria-label="A map of Australia divided into its sixteen electricity network areas">
           {NETS.map((n, i) => (
             <path key={n.name} d={n.d} className={i < lit ? styles.netOn : styles.netOff}
-              style={{ ["--c" as any]: NET_C[n.name] }} />
+              style={{ ["--c" as any]: tint(n.name) }} />
           ))}
           {NETS.map((n, i) => ON_MAP.has(n.name) && (
             <text key={n.name} x={n.at[0]} y={n.at[1]} className={`${styles.netLabel} ${i < lit ? styles.shown : ""}`}>{n.name}</text>

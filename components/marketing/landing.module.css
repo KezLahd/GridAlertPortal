@@ -120,20 +120,30 @@
 .glow { position: absolute; inset: -14% -30%; background: radial-gradient(closest-side, var(--glow), transparent); pointer-events: none; }
 
 /* the network map: a tall section with the map pinned while it fills in */
-.netSection { position: relative; height: 240vh; }
+.netSection { position: relative; height: 560vh; }
 .netSticky { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; grid-template-columns: 0.8fr 1.2fr; align-items: center; gap: 40px; }
 .still { height: auto; }
 .still .netSticky { position: static; height: auto; padding: 60px 0; }
 .netText { max-width: 440px; }
-.netNow { display: flex; align-items: center; gap: 10px; min-height: 28px; font-family: var(--rounded); font-weight: 700; font-size: 19px; margin: 6px 0 0; }
-.netNow i { width: 11px; height: 11px; border-radius: 50%; flex: none; transition: background 0.3s; }
+/* the network that just lit: its own logo, big, rising in; the count under it */
+.netNow { min-height: 124px; margin: 14px 0 0; display: flex; align-items: flex-start; }
+.netHint { font-family: var(--rounded); font-weight: 600; font-size: 16px; color: var(--faint) !important; padding-top: 6px; }
+.netBrand { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; animation: brandIn 0.55s var(--ease) both; }
+.netBrand :global(.nlogo) { display: inline-flex; align-items: center; gap: 14px; }
+.netBrand :global(.nlogo) img { display: block; object-fit: contain; max-width: min(440px, 80vw); }
+.netBrand :global(.nlogo-t), .netBrand > b { font-family: var(--rounded); font-weight: 800; font-size: 40px; letter-spacing: -0.02em; line-height: 72px; }
+.netAll { color: var(--ink); }
+.netCount { font-family: var(--rounded); font-weight: 600; font-size: 14.5px; color: var(--faint) !important; font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) { .netBrand :global(.tone-dark) { filter: brightness(0) invert(0.94); } }
+@media (prefers-color-scheme: light) { .netBrand :global(.tone-light) { filter: brightness(0) opacity(0.86); } }
+@keyframes brandIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .netMap { width: 100%; height: auto; max-height: 82vh; overflow: visible; }
 .netMap path { stroke: var(--land-edge); stroke-width: 1.6; stroke-linejoin: round; transition: fill 0.7s var(--ease), fill-opacity 0.7s var(--ease); }
 .netOff { fill: var(--land); }
-.netOn { fill: var(--c); fill-opacity: 0.55; }
-@media (prefers-color-scheme: dark) { .netOn { fill-opacity: 0.5; } }
-.netLabel { font-family: var(--rounded); font-weight: 700; font-size: 19px; fill: var(--ink); text-anchor: middle; opacity: 0; transition: opacity 0.6s var(--ease); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-opacity: 0.6; }
-.netLabel.shown { opacity: 0.85; }
+.netOn { fill: var(--c); fill-opacity: 0.82; }
+@media (prefers-color-scheme: dark) { .netOn { fill-opacity: 0.72; } }
+.netLabel { font-family: var(--rounded); font-weight: 700; font-size: 19px; fill: #fff; text-anchor: middle; opacity: 0; transition: opacity 0.6s var(--ease); paint-order: stroke; stroke: rgba(36, 33, 28, 0.35); stroke-width: 3px; stroke-linejoin: round; }
+.netLabel.shown { opacity: 0.95; }
 .outage { opacity: 0; transition: opacity 0.6s var(--ease); }
 .outage.shown { opacity: 1; }
 .core { fill: var(--gold); stroke: var(--paper); stroke-width: 2.5; }
@@ -188,10 +198,12 @@
   .ctas { margin-top: 24px; flex-direction: column; align-items: stretch; }
   .heroShot { width: min(250px, 68vw); }
   .head { width: 100px; top: -40px; left: -36px; }
-  .netSection { height: 200vh; }
+  .netSection { height: 460vh; }
   .netSticky { grid-template-columns: 1fr; align-content: center; gap: 18px; }
   .netText .body { font-size: 16px; margin-bottom: 8px; }
-  .netNow { font-size: 17px; }
+  .netNow { min-height: 92px; }
+  .netBrand :global(.nlogo-t), .netBrand > b { font-size: 30px; line-height: 52px; }
+  .netBrand :global(.nlogo) img { max-width: 78vw; }
   .netMap { max-height: 50svh; }
   .netLabel { display: none; }
   .groups { padding: 64px 0 20px; }
@@ -206,5 +218,5 @@
   .js [data-rise] { opacity: 1; transform: none; transition: none; }
   .head { animation: none; }
   .outage.shown .pulse { animation: none; }
-  .layer, .step, .netMap path, .netLabel, .outage, .primary, .ghost, .signIn { transition: none; }
+  .netBrand, .layer, .step, .netMap path, .netLabel, .outage, .primary, .ghost, .signIn { transition: none; }
 }
