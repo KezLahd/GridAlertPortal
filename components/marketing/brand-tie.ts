@@ -21,6 +21,16 @@ const easeOut = (t: number, p = 3) => 1 - Math.pow(1 - clamp(t), p)
 const backOut = (x: number, c = 1.70158) => { const t = clamp(x) - 1; return 1 + (c + 1) * t * t * t + c * t * t }
 const NS = "http://www.w3.org/2000/svg"
 
+/** Where the two halves are at u: the shift of the left half (w a t) and of the right half (t l e), in the mark's units.
+ *  While they're apart the pair is centred on the middle between the t's, not on the word (the right half is the wider
+ *  one), easing back to the word's own centre as they close. */
+export function halves(u: number, reach: number): [number, number] {
+  const GAP = Math.max(60, reach), k = seg(u, PULL, MEET), tb = (Math.max(0, u - MEET) / (1 - MEET)) * 0.9
+  const gap = u < MEET ? GAP * (1 - Math.pow(k, 2.2)) : GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34))
+  const sh = ((T1 + T2) / 2 - TIE_VIEW.w / 2) * clamp(gap / 60)
+  return [-gap / 2 - sh, gap / 2 - sh]
+}
+
 /** Builds the mark inside `svg` (viewBox TIE_VIEW, overflow visible) and returns the function that draws a frame. */
 export function makeTie(svg: SVGSVGElement) {
   svg.innerHTML = ""
@@ -86,10 +96,8 @@ export function makeTie(svg: SVGSVGElement) {
     const slack = 1 - easeOut(seg(u, 0.2, PULL), 2)
     const k = seg(u, PULL, MEET)
     const tb = (Math.max(0, u - MEET) / (1 - MEET)) * 0.9            // seconds after they meet, as the app counts them
-    let gap: number, lean: number
-    if (u < MEET) { gap = GAP * (1 - Math.pow(k, 2.2)); lean = STEM * 0.9 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 1.3)) }
-    else { gap = GAP * 0.1 * Math.exp(-5.2 * tb) * Math.abs(Math.sin((Math.PI * tb) / 0.34)); lean = -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30) }
-    const L = -gap / 2, R = gap / 2
+    const lean = u < MEET ? STEM * 0.9 * Math.min(1, GAP / 150) * Math.sin(Math.PI * Math.pow(k, 1.3)) : -STEM * 0.5 * Math.exp(-6 * tb) * Math.sin(tb * 30)
+    const [L, R] = halves(u, reach)
     reveal(w, 2, inn, L); reveal(a, 1, inn, L); reveal(l, 1, inn, R); reveal(e, 2, inn, R)
     drawPole(p1, T1 + L, 1, lean); drawPole(p2, T2 + R, -1, lean)
     for (const P of [p1, p2]) { grow(P.bar, 0, barIn); grow(P.stem, STEM_AT, stemIn) }
@@ -112,7 +120,7 @@ export function makeTie(svg: SVGSVGElement) {
     })
 
     // the knock: a gold flash where they meet, and sparks flying out and falling
-    const mx = (T1 + T2) / 2, f = tb > 0 ? tb : -1
+    const mx = (T1 + T2) / 2 + (L + R) / 2, f = tb > 0 ? tb : -1
     if (f >= 0 && f < 0.16) { flash.setAttribute("cx", String(mx)); flash.setAttribute("cy", String(CY)); flash.setAttribute("r", (BAR * (0.6 + f * 9)).toFixed(2)); flash.setAttribute("opacity", (0.6 * (1 - f / 0.16)).toFixed(3)) }
     else flash.setAttribute("opacity", "0")
     sparks.forEach((s, j) => {

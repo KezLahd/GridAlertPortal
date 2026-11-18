@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { NET, netKey, type NetKey } from "@/components/wattle/networks"
 import { NETS, NET_VIEW } from "./network-map-data"
 import styles from "./network-assembly.module.css"
-import { makeTie, TIE_VIEW, MEET as TIE_MEET, PULL as TIE_PULL } from "./brand-tie"
+import { makeTie, halves as tieHalves, TIE_VIEW, MEET as TIE_MEET, PULL as TIE_PULL } from "./brand-tie"
 import { STITCHES } from "./network-stitches"
 
 // The page's story, told on one map of Australia as you scroll. Every step is tied to the scroll position (smoothed
@@ -47,10 +47,7 @@ type Span = [number, number]
 // It opens as one plain slab facing you, only just tipped so its depth shows, and tips back as you start to scroll (TIP)
 const TIP: Span = [0.05, 0.06], TIP0 = 0.28
 const DROPS: Span = [0.09, 0.37], FACE: Span = [0.312, 0.37], FLAT: Span = [0.38, 0.43], VINES: Span = [0.44, 0.6]
-const DOTS: Span = [0.83, 0.885], GOLD: Span = [0.88, 0.915], SCATTER: Span = [0.945, 1]
-// the wordmark ripples into wattle dots (RIPPLE), then they fly down onto the map (FLIGHT). GOLD is only the fallback
-// for when the wordmark couldn't be loaded: then the dots just turn gold together
-const RIPPLE: Span = [0.886, 0.896], FLIGHT: Span = [0.896, 0.936]
+const SCATTER: Span = [0.92, 1]
 // The fifteen companies: their logos come in round the map (LOGOS), each with a faint, small copy of its piece beside it;
 // then, as you scroll, the pieces all fly in together from beside their logos to their places (FLY). Once the country is
 // painted, the camera moves in (ZOOM): the map grows to its full size, the logos rush outwards past the edges of the
@@ -59,7 +56,7 @@ const RIPPLE: Span = [0.886, 0.896], FLIGHT: Span = [0.896, 0.936]
 // "15 companies.", comes in with their logos in two columns in the middle (LOGOS), then the columns part (PART) and
 // Australia comes up between them
 const BULB_OUT: Span = [0.004, 0.016], PART: Span = [0.1, 0.135]
-const LOGOS: Span = [0.058, 0.085], FLY: Span = [0.145, 0.27], ZOOM: Span = [0.282, 0.37]
+const LOGOS: Span = [0.068, 0.094], FLY: Span = [0.145, 0.27], ZOOM: Span = [0.282, 0.37]
 // the timeline against the real scroll: the opening is short, the flying in a little longer, the rest as before, and
 // the last screen stays put for the final stretch of the section (raw 0.88 to 1)
 const WARP: [number, number][] = [[0, 0], [0.14, 0.15], [0.32, 0.4], [0.88, 1], [1, 1]]
@@ -73,9 +70,14 @@ const warp = (r: number) => {
 // "Wattle ties them together.": the wordmark's t's pulled together by the wire (brand-tie.ts), hard at first then quicker,
 // while the sprigs pull the pieces of the country together in step (LACE). They meet at MEET (62% of TIE) and bounce; once the word has
 // settled, the grey page gives way to Wattle's own: paper, with the aurora spreading out from the middle of the word.
-const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.925, 0.94]
+const TIE: Span = [0.612, 0.79], TIE_OUT: Span = [0.8, 0.81]
 const MEET = TIE[0] + (TIE[1] - TIE[0]) * TIE_MEET, LACE: Span = [TIE[0] + (TIE[1] - TIE[0]) * TIE_PULL, MEET]
 const THEME: Span = [TIE[1] - 0.008, TIE[1] + 0.04]
+// the moment the t's first meet, the wordmark ripples into wattle dots (RIPPLE) while the 3D map turns into flat dots
+// (DOTS); then the word's dots fly down onto the map (FLIGHT), one onto every dot. GOLD is only the fallback for when the
+// wordmark couldn't be loaded: then the dots just turn gold together
+const RIPPLE: Span = [MEET, MEET + 0.012], DOTS: Span = [MEET + 0.002, MEET + 0.03], FLIGHT: Span = [MEET + 0.012, MEET + 0.065]
+const GOLD: Span = [MEET + 0.03, MEET + 0.06]
 
 // the words, each with where it sits and when it comes in and goes out: a big line, and sometimes a smaller one under
 // it; the last one carries the wordmark above it
@@ -90,10 +92,11 @@ const WORDS: Words[] = [
   // the opening question, one line at a time, over the bulb going out
   { lines: [{ text: "When the power goes out,", inn: [-0.02, -0.01] }, { text: "who do you call?", inn: [0.014, 0.028] }], hero: true, at: "top", out: [0.044, 0.054] },
   // as the logos come in, then as the country breaks apart
-  { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.07, 0.082], noteOut: [0.1, 0.112] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
+  // "15 companies." first, then the logos under it; "Across the nation." only once the columns part and Australia shows
+  { lines: [{ text: "**15** companies.", inn: [0.054, 0.066], note: "Across the nation.", noteIn: [0.112, 0.128], noteOut: [0.15, 0.164] }, { text: "**15** websites.", inn: [0.345, 0.365] }], at: "top", out: [0.428, 0.438] },
   // as the dots turn gold
-  { lines: [{ text: "**15** networks. **1** map.", inn: [0.832, 0.852] }], at: "bottomLeft", out: [0.925, 0.94] },
-  { lines: [{ text: "Be the first to know.", inn: [0.94, 0.965] }], brand: true, at: "centre", out: [2, 3] },
+  { lines: [{ text: "**15** networks. **1** map.", inn: [0.8, 0.82] }], at: "bottomLeft", out: [0.9, 0.915] },
+  { lines: [{ text: "Be the first to know.", inn: [0.915, 0.94] }], brand: true, at: "centre", out: [2, 3] },
 ]
 /** a line with its **numbers** set big and bold */
 function Rich({ text }: { text: string }) {
@@ -585,6 +588,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
       // the headline: the wordmark's t's pulled together, then the line under it; it stays up through the dots
       const tu = seg(p, TIE), tb = tieBox.current
+      // how far apart the two halves of the wordmark start, in its own units: as far as the screen allows
+      const reachU = mk && mk.width > 0 ? Math.min(TIE_VIEW.w * 1.1, (Math.max(0, sr.width * 0.92 - mk.width) * TIE_VIEW.w) / mk.width) : 200
       if (tb) {
         const v = p >= VINES[0] ? 1 - ease(seg(p, TIE_OUT)) : 0
         tb.style.visibility = v > 0.001 ? "visible" : "hidden"
@@ -599,7 +604,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const mw = mk?.width ?? 0, room = Math.max(0, sr.width * 0.92 - mw)
         if (v > 0.001 && tie && (Math.abs(tu - tied) > 0.0002 || room !== tiedReach)) {
           tied = tu; tiedReach = room
-          tie(tu, mw > 0 ? Math.min(TIE_VIEW.w * 1.1, (room * TIE_VIEW.w) / mw) : 200)
+          tie(tu, reachU)
         }
       }
 
@@ -708,6 +713,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t >= 1 ? 1 : ls * (0.18 + 0.82 * e)
         const s0 = START[g] || 0.32, glass = 1, sc = t >= 1 ? 1 : s0 + (1 - s0) * e
         const from = t >= 1 ? 0 : 1 - e, st = start[g] ?? MID[g]
+        // beside its logo it's a flat shape with no sides (a small 3D piece looks smudgy); its sides grow out from nothing
+        // as it grows on its way in
+        const d3 = t >= 1 ? 1 : ease(seg(e, [0.18, 0.5]))
         const fx = ((st[0] - MID[g][0]) * from / NET_VIEW.w) * 100, fy = ((st[1] - MID[g][1]) * from / NET_VIEW.h) * 100
         const down = t >= 1
         if (down !== landed[g]) {
@@ -732,7 +740,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.setProperty("--sx", `${((SPLIT[WP][0] - SPLIT[hg][0] + 6) * apart).toFixed(2)}px`)
             el.style.setProperty("--sy", `${((SPLIT[WP][1] - SPLIT[hg][1] + 30) * apart).toFixed(2)}px`)
           }
-          el.classList.toggle(styles.lifting, t < 1 && op > 0.001)
+          el.style.setProperty("--d", d3.toFixed(3))
+          el.classList.toggle(styles.lifting, t < 1 && op > 0.001 && d3 > 0.02)
         })
       })
 
@@ -797,9 +806,10 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       const rp = still ? 1 : seg(p, RIPPLE), fl = still ? 1 : seg(p, FLIGHT)
       const mkEl = tieMark.current
       const ux = mk ? mk.left - sr.left : 0, uy = mk ? mk.top - sr.top : 0, uk = mk ? mk.width / TIE_VIEW.w : 0
+      const jh = tieHalves(tu, reachU)
       if (mkEl) {
         // the solid wordmark is eaten away by the ripple, from the join out
-        const m = ready && rp > 0 ? (rp >= 1 ? "linear-gradient(transparent, transparent)" : `radial-gradient(circle at ${(JOIN[0] * uk).toFixed(1)}px ${(JOIN[1] * uk).toFixed(1)}px, transparent ${(rp * wordMax * uk).toFixed(1)}px, #000 ${(rp * wordMax * uk + 0.6).toFixed(1)}px)`) : ""
+        const m = ready && rp > 0 ? (rp >= 1 ? "linear-gradient(transparent, transparent)" : `radial-gradient(circle at ${((JOIN[0] + (jh[0] + jh[1]) / 2) * uk).toFixed(1)}px ${(JOIN[1] * uk).toFixed(1)}px, transparent ${(rp * wordMax * uk).toFixed(1)}px, #000 ${(rp * wordMax * uk + 0.6).toFixed(1)}px)`) : ""
         if (mkEl.style.maskImage !== m) { mkEl.style.maskImage = m; mkEl.style.setProperty("-webkit-mask-image", m) }
       }
       if (ctx) {
@@ -835,7 +845,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           if (ready && rp > 0 && fl < 1 && mk) {
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
             ctx.fillStyle = "#F2B300"
-            // the word's dots, popping in as the ripple reaches them, shrinking as their gold dots leave
+            // the word's dots, popping in as the ripple reaches them, shrinking as their gold dots leave. The t's are still
+            // bouncing when it starts, so each dot moves with its half of the word
+            const [hl, hr] = tieHalves(tu, reachU)
             for (const w of word) {
               const ahead = (rp - w.d / wordMax) * 0.5
               if (ahead < 0) continue
@@ -843,7 +855,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               for (const tl of w.leave) if (tl > fl) left++
               if (!left) continue
               const r = w.r * uk * (1 + 0.45 * Math.exp(-12 * ahead)) * Math.sqrt(left / w.leave.length)
-              ctx.beginPath(); ctx.arc(ux + w.x * uk, uy + w.y * uk, r, 0, Math.PI * 2); ctx.fill()
+              ctx.beginPath(); ctx.arc(ux + (w.x + (w.x < JOIN[0] ? hl : hr)) * uk, uy + w.y * uk, r, 0, Math.PI * 2); ctx.fill()
             }
             // the gold dots in flight: up a little first, then down onto their own dot, with a short faint tail
             ctx.strokeStyle = "rgba(242,179,0,0.3)"; ctx.lineCap = "round"
@@ -851,7 +863,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             for (const f of flyers) {
               const u0 = (fl - f.tl) / f.dur
               if (u0 <= 0 || u0 >= 1) continue
-              const sx = ux + f.s.x * uk, sy = uy + f.s.y * uk, tx = ox + f.to.x * sc, ty = oy + f.to.y * sc
+              const sx = ux + (f.s.x + (f.s.x < JOIN[0] ? hl : hr)) * uk, sy = uy + f.s.y * uk, tx = ox + f.to.x * sc, ty = oy + f.to.y * sc
               const cx = sx + (tx - sx) * 0.3 + f.jx * 110 * lift, cy = sy - (25 + 70 * f.jy) * lift
               const at = (u: number) => { const v = 1 - u; return [v * v * sx + 2 * v * u * cx + u * u * tx, v * v * sy + 2 * v * u * cy + u * u * ty] }
               const u = ease(u0), [px, py] = at(u), [qx, qy] = at(Math.max(0, u - 0.07)), r = f.to.r * sc * (0.55 + 0.45 * u)
