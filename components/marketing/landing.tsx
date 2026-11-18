@@ -7,6 +7,7 @@ import Lenis from "lenis"
 import { Rubik } from "next/font/google"
 import "lenis/dist/lenis.css"
 import { NetworkAssembly } from "./network-assembly"
+import { NetworkDirectory } from "./network-directory"
 import styles from "./landing.module.css"
 
 // Wattle landing, round two. One story, in order: every network in one place → told the moment a site loses power →
@@ -198,6 +199,7 @@ export default function Landing() {
       <NetworkAssembly still={still} wide={wide} />
 
       <div className={styles.wrap}>
+        <NetworkDirectory wide={wide} />
         {wide ? <StickyPhone still={still} /> : <Carousel still={still} />}
 
         <section className={styles.groups} data-rise>

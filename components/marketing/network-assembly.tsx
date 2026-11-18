@@ -26,12 +26,12 @@ const COLOUR: Record<string, string> = {
   "United Energy": "#A61D72", "AusNet Services": "#8DC63F", "SA Power Networks": "#525252", "TasNetworks": "#2196C6",
   "Western Power": "#F36C12", "Horizon Power": "#00344F", "Power and Water": "#3D8704",
 }
-const tint = (name: string) => COLOUR[name] ?? "#8A8170"
+export const tint = (name: string) => COLOUR[name] ?? "#8A8170"
 // the darkest brand colours, lifted for dark mode so their areas don't vanish into the page
-const LIFT: Record<string, string> = { "Horizon Power": "#2F7199", "Ergon Energy": "#4A55C8", "SA Power Networks": "#7D7D7D" }
+export const LIFT: Record<string, string> = { "Horizon Power": "#2F7199", "Ergon Energy": "#4A55C8", "SA Power Networks": "#7D7D7D" }
 
 // one step per company: CitiPower and Powercor are one business with one logo, so they land together
-const STEPS: number[][] = []
+export const STEPS: number[][] = []
 NETS.forEach((n, i) => {
   const prev = STEPS[STEPS.length - 1]
   if (prev && netKey(NETS[prev[0]].name) && netKey(NETS[prev[0]].name) === netKey(n.name)) prev.push(i)
@@ -76,7 +76,7 @@ const CHIP: { inn: Span; out: Span } = { inn: [0.072, 0.09], out: [0.4, 0.42] }
 
 // customers on each network, rounded, from the networks' own 2024-26 reports and regulatory filings with the AER and
 // ERA WA (CitiPower and Powercor added together)
-const CUSTOMERS: Partial<Record<NetKey, string>> = {
+export const CUSTOMERS: Partial<Record<NetKey, string>> = {
   ausgrid: "1.8 million", endeavour: "1.2 million", essential: "900,000", evoenergy: "200,000", energex: "1.6 million",
   ergon: "790,000", citipowercor: "1.27 million", jemena: "384,000", unitedenergy: "720,000", ausnet: "800,000",
   sapower: "930,000", tasnetworks: "300,000", wpower: "1.2 million", horizonpower: "50,000", powerwater: "90,000",
@@ -244,7 +244,7 @@ const LOCKUP: Partial<Record<NetKey, { light: string; dark: string; aspect: numb
 
 
 /** A network's logo at most `h` tall and `w` wide, as one lockup or as its icon mark and wordmark side by side. */
-function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
+export function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
   const n = NET[k]
   const lock = LOCKUP[k]
   if (lock) {

@@ -1,0 +1,60 @@
+/* the fifteen networks: a flat map beside a plain list, no boxes; pointing at one lights its patch */
+.section { padding: 110px 0 40px; }
+
+.head { max-width: 640px; margin-bottom: 40px; }
+.title { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 12px; color: var(--ink); text-wrap: balance; }
+.lede { font-size: 18px; line-height: 1.55; color: var(--muted) !important; margin: 0; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+/* the map stays in view while the list scrolls past it */
+.mapCol { position: sticky; top: 90px; }
+.map { display: block; width: 100%; height: auto; overflow: visible; }
+
+.area {
+  fill: var(--c); stroke: var(--c); stroke-width: 1.2; stroke-linejoin: round; cursor: pointer;
+  transition: fill 0.25s var(--ease), stroke 0.25s var(--ease), opacity 0.25s var(--ease);
+}
+@media (prefers-color-scheme: dark) { .area { fill: var(--cd); stroke: var(--cd); } }
+/* the page's own land colour, so the rest of the country sits back */
+.area.dim { fill: var(--land); stroke: var(--land-edge); }
+.area.lit { filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c) 45%, transparent)); }
+
+.list { list-style: none; margin: 0; padding: 0; }
+.row {
+  display: grid; grid-template-columns: 1fr; gap: 6px; padding: 18px 0 18px 16px; border-top: 1px solid var(--line);
+  position: relative; transition: opacity 0.25s var(--ease);
+}
+.row:last-child { border-bottom: 1px solid var(--line); }
+/* a thin bar in the network's colour, so each row ties to its patch */
+.row::before {
+  content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 3px; border-radius: 2px; background: var(--c);
+  transform-origin: 50% 0; transition: transform 0.25s var(--ease);
+}
+.row.faded { opacity: 0.38; }
+.row.faded::before { transform: scaleY(0.4); }
+
+.pick {
+  justify-self: start; display: flex; align-items: center; min-height: 34px; padding: 0; border: 0; background: none;
+  cursor: pointer; border-radius: 6px; transition: transform 0.15s var(--ease);
+}
+.pick:active { transform: scale(0.97); }
+.pick:focus-visible { outline: 2px solid var(--c); outline-offset: 4px; }
+
+.meta { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--muted) !important; max-width: 520px; }
+.meta b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--c); margin-right: 4px; }
+.site {
+  justify-self: start; font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+/* phones: the map on top (still in view), the list under it */
+@media (max-width: 899px) {
+  .section { padding-top: 80px; }
+  .grid { grid-template-columns: 1fr; gap: 24px; }
+  .mapCol { top: 0; padding: 12px 0; background: var(--paper); z-index: 1; }
+  .map { max-width: 240px; margin: 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .area, .row, .row::before, .pick { transition: none; }
+}
