@@ -492,6 +492,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
           el.style.setProperty("--a", glass.toFixed(3))
+          // how high it is, so its sides can stop short of the country underneath (see .lifting .edge)
+          el.style.setProperty("--lift", z.toFixed(2))
           if (i === HORIZON && WP >= 0) {
             const hg = STEPS.findIndex((s) => s.includes(HORIZON))
             el.style.setProperty("--sx", `${((SPLIT[WP][0] - SPLIT[hg][0] + 6) * apart).toFixed(2)}px`)
@@ -648,7 +650,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
                   {[4, 3, 2, 1].map((k) => (
-                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px` }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+                    <svg key={k} className={styles.edge} style={{ ["--z" as string]: `${-k * 3}px`, ["--d" as string]: String(k * 3) }} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
                       <path d={shapeOf(i)} />{i === HORIZON && SNIP_D && <path className={styles.snip} d={SNIP_D} />}
                     </svg>
                   ))}

@@ -65,6 +65,10 @@
 .layer .edge { transform: translateZ(var(--z)); display: none; }
 /* only once landed: while it falls a piece is just see-through glass, with no layers showing through it */
 .allIn .edge, .lifting .edge { display: block; }
+/* while a piece falls, each layer of its side shows only while it's above the country's top, so the piece never sinks
+   into the country as it lands: its sides fold away under it and it settles flat on top */
+.lifting .edge { opacity: clamp(0, calc(var(--lift, 99) - var(--d, 0)), 1); }
+.allIn .edge { opacity: 1; }
 .allIn .base { visibility: hidden; }
 .allIn .floor { filter: none; }
 .layer path { fill-opacity: var(--a, 1); stroke-opacity: var(--a, 1); }
