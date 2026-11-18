@@ -268,8 +268,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const H = wide ? 300 : 190, TX = wide ? 50 : 40
     const areas = NETS.map((n) => new Path2D(n.d))
     const byNet = NETS.map((_, i) => dots.filter((d) => d.n === i))
-    // how big a dot is as the ring first reaches it: about the gap between dots, so it starts as part of the area
-    const COVER = 6.8
+    // how big a dot is as the ring first reaches it: just big enough that neighbouring dots cover the area between them
+    // (the grid is 10.5 apart, so no point is further than 7.4 from a dot), so it starts as part of the solid area
+    const COVER = 7.8
 
     const tie = tieMark.current ? makeTie(tieMark.current) : null
     let tied = -1, tiedReach = -1
@@ -406,7 +407,8 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
         // see-through while it falls, solid as it lands
-        // into dots: the area stays until a soft ring spreading from the middle melts it away, in step with the dots
+        // into dots: the area stays fully solid until the ring reaches it; only there, in a narrow band, does it give way to
+        // whole dots of its own colour, which then shrink
         const qd = seg(p, DOTS), op = dotted && qd >= 1 ? 0 : t > 0 ? 1 : 0
         const glass = t >= 1 ? 1 : clamp(t / 0.06) * (0.32 + 0.68 * ease(t))
         const down = t >= 1 && tilt > 0.02
@@ -421,7 +423,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           el.style.opacity = String(op)
           if (dotted && qd < 1) {
             const k = el.offsetWidth / NET_VIEW.w, R = Math.hypot(CX, CY) * k
-            const ra = (qd * 1.35 - 0.2) * R, rb = qd * 1.35 * R
+            const rb = qd * 1.35 * R, ra = rb - 0.035 * R
             const m = `radial-gradient(circle at ${((CX / NET_VIEW.w) * 100).toFixed(2)}% ${(((CY + 40) / NET_VIEW.h) * 100).toFixed(2)}%, transparent ${ra.toFixed(1)}px, #000 ${Math.max(ra + 1, rb).toFixed(1)}px)`
             el.style.maskImage = m; el.style.webkitMaskImage = m
           } else if (el.style.maskImage) { el.style.maskImage = ""; el.style.webkitMaskImage = "" }
@@ -502,7 +504,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
               for (const d of list) {
                 const front = q * 1.35 - d.d
                 if (front <= 0) continue
-                const m = ease(clamp(front * 2.4))
+                const m = ease(clamp(front * 4))
                 const c = dark.matches ? d.cd : d.c
                 const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
                 ctx.fillStyle = `rgb(${r},${gg},${b})`
