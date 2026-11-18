@@ -36,21 +36,21 @@ interface Net {
 }
 
 export const NET: Record<NetKey, Net> = {
-  ausgrid: { name: "Ausgrid", tint: "#008BC0", website: "https://www.ausgrid.com.au", area: "Sydney, the Central Coast and the Hunter.", states: ["NSW"], icon: [1.025, "colour"], word: [3.335, "dark"] },
-  endeavour: { name: "Endeavour Energy", tint: "#00A98E", website: "https://www.endeavourenergy.com.au", area: "Greater Western Sydney, the Blue Mountains, Southern Highlands, Illawarra and South Coast.", states: ["NSW"], icon: [1.416, "colour"], word: [2.671, "dark"] },
+  ausgrid: { name: "Ausgrid", tint: "#008BC0", website: "https://www.ausgrid.com.au", area: "Sydney, the Central Coast and the Hunter.", states: ["NSW"], icon: [1.027, "colour"], word: [3.337, "dark"] },
+  endeavour: { name: "Endeavour Energy", tint: "#00A98E", website: "https://www.endeavourenergy.com.au", area: "Greater Western Sydney, the Blue Mountains, Southern Highlands, Illawarra and South Coast.", states: ["NSW"], icon: [1.417, "colour"], word: [2.67, "dark"] },
   essential: { name: "Essential Energy", tint: "#FF5300", website: "https://www.essentialenergy.com.au", area: "Regional, rural and remote New South Wales, and parts of southern Queensland.", states: ["NSW", "QLD"], icon: [0.9, "colour"], word: [2.317, "dark"] },
   energex: { name: "Energex", tint: "#1596D1", website: "https://www.energex.com.au", area: "South East Queensland, from the Gold Coast to the Sunshine Coast.", states: ["QLD"], icon: [1.716, "colour"], word: [5.28, "dark"] },
   ergon: { name: "Ergon Energy", tint: "#028E6B", website: "https://www.ergon.com.au", area: "Regional Queensland, outside the south east.", states: ["QLD"], icon: [1.562, "colour"], word: [2.702, "dark"] },
   citipowercor: { name: "CitiPower Powercor", tint: "#0979BF", website: "https://www.powercor.com.au", area: "CitiPower runs Melbourne's CBD and inner suburbs; Powercor runs Melbourne's west and western Victoria.", states: ["VIC"], word: [4.709, "colour"] },
-  unitedenergy: { name: "United Energy", tint: "#ED1164", website: "https://www.unitedenergy.com.au", area: "Melbourne's south east and the Mornington Peninsula.", states: ["VIC"], icon: [0.971, "colour"], word: [1.939, "dark"] },
-  jemena: { name: "Jemena", tint: "#26A6D7", website: "https://www.jemena.com.au", area: "Melbourne's north west.", states: ["VIC"], icon: [0.97, "colour"], word: [3.973, "dark"] },
-  ausnet: { name: "AusNet Services", tint: "#4574BF", website: "https://www.ausnetservices.com.au", area: "Eastern Victoria and Melbourne's north and east.", states: ["VIC"], word: [4.473, "dark"] },
-  sapower: { name: "SA Power Networks", tint: "#FA7909", website: "https://www.sapowernetworks.com.au", area: "All of South Australia.", states: ["SA"], icon: [0.785, "colour"], word: [1.513, "dark"] },
+  unitedenergy: { name: "United Energy", tint: "#ED1164", website: "https://www.unitedenergy.com.au", area: "Melbourne's south east and the Mornington Peninsula.", states: ["VIC"], icon: [0.977, "colour"], word: [1.737, "dark"] },
+  jemena: { name: "Jemena", tint: "#26A6D7", website: "https://www.jemena.com.au", area: "Melbourne's north west.", states: ["VIC"], icon: [1, "colour"], word: [4.072, "dark"] },
+  ausnet: { name: "AusNet Services", tint: "#4574BF", website: "https://www.ausnetservices.com.au", area: "Eastern Victoria and Melbourne's north and east.", states: ["VIC"], icon: [1.15, "colour"], word: [3.08, "dark"] },
+  sapower: { name: "SA Power Networks", tint: "#FA7909", website: "https://www.sapowernetworks.com.au", area: "All of South Australia.", states: ["SA"], icon: [0.787, "colour"], word: [1.513, "dark"] },
   tasnetworks: { name: "TasNetworks", tint: "#26A9E0", website: "https://www.tasnetworks.com.au", area: "All of Tasmania.", states: ["TAS"], icon: [2.541, "colour"], word: [7.294, "light"] },
-  wpower: { name: "Western Power", tint: "#F36C12", website: "https://www.westernpower.com.au", area: "Perth and the south west of Western Australia.", states: ["WA"], icon: [1.634, "light"], word: [1.623, "light"] },
-  evoenergy: { name: "Evoenergy", tint: "#FF671F", website: "https://www.evoenergy.com.au", area: "The Australian Capital Territory.", states: ["ACT"], word: [6.217, "colour"] },
-  horizonpower: { name: "Horizon Power", tint: "#C54630", website: "https://www.horizonpower.com.au", area: "Regional Western Australia, outside the south west.", states: ["WA"], word: [2.751, "dark"] },
-  powerwater: { name: "Power and Water", tint: "#6E7F3A", website: "https://www.powerwater.com.au", area: "The Northern Territory.", states: ["NT"] },
+  wpower: { name: "Western Power", tint: "#F36C12", website: "https://www.westernpower.com.au", area: "Perth and the south west of Western Australia.", states: ["WA"], icon: [1.617, "colour"], word: [1.943, "dark"] },
+  evoenergy: { name: "Evoenergy", tint: "#FF671F", website: "https://www.evoenergy.com.au", area: "The Australian Capital Territory.", states: ["ACT"], icon: [0.969, "colour"], word: [6.214, "colour"] },
+  horizonpower: { name: "Horizon Power", tint: "#C54630", website: "https://www.horizonpower.com.au", area: "Regional Western Australia, outside the south west.", states: ["WA"], icon: [0.978, "dark"], word: [2.75, "dark"] },
+  powerwater: { name: "Power and Water", tint: "#6E7F3A", website: "https://www.powerwater.com.au", area: "The Northern Territory.", states: ["NT"], icon: [0.671, "colour"], word: [6.933, "dark"] },
 }
 
 const PLAIN = "#8A8170"

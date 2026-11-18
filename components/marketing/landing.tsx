@@ -15,14 +15,15 @@ import styles from "./landing.module.css"
 const MAIL = "mailto:gridalert@arctiqservices.com.au"
 const V = "/landing/v2"
 
-// Each network in the strongest colour of its own logo (icon mark first, then wordmark), swapped for its logo's other
-// colour where a neighbour on the map would look the same. Evoenergy's logo is all orange, inside Essential's orange,
-// so it takes SA Power Networks' grey; Western Power's and Power and Water's logo files carry no colour.
+// Each network in the strongest colour of its own logo (the app's brand table, NetworkBrand in Models.swift), swapped
+// for another colour from the same logo where a neighbour on the map would look alike: CitiPower Powercor takes its
+// blue (its red sits against Essential's orange), AusNet its green (its blue would meet Powercor's), Evoenergy its
+// teal (its orange sits inside Essential's).
 const COLOUR: Record<string, string> = {
-  "Ausgrid": "#0C6C9C", "Endeavour Energy": "#76C04E", "Essential Energy": "#F2540F", "Evoenergy": "#505050",
-  "Energex": "#A6D30F", "Ergon Energy": "#2A2A8A", "CitiPower": "#E42424", "Powercor": "#E42424", "Jemena": "#24B4CC",
-  "United Energy": "#E40C6C", "AusNet Services": "#243C6C", "SA Power Networks": "#505050", "TasNetworks": "#30B0D0",
-  "Western Power": "#F36C12", "Horizon Power": "#103050", "Power and Water": "#6E7F3A",
+  "Ausgrid": "#006095", "Endeavour Energy": "#00A98E", "Essential Energy": "#FF5300", "Evoenergy": "#15909C",
+  "Energex": "#B2DB17", "Ergon Energy": "#212A86", "CitiPower": "#0979BF", "Powercor": "#0979BF", "Jemena": "#21BAD6",
+  "United Energy": "#A61D72", "AusNet Services": "#8DC63F", "SA Power Networks": "#525252", "TasNetworks": "#2196C6",
+  "Western Power": "#F36C12", "Horizon Power": "#00344F", "Power and Water": "#3D8704",
 }
 const tint = (name: string) => COLOUR[name] ?? "#8A8170"
 // one step per company: CitiPower and Powercor are one business, one logo, so they light up together
@@ -105,7 +106,7 @@ function NetworkMap({ still }: { still: boolean }) {
             {lit === 0 ? <span className={styles.netHint}>Scroll to light them up</span>
               : step <= STEPS.length ? (
                 <div key={step} className={styles.netBrand}>
-                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={(big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.62)} /> : <b>{last.name}</b>}
+                  {netKey(last.name) ? <NetLogo k={netKey(last.name)!} h={(big ? 72 : 52) * (NET[netKey(last.name)!].icon ? 1 : 0.7)} /> : <b>{last.name}</b>}
                   <span className={styles.netCount}>{lit} of {NETS.length}</span>
                 </div>
               )
