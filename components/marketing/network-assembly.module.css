@@ -109,8 +109,9 @@
 .bottomLeft { bottom: clamp(28px, 10vh, 100px); left: clamp(24px, 6vw, 96px); max-width: 520px; }
 .bottom { bottom: clamp(28px, 8vh, 80px); left: 0; right: 0; margin: 0 auto; text-align: center; max-width: 640px; padding: 0 24px; }
 .centre { top: 50%; left: 0; right: 0; margin: 0 auto; transform: translateY(-50%); text-align: center; max-width: 980px; padding: 0 24px; }
-.words.centre .big { font-size: clamp(38px, 5vw, 76px); letter-spacing: -0.035em; }
-.centre .brandMark { height: clamp(44px, 4.6vw, 72px); font-size: inherit; margin-bottom: 0.45em; }
+/* the wordmark leads: it's the biggest thing here, with room under it before the line */
+.words.centre .big { font-size: clamp(30px, 3.2vw, 50px); letter-spacing: -0.03em; }
+.centre .brandMark { height: clamp(64px, 7.2vw, 116px); margin-bottom: clamp(28px, 3.4vw, 52px); }
 
 /* the headline: the wordmark (its t's pulled together by the script) as tall as the words beside it, a line under it */
 .tie { position: absolute; z-index: 3; top: clamp(20px, 5vh, 56px); left: 0; right: 0; padding: 0 24px; text-align: center; visibility: hidden; }

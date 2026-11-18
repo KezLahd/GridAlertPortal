@@ -64,7 +64,7 @@ const WORDS: Words[] = [
   { text: "Each one looks after its own patch.", at: "top", inn: [0.068, 0.085], out: [0.4, 0.42] },
   { text: "Fifteen companies. Fifteen websites.", sub: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "top", inn: [0.42, 0.45], out: [0.515, 0.54] },
   { text: "Every network, on one map.", sub: "Wattle checks all fifteen, every few minutes.", at: "bottomLeft", inn: [0.795, 0.82], out: [0.89, 0.915] },
-  { text: "Know the moment a site loses power.", sub: "Every site you run, on every network, in one app.", brand: true, at: "centre", inn: [0.94, 0.975], out: [2, 3] },
+  { text: "Never be the last to know.", sub: "Every site you run, on every network, in one app.", brand: true, at: "centre", inn: [0.94, 0.975], out: [2, 3] },
 ]
 const CHIP: { inn: Span; out: Span } = { inn: [0.072, 0.09], out: [0.4, 0.42] }
 
