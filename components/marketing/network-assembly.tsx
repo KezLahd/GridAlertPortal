@@ -47,9 +47,9 @@ const SLOT = (DROPS[1] - DROPS[0]) / (G + 0.4)
 const WORDS: { text: string; at: string; big?: boolean; inn: Span; out: Span }[] = [
   { text: "Australia\u2019s power reaches you through fifteen network companies.", at: "top", big: true, inn: [-0.02, -0.01], out: [0.05, 0.09] },
   { text: "Not your retailer. The company that owns the poles and wires in your street.", at: "bottomLeft", big: true, inn: [0.06, 0.1], out: [0.13, 0.16] },
-  { text: "Each one looks after its own patch.", at: "topLeft", big: true, inn: [0.14, 0.17], out: [0.48, 0.51] },
-  { text: "Fifteen companies. Fifteen websites.", at: "centre", big: true, inn: [0.51, 0.545], out: [0.6, 0.63] },
-  { text: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "bottom", inn: [0.525, 0.555], out: [0.6, 0.63] },
+  { text: "Each one looks after its own patch.", at: "top", big: true, inn: [0.14, 0.17], out: [0.48, 0.51] },
+  { text: "Fifteen companies. Fifteen websites.", at: "top", big: true, inn: [0.51, 0.545], out: [0.6, 0.63] },
+  { text: "Each one reports outages in its own way. Checking them all, for every site you run, takes hours.", at: "bottomLeft", inn: [0.525, 0.555], out: [0.6, 0.63] },
   { text: "Wattle ties them together.", at: "topRight", big: true, inn: [0.6, 0.635], out: [0.74, 0.77] },
   { text: "Every network, on one map.", at: "bottomLeft", big: true, inn: [0.77, 0.8], out: [0.86, 0.89] },
   { text: "Wattle checks all fifteen, every few minutes.", at: "top", big: true, inn: [0.87, 0.9], out: [0.93, 0.955] },
@@ -90,8 +90,8 @@ const PUFFS = [0.3, 0.55, 0.8]
 const bez = (t: number, p0: number, p1: number, p2: number, p3: number) =>
   (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
 
-// an area falls fast and hits with one small hop: its height above the map, 1 to 0, over its slot of scroll
-const fall = (t: number) => (t < 0.8 ? 1 - (t / 0.8) ** 2 : 0.07 * Math.sin(Math.PI * ((t - 0.8) / 0.2)))
+// an area comes down and settles: quick at first, slowing to rest in place, no hop. Its height above the map, 1 to 0
+const fall = (t: number) => (1 - t) ** 3
 
 // the dots: a fine grid over the country, each in its network's colour, revealed in a sweep from the middle
 type Dot = { x: number; y: number; r: number; d: number; c: number[]; cd: number[]; vx: number; vy: number }
@@ -110,10 +110,10 @@ function makeDots(paths: SVGPathElement[]): Dot[] {
       const name = NETS[n].name
       const dist = Math.hypot(x - ox, y - oy) / R
       const turn = (Math.atan2(y - oy, x - ox) + Math.PI) / (Math.PI * 2)
-      const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 120 + rand() * 360
+      const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 420 + rand() * 900
       out.push({
-        x, y, r: 2.6 + 1.6 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
-        c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 60 * rand(),
+        x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
+        c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(),
       })
     }
   }
@@ -156,69 +156,102 @@ function Logo({ k, h, w }: { k: NetKey; h: number; w: number }) {
 
 export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean }) {
   const section = useRef<HTMLElement>(null)
+  const stage = useRef<HTMLDivElement>(null)
   const rig = useRef<HTMLDivElement>(null)
   const base = useRef<SVGSVGElement>(null)
   const layers = useRef<(HTMLDivElement | null)[]>([])
+  const pins = useRef<(HTMLElement | null)[]>([])
   const vines = useRef<SVGSVGElement>(null)
   const strands = useRef<(SVGPathElement | null)[]>([])
   const puffs = useRef<(SVGCircleElement | null)[]>([])
   const canvas = useRef<HTMLCanvasElement>(null)
   const words = useRef<(HTMLElement | null)[]>([])
   const chip = useRef<HTMLDivElement>(null)
+  const chipIn = useRef<HTMLDivElement>(null)
+  const leader = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(0)
 
   useEffect(() => {
-    const sec = section.current, rg = rig.current, cv = canvas.current, bs = base.current
-    if (!sec || !rg || !cv || !bs) return
+    const sec = section.current, st = stage.current, rg = rig.current, cv = canvas.current, bs = base.current
+    if (!sec || !st || !rg || !cv || !bs) return
     const dots = makeDots(Array.from(bs.querySelectorAll("path")))
     const dark = window.matchMedia("(prefers-color-scheme: dark)")
     const ctx = cv.getContext("2d")
-    let raf = 0, visible = false, ps = -1, shown = -2, drawn = ""
-    const H = wide ? 230 : 150, TX = wide ? 52 : 44, TZ = wide ? -12 : -8
+    let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
+    let dpr = 1, cx = -1, cy = 0, side = 0
+    // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
+    const H = wide ? 120 : 84, TX = wide ? 30 : 24
 
     const size = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
-      cv.width = Math.round(rg.offsetWidth * dpr); cv.height = Math.round(rg.offsetHeight * dpr)
+      dpr = Math.min(2, window.devicePixelRatio || 1)
+      cv.width = Math.round(st.offsetWidth * dpr); cv.height = Math.round(st.offsetHeight * dpr)
       drawn = ""
     }
     size()
     const ro = new ResizeObserver(size)
-    ro.observe(rg)
+    ro.observe(st)
+
+    // in and out by sliding through a mask, never a fade: v is how far in (0 to 1), b how far out (0 to 1)
+    const slide = (box: HTMLElement | null, inner: HTMLElement | null, a: number, b: number, dist = 118) => {
+      if (!box || !inner) return
+      inner.style.transform = `translate3d(0, ${((1 - a) * dist - b * dist).toFixed(2)}%, 0)`
+      box.style.visibility = a > 0.001 && b < 0.999 ? "visible" : "hidden"
+    }
 
     const paint = (p: number) => {
-      // the words: each slides in and out over its own stretch of scroll
+      // reads first (last frame's layout), then writes
+      const sr = st.getBoundingClientRect(), rr = rg.getBoundingClientRect()
+      const drop = p > DROPS[0] - 0.01 && p < FLAT[0] + 0.01
+      let now = -1
+      STEPS.forEach((_, g) => { if (seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT]) > 0.04 && drop) now = g })
+      const pin = now >= 0 ? pins.current[now]?.getBoundingClientRect() : null
+      const cw = chip.current?.offsetWidth ?? 0, ch = chip.current?.offsetHeight ?? 0
+      const reserve = (() => { const w = words.current[2]; return w ? w.offsetTop + w.offsetHeight + 24 : 120 })()
+
       WORDS.forEach((w, i) => {
         const el = words.current[i]
-        if (!el) return
-        const a = ease(seg(p, w.inn)), b = ease(seg(p, w.out)), v = a * (1 - b)
-        el.style.opacity = v.toFixed(3)
-        el.style.transform = `translate3d(0, ${((1 - a) * 34 - b * 34).toFixed(1)}px, 0)`
-        el.style.visibility = v > 0.001 ? "visible" : "hidden"
+        slide(el, el?.firstElementChild as HTMLElement | null, ease(seg(p, w.inn)), ease(seg(p, w.out)))
       })
-      if (chip.current) {
-        const a = ease(seg(p, CHIP.inn)), b = ease(seg(p, CHIP.out)), v = a * (1 - b)
-        chip.current.style.opacity = v.toFixed(3)
-        chip.current.style.transform = `translate3d(0, ${((1 - a) * 24 - b * 24).toFixed(1)}px, 0)`
-        chip.current.style.visibility = v > 0.001 ? "visible" : "hidden"
-      }
+
+      // the company that's landing: beside the map on the side its area is on, level with it, with a line to it
+      const ca = ease(seg(p, CHIP.inn)), cb = ease(seg(p, CHIP.out))
+      slide(chip.current, chipIn.current, ca, cb)
+      const ld = leader.current
+      if (wide && chip.current && pin && ld) {
+        const mx = pin.left + pin.width / 2 - sr.left, my = pin.top + pin.height / 2 - sr.top
+        const s = mx < sr.width / 2 ? -1 : 1
+        const tx = s < 0
+          ? Math.max(24, rr.left - sr.left - 40 - cw)
+          : Math.min(sr.width - cw - 24, rr.right - sr.left + 40)
+        const ty = Math.min(sr.height - ch - 24, Math.max(reserve, my - 30))
+        if (s !== side || cx < 0) { side = s; cx = tx; cy = ty } else { cx += (tx - cx) * 0.18; cy += (ty - cy) * 0.18 }
+        chip.current.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`
+        // the line, from the chip's near edge to the middle of the falling area
+        const ax = s < 0 ? cx + cw + 14 : cx - 14, ay = cy + 30
+        const dx = mx - ax, dy = my - ay, len = Math.hypot(dx, dy)
+        const grow = ca * (1 - cb)
+        ld.style.width = `${(len * grow).toFixed(1)}px`
+        ld.style.transform = `translate3d(${ax.toFixed(1)}px, ${ay.toFixed(1)}px, 0) rotate(${Math.atan2(dy, dx).toFixed(4)}rad)`
+        ld.style.visibility = grow > 0.01 ? "visible" : "hidden"
+      } else if (ld) ld.style.visibility = "hidden"
 
       // the country tips back for the drops, then comes flat again
+      // and on a narrower screen it shrinks a little while it does, to leave room beside it for the company
       const tilt = ease(seg(p, TILT)) * (1 - ease(seg(p, FLAT)))
+      const fit = wide ? Math.min(0.96, Math.max(0.7, (sr.width - 2 * (cw + 64)) / Math.max(1, rg.offsetWidth))) : 0.96
       rg.style.transform = tilt > 0.0005
-        ? `translateY(${(tilt * 5).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) rotateZ(${(tilt * TZ).toFixed(2)}deg) scale(${(1 - tilt * 0.06).toFixed(4)})`
+        ? `translateY(${(tilt * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${(1 - tilt * (1 - fit)).toFixed(4)})`
         : "none"
       bs.style.opacity = (1 - ease(seg(p, FLAT))).toFixed(3)
 
       // apart, then laced back together
       const apart = ease(seg(p, FLAT)) * (1 - ease(seg(p, LACE))) * (wide ? 1 : 0.55)
       const areaOut = ease(seg(p, [DOTS[0], DOTS[0] + (DOTS[1] - DOTS[0]) * 0.8]))
-      let now = -1
       STEPS.forEach((group, g) => {
         const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT])
-        if (t > 0.04 && p < FLAT[0] + 0.01) now = g
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
-        const op = clamp(t / 0.12) * (1 - areaOut)
+        const op = clamp(t / 0.1) * (1 - areaOut)
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
@@ -229,54 +262,58 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       })
       if (now !== shown) { shown = now; if (now >= 0) setStep(now) }
 
-      // the sprigs grow along their strands, then shorten and fade as the lace pulls the pieces in
+      // the light behind the map takes the colour of what's happening: each company, the sprigs' green, then gold
+      const want = now >= 0 ? tint(NETS[STEPS[now][0]].name) : p >= DOTS[0] ? "#F2B300" : p >= VINES[0] ? "#7E9B3A" : "#C9B48A"
+      if (want !== bloom) { bloom = want; st.style.setProperty("--bloom", want) }
+
+      // the sprigs run underneath the pieces: they show only in the gaps, and vanish as the gaps close
       const grow = seg(p, VINES), tight = ease(seg(p, LACE))
       const vs = vines.current
       if (vs) {
         const on = grow > 0 && tight < 1
-        vs.style.opacity = on ? (1 - tight).toFixed(3) : "0"
+        vs.style.opacity = on ? "1" : "0"
         if (on) STRANDS.forEach((s, k) => {
           const el = strands.current[k]
           if (!el) return
           const ax = MID[s.a][0] + SPLIT[s.a][0] * apart, ay = MID[s.a][1] + SPLIT[s.a][1] * apart
           const bx = MID[s.b][0] + SPLIT[s.b][0] * apart, by = MID[s.b][1] + SPLIT[s.b][1] * apart
           const dx = bx - ax, dy = by - ay, nx = -dy, ny = dx
-          const k1 = s.bend * (1 - 0.6 * tight), k2 = -s.bend * 0.55 * (1 - 0.6 * tight)
+          const k1 = s.bend * (1 - 0.8 * tight), k2 = -s.bend * 0.55 * (1 - 0.8 * tight)
           const c1x = ax + dx * 0.3 + nx * k1, c1y = ay + dy * 0.3 + ny * k1
           const c2x = ax + dx * 0.7 + nx * k2, c2y = ay + dy * 0.7 + ny * k2
           el.setAttribute("d", `M${ax.toFixed(1)} ${ay.toFixed(1)}C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`)
-          const g = clamp(grow * 1.15 - (k % 5) * 0.03)
+          // where the pieces never quite meet (Bass Strait, the Bight) the strands draw themselves back in at the end
+          const g = clamp(grow * 1.15 - (k % 5) * 0.03) * (1 - ease(clamp((tight - 0.45) / 0.55)))
           el.style.strokeDashoffset = (1 - g).toFixed(3)
           PUFFS.forEach((u, j) => {
             const c = puffs.current[k * PUFFS.length + j]
             if (!c) return
             c.setAttribute("cx", bez(u, ax, c1x, c2x, bx).toFixed(1)); c.setAttribute("cy", bez(u, ay, c1y, c2y, by).toFixed(1))
-            c.setAttribute("r", (9 * clamp((g - u) * 5)).toFixed(2))
+            c.setAttribute("r", (8 * clamp((g - u) * 5)).toFixed(2))
           })
         })
       }
 
-      // the dots: in each area's colour, then gold, then away
+      // the dots, over the whole stage so they can fly off it: in each area's colour, then gold, then away
       if (ctx) {
-        const q = seg(p, DOTS), gold = ease(seg(p, GOLD)), out = ease(seg(p, SCATTER))
-        const key = `${q.toFixed(3)}|${gold.toFixed(3)}|${out.toFixed(3)}|${dark.matches}`
+        const q = seg(p, DOTS), gold = ease(seg(p, GOLD)), o = seg(p, SCATTER), out = o * o
+        const ox = rr.left - sr.left, oy = rr.top - sr.top, sc = rr.width / NET_VIEW.w
+        const key = `${q.toFixed(3)}|${gold.toFixed(3)}|${out.toFixed(4)}|${dark.matches}|${ox.toFixed(0)}|${oy.toFixed(0)}|${sc.toFixed(3)}`
         if (key !== drawn) {
           drawn = key
           ctx.setTransform(1, 0, 0, 1, 0, 0)
           ctx.clearRect(0, 0, cv.width, cv.height)
-          if (q > 0) {
-            const sx = cv.width / NET_VIEW.w, sy = cv.height / NET_VIEW.h
-            ctx.setTransform(sx, 0, 0, sy, 0, 0)
+          if (q > 0 && o < 1) {
+            ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy)
+            const shrink = 1 - 0.28 * gold
             for (const d of dots) {
               const a = clamp((q * 1.3 - d.d) * 5)
               if (a <= 0) continue
-              const alpha = a * (1 - out)
-              if (alpha <= 0.002) continue
               const c = dark.matches ? d.cd : d.c
               const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
-              ctx.fillStyle = `rgba(${r},${gg},${b},${alpha.toFixed(3)})`
+              ctx.fillStyle = `rgb(${r},${gg},${b})`
               ctx.beginPath()
-              ctx.arc(d.x + d.vx * out, d.y + d.vy * out, d.r * (0.35 + 0.65 * a) * (1 - 0.5 * out), 0, Math.PI * 2)
+              ctx.arc(d.x + d.vx * out, d.y + d.vy * out, d.r * (0.3 + 0.7 * a) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
               ctx.fill()
             }
           }
@@ -311,48 +348,60 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
   return (
     <section ref={section} className={`${styles.section} ${still ? styles.still : ""}`} aria-labelledby="nets-title">
-      <div className={styles.stage} style={{ ["--tint" as string]: tint(name) }}>
+      <div ref={stage} className={styles.stage} style={{ ["--tint" as string]: tint(name) }}>
         <h2 id="nets-title" className={styles.srOnly}>Australia&apos;s electricity networks, and Wattle</h2>
+        <div className={styles.bloom} aria-hidden />
 
         <div className={styles.mapBox}>
           <div ref={rig} className={styles.rig}>
             <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               {NETS.map((n) => <path key={n.name} d={n.d} />)}
             </svg>
-            {NETS.map((n, i) => (
-              <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
-                style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
-                <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
-              </div>
-            ))}
+            {/* under the pieces, so the sprigs only show in the gaps between them */}
             <svg ref={vines} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               {STRANDS.map((s, k) => <path key={k} ref={(el) => { strands.current[k] = el }} pathLength={1} />)}
               {STRANDS.flatMap((_, k) => PUFFS.map((_, j) => (
                 <circle key={`${k}-${j}`} ref={(el) => { puffs.current[k * PUFFS.length + j] = el }} r="0" />
               )))}
             </svg>
-            <canvas ref={canvas} className={styles.dots} role="img" aria-label="A map of Australia made of wattle-gold dots" />
+            {NETS.map((n, i) => {
+              const g = STEPS.findIndex((s) => s[0] === i)
+              return (
+                <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
+                  style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
+                  <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
+                  {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
+                    style={{ left: `${(MID[g][0] / NET_VIEW.w) * 100}%`, top: `${(MID[g][1] / NET_VIEW.h) * 100}%` }} />}
+                </div>
+              )
+            })}
           </div>
         </div>
+        <canvas ref={canvas} className={styles.dots} role="img" aria-label="A map of Australia made of wattle-gold dots" />
 
         {WORDS.map((w, i) => (
-          <p key={i} ref={(el) => { words.current[i] = el }} className={`${styles.words} ${styles[w.at]} ${w.big ? styles.big : ""}`}>{w.text}</p>
+          <p key={i} ref={(el) => { words.current[i] = el }} className={`${styles.words} ${styles[w.at]} ${w.big ? styles.big : ""}`}>
+            <span>{w.text}</span>
+          </p>
         ))}
 
+        <div ref={leader} className={styles.leader} aria-hidden />
         <div ref={chip} className={styles.chip} aria-live="polite">
-          {net && key && (
-            <div key={key} className={styles.company}>
-              <div className={styles.logo}><Logo k={key} h={wide ? 44 : 32} w={wide ? 250 : 190} /></div>
-              <p className={styles.meta}>
-                <b>{net.states.join(" · ")}</b> {net.area}
-                {CUSTOMERS[key] && <> About {CUSTOMERS[key]} customers.</>}
-                {" "}<a href={net.website} target="_blank" rel="noopener noreferrer">{net.website.replace(/^https?:\/\/(www\.)?/, "")}{" ↗"}</a>
-              </p>
-              <div className={styles.rail} aria-hidden>
-                {STEPS.map((g, i) => <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} />)}
+          <div ref={chipIn}>
+            {net && key && (
+              <div key={key} className={styles.company}>
+                <div className={styles.logo}><Logo k={key} h={wide ? 40 : 32} w={wide ? 230 : 190} /></div>
+                <p className={styles.meta}>
+                  <b>{net.states.join(" · ")}</b> {net.area}
+                  {CUSTOMERS[key] && <> About {CUSTOMERS[key]} customers.</>}
+                  {" "}<a href={net.website} target="_blank" rel="noopener noreferrer">{net.website.replace(/^https?:\/\/(www\.)?/, "")}{" ↗"}</a>
+                </p>
+                <div className={styles.rail} aria-hidden>
+                  {STEPS.map((g, i) => <i key={i} style={{ background: i <= step ? tint(NETS[g[0]].name) : undefined }} />)}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </section>
