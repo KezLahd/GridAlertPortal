@@ -85,16 +85,18 @@ MID.forEach((a, i) => {
     .sort((x, y) => x[1] - y[1]).slice(0, 2)
     .forEach(([j]) => { if (!PAIRS.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) PAIRS.push([i, j]) })
 })
-const STRANDS = PAIRS.flatMap(([a, b], k) => [{ a, b, bend: 0.32 + (k % 3) * 0.06 }, { a, b, bend: -(0.26 + (k % 2) * 0.08) }])
-const PUFFS = [0.3, 0.55, 0.8]
+const STRANDS = PAIRS.flatMap(([a, b], k) => [{ a, b, bend: 0.14 + (k % 3) * 0.04 }, { a, b, bend: -(0.12 + (k % 2) * 0.05) }])
+// wattle balls all along each sprig, three sizes
+const PUFFS = [0.05, 0.14, 0.24, 0.34, 0.44, 0.54, 0.64, 0.74, 0.84, 0.94]
+const PUFF_R = [7, 10, 8.5]
 const bez = (t: number, p0: number, p1: number, p2: number, p3: number) =>
   (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
 
-// an area comes down and settles: quick at first, slowing to rest in place, no hop. Its height above the map, 1 to 0
-const fall = (t: number) => (1 - t) ** 3
+// an area comes down from high above and settles into place, easing in and out, no hop. Its height, 1 to 0
+const fall = (t: number) => 1 - ease(t)
 
 // the dots: a fine grid over the country, each in its network's colour, revealed in a sweep from the middle
-type Dot = { x: number; y: number; r: number; d: number; c: number[]; cd: number[]; vx: number; vy: number }
+type Dot = { n: number; x: number; y: number; r: number; d: number; c: number[]; cd: number[]; vx: number; vy: number }
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 const GOLD_RGB = rgb("#F2B300")
 function makeDots(paths: SVGPathElement[]): Dot[] {
@@ -112,7 +114,7 @@ function makeDots(paths: SVGPathElement[]): Dot[] {
       const turn = (Math.atan2(y - oy, x - ox) + Math.PI) / (Math.PI * 2)
       const a = Math.atan2(y - oy, x - ox) + (rand() - 0.5) * 0.9, fly = 420 + rand() * 900
       out.push({
-        x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
+        n, x, y, r: 3.9 + 1.2 * Math.pow(1 - Math.min(1, dist), 1.3), d: Math.min(1, dist * 0.8 + turn * 0.2),
         c: rgb(tint(name)), cd: rgb(LIFT[name] ?? tint(name)), vx: Math.cos(a) * fly, vy: Math.sin(a) * fly - 120 * rand(),
       })
     }
@@ -180,7 +182,9 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     let raf = 0, visible = false, ps = -1, shown = -2, drawn = "", bloom = ""
     let dpr = 1, cx = -1, cy = 0, side = 0
     // how far an area starts above the map, and how far the country tips back (no turn: it stays square to you)
-    const H = wide ? 120 : 84, TX = wide ? 30 : 24
+    const H = wide ? 300 : 190, TX = wide ? 50 : 40
+    const areas = NETS.map((n) => new Path2D(n.d))
+    const land = new Path2D(); areas.forEach((a) => land.addPath(a))
 
     const size = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -191,11 +195,13 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
     const ro = new ResizeObserver(size)
     ro.observe(st)
 
-    // in and out by sliding through a mask, never a fade: v is how far in (0 to 1), b how far out (0 to 1)
-    const slide = (box: HTMLElement | null, inner: HTMLElement | null, a: number, b: number, dist = 118) => {
+    // words fade and rise in, and fade and rise out: a is how far in (0 to 1), b how far out (0 to 1)
+    const slide = (box: HTMLElement | null, inner: HTMLElement | null, a: number, b: number) => {
       if (!box || !inner) return
-      inner.style.transform = `translate3d(0, ${((1 - a) * dist - b * dist).toFixed(2)}%, 0)`
-      box.style.visibility = a > 0.001 && b < 0.999 ? "visible" : "hidden"
+      const v = a * (1 - b)
+      inner.style.opacity = v.toFixed(3)
+      inner.style.transform = `translate3d(0, ${((1 - a) * 28 - b * 28).toFixed(1)}px, 0)`
+      box.style.visibility = v > 0.001 ? "visible" : "hidden"
     }
 
     const paint = (p: number) => {
@@ -242,22 +248,22 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
       rg.style.transform = tilt > 0.0005
         ? `translateY(${(tilt * 3).toFixed(2)}%) rotateX(${(tilt * TX).toFixed(2)}deg) scale(${(1 - tilt * (1 - fit)).toFixed(4)})`
         : "none"
+      rg.classList.toggle(styles.flat, tilt < 0.02)
       bs.style.opacity = (1 - ease(seg(p, FLAT))).toFixed(3)
 
       // apart, then laced back together
       const apart = ease(seg(p, FLAT)) * (1 - ease(seg(p, LACE))) * (wide ? 1 : 0.55)
-      const areaOut = ease(seg(p, [DOTS[0], DOTS[0] + (DOTS[1] - DOTS[0]) * 0.8]))
+      const dotted = p > DOTS[0]
       STEPS.forEach((group, g) => {
         const t = seg(p, [DROPS[0] + g * SLOT, DROPS[0] + (g + 1.4) * SLOT])
         const z = t >= 1 ? 0 : fall(t) * H
         const sx = (SPLIT[g][0] * apart / NET_VIEW.w) * 100, sy = (SPLIT[g][1] * apart / NET_VIEW.h) * 100
-        const op = clamp(t / 0.1) * (1 - areaOut)
+        const op = dotted ? 0 : clamp(t / 0.06)
         group.forEach((i) => {
           const el = layers.current[i]
           if (!el) return
           el.style.transform = z > 0.05 || apart > 0.0005 ? `translate3d(${sx.toFixed(2)}%, ${sy.toFixed(2)}%, ${z.toFixed(1)}px)` : "none"
           el.style.opacity = op.toFixed(3)
-          el.classList.toggle(styles.lifting, t > 0 && t < 1)
         })
       })
       if (now !== shown) { shown = now; if (now >= 0) setStep(now) }
@@ -289,7 +295,7 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
             const c = puffs.current[k * PUFFS.length + j]
             if (!c) return
             c.setAttribute("cx", bez(u, ax, c1x, c2x, bx).toFixed(1)); c.setAttribute("cy", bez(u, ay, c1y, c2y, by).toFixed(1))
-            c.setAttribute("r", (8 * clamp((g - u) * 5)).toFixed(2))
+            c.setAttribute("r", (PUFF_R[(j + k) % 3] * clamp((g - u) * 5)).toFixed(2))
           })
         })
       }
@@ -306,16 +312,29 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
           if (q > 0 && o < 1) {
             ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy)
             const shrink = 1 - 0.28 * gold
+            // the morph: each dot starts as a big disc that, with its neighbours and the area under them, makes the
+            // solid area, clipped to the coast; the discs shrink to dots, so the area breaks up rather than fades
+            const morphing = q < 1
+            if (morphing) {
+              ctx.save(); ctx.clip(land)
+              // the areas themselves fill the slivers along the coast the first discs don't reach
+              const under = 1 - clamp(q * 2.4)
+              if (under > 0) NETS.forEach((n, i) => {
+                const c = rgb(dark.matches ? LIFT[n.name] ?? tint(n.name) : tint(n.name))
+                ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
+                ctx.globalAlpha = under; ctx.fill(areas[i]); ctx.globalAlpha = 1
+              })
+            }
             for (const d of dots) {
-              const a = clamp((q * 1.3 - d.d) * 5)
-              if (a <= 0) continue
+              const m = ease(clamp((q * 1.35 - d.d) * 3))
               const c = dark.matches ? d.cd : d.c
               const r = Math.round(c[0] + (GOLD_RGB[0] - c[0]) * gold), gg = Math.round(c[1] + (GOLD_RGB[1] - c[1]) * gold), b = Math.round(c[2] + (GOLD_RGB[2] - c[2]) * gold)
               ctx.fillStyle = `rgb(${r},${gg},${b})`
               ctx.beginPath()
-              ctx.arc(d.x + d.vx * out, d.y + d.vy * out, d.r * (0.3 + 0.7 * a) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
+              ctx.arc(d.x + d.vx * out, d.y + d.vy * out, (7.2 + (d.r - 7.2) * m) * shrink * (1 - 0.45 * o), 0, Math.PI * 2)
               ctx.fill()
             }
+            if (morphing) ctx.restore()
           }
         }
       }
@@ -354,27 +373,32 @@ export function NetworkAssembly({ still, wide }: { still: boolean; wide: boolean
 
         <div className={styles.mapBox}>
           <div ref={rig} className={styles.rig}>
-            <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+            {/* the country's thickness, seen while it's tipped back */}
+            <svg className={`${styles.base} ${styles.slab}`} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
               {NETS.map((n) => <path key={n.name} d={n.d} />)}
             </svg>
-            {/* under the pieces, so the sprigs only show in the gaps between them */}
-            <svg ref={vines} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
-              {STRANDS.map((s, k) => <path key={k} ref={(el) => { strands.current[k] = el }} pathLength={1} />)}
-              {STRANDS.flatMap((_, k) => PUFFS.map((_, j) => (
-                <circle key={`${k}-${j}`} ref={(el) => { puffs.current[k * PUFFS.length + j] = el }} r="0" />
-              )))}
+            <svg ref={base} className={styles.base} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              {NETS.map((n) => <path key={n.name} d={n.d} />)}
             </svg>
             {NETS.map((n, i) => {
               const g = STEPS.findIndex((s) => s[0] === i)
               return (
                 <div key={n.name} ref={(el) => { layers.current[i] = el }} className={styles.layer}
                   style={{ ["--c" as string]: tint(n.name), ["--cd" as string]: LIFT[n.name] ?? tint(n.name) }}>
+                  <svg className={styles.edge} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
                   <svg viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden><path d={n.d} /></svg>
                   {g >= 0 && <i ref={(el) => { pins.current[g] = el }} className={styles.pin}
                     style={{ left: `${(MID[g][0] / NET_VIEW.w) * 100}%`, top: `${(MID[g][1] / NET_VIEW.h) * 100}%` }} />}
                 </div>
               )
             })}
+            {/* the sprigs, over the pieces, through the middle of each */}
+            <svg ref={vines} className={styles.vines} viewBox={`0 0 ${NET_VIEW.w} ${NET_VIEW.h}`} aria-hidden>
+              {STRANDS.map((s, k) => <path key={k} ref={(el) => { strands.current[k] = el }} pathLength={1} />)}
+              {STRANDS.flatMap((_, k) => PUFFS.map((_, j) => (
+                <circle key={`${k}-${j}`} ref={(el) => { puffs.current[k * PUFFS.length + j] = el }} r="0" />
+              )))}
+            </svg>
           </div>
         </div>
         <canvas ref={canvas} className={styles.dots} role="img" aria-label="A map of Australia made of wattle-gold dots" />
