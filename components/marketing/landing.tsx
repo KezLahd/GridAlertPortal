@@ -8,6 +8,7 @@ import { Rubik } from "next/font/google"
 import "lenis/dist/lenis.css"
 import { NetworkAssembly } from "./network-assembly"
 import { NetworkDirectory } from "./network-directory"
+import { HeroFlow } from "./hero-flow"
 import styles from "./landing.module.css"
 
 // Wattle landing, round two. One story, in order: every network in one place → told the moment a site loses power →
@@ -170,7 +171,7 @@ export default function Landing() {
     return () => lenis.destroy()
   }, [still])
 
-  // how far the hero has scrolled away, as --hp (0 to 1): drives its colour fading into the paper below
+  // how far the hero has scrolled away, as --hp (0 to 1), and the map story's grey rising under it as --hpe
   useEffect(() => {
     const el = root.current
     let raf = 0
@@ -204,31 +205,26 @@ export default function Landing() {
 
   return (
     <main ref={root} className={`${styles.page} ${rubik.variable}`}>
-      {/* The hero: one line, one real alert, on the page's own paper. As you scroll, the paper turns into the map
-          story's grey while the words lift out of frame ahead of the phone. */}
-      <section className={styles.hero}>
-        <div className={styles.heroGrey} aria-hidden />
-        <div className={styles.wrap}>
+      {/* The hero: one real outage, scrubbed by scroll, then the paper turns into the map story's grey */}
+      <HeroFlow
+        still={still}
+        nav={
           <nav className={styles.nav}>
             <Link href="/" className={styles.logo} aria-label="Wattle home"><Wordmark height={28} /></Link>
             <Link href="/login" className={styles.signIn}>Sign in</Link>
           </nav>
-          <div className={styles.heroGrid}>
-            <div className={styles.heroText}>
-              <h1 className={styles.title}>Know the moment your sites lose power.</h1>
-              <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
-              <div className={styles.ctas}>
-                <AppStoreSoon />
-                <a href={MAIL} className={styles.primary}>Get in touch</a>
-              </div>
+        }
+        copy={
+          <>
+            <h1 className={styles.title}>Know the moment your sites lose power.</h1>
+            <p className={styles.lede}>Every electricity network in Australia, watched in one place, for every clinic and pharmacy you run.</p>
+            <div className={styles.ctas}>
+              <AppStoreSoon />
+              <a href={MAIL} className={styles.primary}>Get in touch</a>
             </div>
-            <div className={styles.heroShot}>
-              <Clip src={`${V}/alert-lockscreen.mp4`} poster={`${V}/alert-lockscreen.jpg`} still={still} eager
-                alt="Wattle alerts arriving on an iPhone lock screen: a power outage near Bondi Junction Pharmacy, then power back" />
-            </div>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <NetworkAssembly still={still} wide={wide} />
 

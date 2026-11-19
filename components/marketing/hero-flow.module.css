@@ -1,0 +1,84 @@
+/* The hero as one outage, scrubbed by scroll: words | pinned phone | the step that's up. Paper, ink, one gold. */
+
+.hero { position: relative; isolation: isolate; }
+/* how long the phone stays pinned: the scrub runs over this height less one screen */
+.track { position: relative; height: 620svh; }
+.stage { position: sticky; top: 0; height: 100svh; min-height: 600px; overflow: hidden; isolation: isolate; }
+
+.paper, .grey { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.paper { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 70%) 0%, var(--paper) 100%); }
+/* the map story's overcast grey, rising exactly as the story's own does as it comes up underneath */
+.grey { background: radial-gradient(75% 65% at 50% 50%, #f1f3f5 0%, #e1e5e9 100%); opacity: var(--hpe, 0); }
+@media (prefers-color-scheme: dark) {
+  .paper { background: radial-gradient(75% 65% at 50% 50%, color-mix(in srgb, var(--paper), #fff 6%) 0%, var(--paper) 100%); }
+  .grey { background: radial-gradient(75% 65% at 50% 50%, #23272c 0%, #181b1f 100%); }
+}
+
+.intro { display: none; }
+.stageNav { max-width: 1160px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 2; }
+
+.grid {
+  max-width: 1200px; margin: 0 auto; height: calc(100% - 84px); box-sizing: border-box;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 56px; padding: 0 32px 3vh;
+}
+
+/* as the stage leaves the screen (--xp 0 to 1), the words lift out faster than the phone */
+.text, .steps { transform: translate3d(0, calc(var(--xp, 0) * -45vh), 0); opacity: calc(1 - var(--xp, 0) * 2.2); }
+.text h1 { font-size: clamp(40px, 4.6vw, 68px); max-width: 9ch; }
+.text p { font-size: 17px; max-width: 32ch; }
+
+/* iPhone: a drawn body around the frames, sized off its own width */
+.phone {
+  container-type: inline-size; width: min(310px, calc((100svh - 140px) * 0.46));
+  transform: translate3d(0, calc(var(--xp, 0) * -16vh), 0) scale(calc(1 - var(--xp, 0) * 0.08)); transform-origin: 50% 0;
+  opacity: calc(1 - var(--xp, 0) * 1.7);
+}
+.body {
+  aspect-ratio: 0.4764; border-radius: 15cqw; padding: 3.2cqw; box-sizing: border-box; background: #1b1a1e;
+  box-shadow: 0 0 0 1.5px #3a3940 inset, 0 40px 80px -30px rgba(36, 33, 28, 0.45);
+}
+.screen { position: relative; width: 100%; height: 100%; border-radius: 12.5cqw; overflow: hidden; background: #2a2622; }
+.screen canvas, .screen img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* the tap on the alert */
+.tap {
+  position: absolute; left: 50%; top: 79.6%; width: 14%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+  background: rgba(60, 56, 50, 0.32); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 4px 14px rgba(0, 0, 0, 0.2);
+  opacity: var(--tap, 0); transform: scale(calc(0.6 + var(--tap, 0) * 0.5));
+}
+
+/* the step that's up: rises in on a spring, the last one lifts away */
+.steps { position: relative; height: 230px; }
+.step {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+  opacity: 0; transform: translateY(18px); transition: opacity 0.35s, transform 0.5s cubic-bezier(0.2, 1.2, 0.35, 1);
+}
+.step.on { opacity: 1; transform: none; }
+.step.gone { transform: translateY(-18px); }
+.step small { font-family: var(--rounded); font-size: 13.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold-text) !important; }
+.step strong { display: block; font-family: var(--rounded); font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 6px; color: var(--ink); text-wrap: balance; }
+.step p { font-size: 16.5px; line-height: 1.45; margin: 10px 0 0; max-width: 28ch; color: var(--muted) !important; text-wrap: pretty; }
+
+/* phones: the words first, then the pinned phone with the step's line above it */
+@media (max-width: 899px) {
+  .intro { display: block; position: relative; text-align: center; padding: 0 24px 8px; }
+  .intro h1 { max-width: 12ch; margin-left: auto; margin-right: auto; }
+  .track { height: 580svh; }
+  .stageNav, .text { display: none; }
+  .grid {
+    height: 100%; grid-template-columns: 1fr; grid-template-rows: auto 1fr; gap: 10px;
+    padding: 18px 20px 16px; justify-items: center; text-align: center;
+  }
+  .steps { grid-row: 1; height: 92px; width: 100%; }
+  .step { align-items: center; }
+  .step strong { font-size: 22px; }
+  .step p { display: none; }
+  .phone { grid-row: 2; align-self: start; width: min(280px, calc((100svh - 150px) * 0.46)); }
+}
+
+/* motion off: no pinned scrub, just the alert on the lock screen and its line */
+.still .track { height: auto; }
+.still .stage { position: relative; }
+.still .step { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .text, .steps, .phone { transform: none; }
+}
