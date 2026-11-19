@@ -1,60 +1,99 @@
-/* the fifteen networks: a flat map beside a plain list, no boxes; pointing at one lights its patch */
-.section { padding: 110px 0 40px; }
+/* the fifteen networks: the map beside one network at a time. No boxes; the network's own colour carries it. */
+.section { padding: 110px 0 60px; }
 
-.head { max-width: 640px; margin-bottom: 40px; }
+.head { max-width: 640px; margin-bottom: 36px; }
 .title { font-family: var(--rounded); font-weight: 700; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 12px; color: var(--ink); text-wrap: balance; }
 .lede { font-size: 18px; line-height: 1.55; color: var(--muted) !important; margin: 0; }
 
-.grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 56px; align-items: start; }
-/* the map stays in view while the list scrolls past it */
-.mapCol { position: sticky; top: 90px; }
-.map { display: block; width: 100%; height: auto; overflow: visible; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+/* the panel starts a little way down the map and grows downward, so nothing above it moves when a network opens */
+.panel { padding-top: clamp(24px, 9%, 72px); min-width: 0; }
 
+/* the map: a patch closes in to fill it when picked, so it clips its own edges */
+.mapCol { position: relative; }
+.map { display: block; width: 100%; height: auto; overflow: hidden; }
+.zoom { transform-origin: 0 0; transition: transform 0.9s var(--spring, cubic-bezier(0.2, 0.9, 0.25, 1)); }
 .area {
-  fill: var(--c); stroke: var(--c); stroke-width: 1.2; stroke-linejoin: round; cursor: pointer;
-  transition: fill 0.25s var(--ease), stroke 0.25s var(--ease), opacity 0.25s var(--ease);
+  fill: var(--c); stroke: var(--c); stroke-width: 1.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; cursor: pointer;
+  transition: fill 0.35s var(--ease), stroke 0.35s var(--ease), opacity 0.35s var(--ease);
 }
 @media (prefers-color-scheme: dark) { .area { fill: var(--cd); stroke: var(--cd); } }
-/* the page's own land colour, so the rest of the country sits back */
-.area.dim { fill: var(--land); stroke: var(--land-edge); }
-.area.lit { filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c) 45%, transparent)); }
+.area.soft { opacity: 0.42; }
+/* the rest of the country, in the page's own land colour, once a network is picked */
+.area.dim { fill: var(--land); stroke: var(--land-edge); opacity: 1; }
+.area.lit { opacity: 1; filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c) 40%, transparent)); }
+.isOpen .area.lit { filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--c) 35%, transparent)); }
 
-.list { list-style: none; margin: 0; padding: 0; }
-.row {
-  display: grid; grid-template-columns: 1fr; gap: 6px; padding: 18px 0 18px 16px; border-top: 1px solid var(--line);
-  position: relative; transition: opacity 0.25s var(--ease);
+/* the numbers: one pill slides along to whichever network is up */
+.pager {
+  --gap: 6px; position: relative; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: var(--gap); margin-bottom: 28px;
 }
-.row:last-child { border-bottom: 1px solid var(--line); }
-/* a thin bar in the network's colour, so each row ties to its patch */
-.row::before {
-  content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 3px; border-radius: 2px; background: var(--c);
-  transform-origin: 50% 0; transition: transform 0.25s var(--ease);
+.pager button {
+  position: relative; z-index: 1; height: 30px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer;
+  font-family: var(--rounded); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--faint);
+  transition: color 0.3s var(--ease), transform 0.15s var(--ease);
 }
-.row.faded { opacity: 0.38; }
-.row.faded::before { transform: scaleY(0.4); }
+.pager button:hover { color: var(--ink); }
+.pager button:active { transform: scale(0.97); }
+.pager button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.pager .numOn, .pager .numOn:hover { color: #fff; }
+.pill {
+  position: absolute; left: 0; top: 0; height: 30px; border-radius: 999px;
+  width: calc((100% - (var(--n) - 1) * var(--gap)) / var(--n));
+  box-shadow: 0 6px 14px -6px rgba(36, 33, 28, 0.35);
+  transition: transform 0.6s var(--spring, cubic-bezier(0.2, 0.9, 0.25, 1)), background-color 0.35s var(--ease);
+}
 
-.pick {
-  justify-self: start; display: flex; align-items: center; min-height: 34px; padding: 0; border: 0; background: none;
-  cursor: pointer; border-radius: 6px; transition: transform 0.15s var(--ease);
+/* the cards: one network at a time, swiping along like a carousel */
+.view { overflow: hidden; touch-action: pan-y; }
+.track { display: flex; transition: transform 0.6s var(--spring, cubic-bezier(0.2, 0.9, 0.25, 1)); will-change: transform; }
+.track.dragging { transition: none; }
+.card {
+  flex: 0 0 100%; box-sizing: border-box; padding-right: 16px; min-width: 0;
+  transition: opacity 0.4s var(--ease), transform 0.5s var(--spring, var(--ease));
 }
-.pick:active { transform: scale(0.97); }
-.pick:focus-visible { outline: 2px solid var(--c); outline-offset: 4px; }
+.card[aria-hidden="true"] { opacity: 0.25; transform: scale(0.97); }
 
-.meta { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--muted) !important; max-width: 520px; }
-.meta b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--c); margin-right: 4px; }
+.logo { display: flex; align-items: center; min-height: 52px; margin-bottom: 14px; }
+.where { margin: 0; font-size: 17px; line-height: 1.5; color: var(--muted) !important; max-width: 460px; text-wrap: pretty; }
+.where b { font-family: var(--rounded); font-weight: 800; letter-spacing: 0.04em; color: var(--c); margin-right: 6px; }
+
+/* the details, opening when the map closes in on this network */
+.more { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.55s var(--ease), opacity 0.4s var(--ease); }
+.moreOn { grid-template-rows: 1fr; opacity: 1; }
+.moreIn { min-height: 0; overflow: hidden; }
+.stats { margin: 26px 0 0; padding: 0; display: grid; gap: 16px; }
+.stats div { display: grid; gap: 3px; padding-left: 14px; border-left: 3px solid var(--c); }
+.stats dt { font-family: var(--rounded); font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.stats dd { margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); max-width: 440px; text-wrap: pretty; }
+.stats .big dd { font-family: var(--rounded); font-weight: 700; font-size: clamp(28px, 3vw, 36px); letter-spacing: -0.02em; line-height: 1.1; }
 .site {
-  justify-self: start; font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none;
+  display: inline-block; margin-top: 20px; font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none;
   border-bottom: 1.5px solid color-mix(in srgb, var(--c) 60%, transparent);
 }
 
-/* phones: the map on top (still in view), the list under it */
+.look {
+  display: inline-flex; align-items: center; height: 40px; margin-top: 22px; padding: 0 18px; border-radius: 999px; cursor: pointer;
+  font-family: var(--rounded); font-weight: 650; font-size: 15px; color: var(--ink);
+  background: var(--g-shine), var(--g-fill); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--g-rim); box-shadow: inset 0 1px 0 var(--g-hi), var(--g-drop); transition: transform 0.15s var(--ease);
+}
+.look:active { transform: scale(0.97); }
+.look:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+
+/* phones: the map, then the network under it */
 @media (max-width: 899px) {
-  .section { padding-top: 80px; }
-  .grid { grid-template-columns: 1fr; gap: 24px; }
-  .mapCol { top: 0; padding: 12px 0; background: var(--paper); z-index: 1; }
-  .map { max-width: 240px; margin: 0 auto; }
+  .section { padding: 80px 0 40px; }
+  .head { margin-bottom: 20px; }
+  .grid { grid-template-columns: 1fr; gap: 20px; }
+  .panel { padding-top: 0; }
+  .map { max-width: 460px; margin: 0 auto; }
+  .pager { --gap: 3px; margin-bottom: 20px; }
+  .pager button, .pill { height: 28px; }
+  .pager button { font-size: 11.5px; }
+  .where { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .area, .row, .row::before, .pick { transition: none; }
+  .zoom, .area, .pill, .track, .card, .more, .look, .pager button { transition: none; }
 }
